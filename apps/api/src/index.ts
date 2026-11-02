@@ -16,6 +16,7 @@ import { clientPortalRoutes } from "./routes/clientPortal";
 import { organizationRoutes } from "./routes/organization";
 import { legislationRoutes } from "./routes/legislation";
 import { lawRoutes } from "./routes/law";
+import { snapshotRoutes } from "./routes/snapshots";
 import { reclassifyOutdated } from "./services/reclassify";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
@@ -68,6 +69,7 @@ app.route("/api/team", teamRoutes);
 app.route("/api/organization", organizationRoutes);
 app.route("/api/legislation", legislationRoutes);
 app.route("/api/law", lawRoutes);
+app.route("/api/snapshots", snapshotRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

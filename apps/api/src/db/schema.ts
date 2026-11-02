@@ -172,6 +172,31 @@ export const obligations = pgTable("obligations", {
   index("obligations_system_idx").on(t.aiSystemId),
 ]);
 
+/**
+ * Instantaneu imuabil al unei analize aprobate („aviz înghețat”): ce s-a analizat, după ce versiune
+ * a regulilor și a textului legii, cine a aprobat și când. Nu se modifică și nu se șterge decât odată cu clientul.
+ */
+export const analysisSnapshots = pgTable("analysis_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  /** sistemul poate fi șters ulterior; instantaneul rămâne în dosarul clientului */
+  aiSystemId: uuid("ai_system_id").references(() => aiSystems.id, { onDelete: "set null" }),
+  version: integer("version").notNull(),
+  reason: text("reason").notNull(),
+  rulesetVersion: text("ruleset_version").notNull(),
+  lawTextVersion: text("law_text_version").notNull(),
+  data: jsonb("data").notNull(),
+  sha256: text("sha256").notNull(),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdByName: text("created_by_name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("snapshots_org_idx").on(t.organizationId),
+  index("snapshots_system_idx").on(t.aiSystemId),
+  index("snapshots_client_idx").on(t.clientId),
+]);
+
 export const auditLog = pgTable("audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),

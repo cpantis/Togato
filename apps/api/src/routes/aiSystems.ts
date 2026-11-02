@@ -9,6 +9,7 @@ import { audit } from "../lib/audit";
 import { notFound, uuidParam } from "../lib/http";
 import { syncClientObligations, syncSystemObligations } from "../services/obligationsSync";
 import { generateMemo, memoAvailable } from "../services/memo";
+import { createSnapshot, listSnapshots } from "../services/snapshots";
 import { serializeObligation, serializeSystem } from "./serializers";
 
 export const aiSystemRoutes = new Hono<AppEnv>();
@@ -151,15 +152,21 @@ aiSystemRoutes.post("/:id/review", async (c) => {
     status: z.enum(["aprobat", "respins", "propus"]),
     note: z.string().trim().max(5000).nullish().transform((v) => (v ? v : null)),
   }).parse(await c.req.json());
-  await db.update(aiSystems).set({
-    reviewStatus: body.status,
-    reviewNote: body.note,
-    reviewedBy: body.status === "propus" ? null : auth.userId,
-    reviewedAt: body.status === "propus" ? null : new Date(),
-    // decizia avocatului închide nota de reîncadrare după o modificare legislativă
-    ...(body.status !== "propus" ? { reclassNote: null } : {}),
-  }).where(and(eq(aiSystems.id, existing.id), eq(aiSystems.organizationId, auth.organizationId)));
-  await audit(auth, "review", "ai_system", existing.id, { status: body.status });
+  await db.transaction(async (tx) => {
+    await tx.update(aiSystems).set({
+      reviewStatus: body.status,
+      reviewNote: body.note,
+      reviewedBy: body.status === "propus" ? null : auth.userId,
+      reviewedAt: body.status === "propus" ? null : new Date(),
+      // decizia avocatului închide nota de reîncadrare după o modificare legislativă
+      ...(body.status !== "propus" ? { reclassNote: null } : {}),
+    }).where(and(eq(aiSystems.id, existing.id), eq(aiSystems.organizationId, auth.organizationId)));
+    // aprobarea „îngheață” avizul: instantaneu imuabil, în aceeași tranzacție
+    if (body.status === "aprobat") {
+      await createSnapshot(tx, { organizationId: auth.organizationId, aiSystemId: existing.id, userId: auth.userId, userName: auth.name, reason: "aprobarea încadrării" });
+    }
+    await audit(auth, "review", "ai_system", existing.id, { status: body.status }, tx);
+  });
   return c.json(await systemResponse(auth.organizationId, existing.id));
 });
 
@@ -201,7 +208,8 @@ aiSystemRoutes.post("/:id/override", async (c) => {
     .parse(await c.req.json());
 
   const computed = existing.classification?.riskLevel ?? classifyAiSystem(normalizeAnswers(existing.answers)).riskLevel;
-  await db.update(aiSystems).set(body.riskLevel
+  await db.transaction(async (tx) => {
+  await tx.update(aiSystems).set(body.riskLevel
     ? {
       riskOverride: body.riskLevel, overrideReason: body.reason, overrideBy: auth.userId, overrideAt: new Date(), riskLevel: body.riskLevel,
       // încadrarea manuală este chiar decizia avocatului
@@ -209,6 +217,18 @@ aiSystemRoutes.post("/:id/override", async (c) => {
     }
     : { riskOverride: null, overrideReason: null, overrideBy: null, overrideAt: null, riskLevel: computed, reviewStatus: "propus", reviewedBy: null, reviewedAt: null },
   ).where(and(eq(aiSystems.id, existing.id), eq(aiSystems.organizationId, auth.organizationId)));
-  await audit(auth, body.riskLevel ? "override" : "override_clear", "ai_system", existing.id, { riskLevel: body.riskLevel, computed, reason: body.reason });
+  if (body.riskLevel) {
+    await createSnapshot(tx, { organizationId: auth.organizationId, aiSystemId: existing.id, userId: auth.userId, userName: auth.name, reason: "încadrare stabilită manual" });
+  }
+  await audit(auth, body.riskLevel ? "override" : "override_clear", "ai_system", existing.id, { riskLevel: body.riskLevel, computed, reason: body.reason }, tx);
+  });
   return c.json(await systemResponse(auth.organizationId, existing.id));
+});
+
+/** GET /:id/snapshots — istoricul avizelor înghețate ale sistemului */
+aiSystemRoutes.get("/:id/snapshots", async (c) => {
+  const auth = c.get("auth");
+  const existing = await loadSystem(auth.organizationId, uuidParam(c.req.param("id")));
+  const rows = await listSnapshots(db, auth.organizationId, existing.id);
+  return c.json({ data: rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })) });
 });

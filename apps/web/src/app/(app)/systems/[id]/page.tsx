@@ -12,6 +12,7 @@ import { ObligationList } from "@/components/ObligationList";
 import { Markdown } from "@/components/Markdown";
 import { SystemForm } from "@/components/SystemForm";
 import { LawRef } from "@/components/LawRef";
+import { SnapshotsCard } from "@/components/SnapshotsCard";
 
 type SystemDetail = AiSystem & { client: { id: string; name: string; cui: string | null }; obligations: Obligation[] };
 
@@ -308,6 +309,7 @@ export default function SystemPage() {
         <div className="space-y-5">
           <ReviewPanel system={system} onChange={setSystem} />
           <OverridePanel key={`${system.riskOverride}-${system.overrideAt}`} system={system} onChange={setSystem} />
+          <SnapshotsCard systemId={system.id} refreshKey={`${system.reviewedAt}-${system.overrideAt}`} />
           <MemoPanel system={system} onChange={setSystem} />
         </div>
       </div>

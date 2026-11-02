@@ -43,6 +43,13 @@
       "when": 1793638825647,
       "tag": "0005_qualification",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793639003940,
+      "tag": "0006_snapshots",
+      "breakpoints": true
     }
   ]
 }
