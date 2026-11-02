@@ -15,12 +15,13 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Analiza AI: `services/memo.ts`, model `claude-opus-5-5`, cu fallback server-side (`fallbacks: "default"`). Nu inventa articole în prompturi.
 - Hard delete peste tot (CASCADE pe FK).
 - Roluri: `admin` / `membru`. Rutele de administrare a echipei folosesc `requireAdmin`. Cabinetul trebuie să rămână mereu cu cel puțin un administrator activ; nimeni nu își poate retrage singur rolul de admin sau dezactiva propriul cont.
+- Documente Word: `services/documents/` — `common.ts` (stiluri, antet, `fill()` pentru câmpuri de completat evidențiate galben, `loadDocContext`), `templates.ts` (conținutul celor 5 documente), `index.ts` (registrul: tip, disponibilitate, obligația legată). Documentele se generează la cerere, nu se stochează. Un document nou = o funcție în `templates.ts` + o intrare în `DOCUMENTS` + test în `documents.test.ts`; dacă e legat de o obligație, și în `apps/web/src/lib/documents.ts`.
 - Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Emailul nu se trimite încă — adminul copiază linkul.
 
 ## Înainte de commit
 ```bash
 npm run build -w @togato/shared && npm test -w @togato/shared
-cd apps/api && npx tsc --noEmit
+cd apps/api && npx tsc --noEmit && npm test
 cd apps/web && npx next build
 ```
 Dacă oricare eșuează, nu face commit.
@@ -29,4 +30,5 @@ Dacă oricare eșuează, nu face commit.
 - Textul final al Omnibus-ului (numărul regulamentului, formularea Art. 4, perioada de grație Art. 50(2)) — verificat doar din surse secundare.
 - Lookup ANAF (`services/companyLookup.ts`, API v9) netestat contra serviciului real.
 - Trimiterea pe email a invitațiilor (acum linkul se copiază manual).
-- Următorii pași: generarea documentelor (politică AI, notificare angajați, FRIA, registru AI), portalul clientului (white-label), modulul GDPR.
+- Documentele sunt modele deterministe; o variantă viitoare poate folosi Claude pentru a redacta secțiunile „de completat” din descrierea sistemului.
+- Următorii pași: portalul clientului (white-label), trimiterea emailurilor, modulul GDPR.

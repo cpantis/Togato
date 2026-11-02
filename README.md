@@ -11,6 +11,7 @@ Platformă SaaS pentru cabinetele de avocatură și consultanță care gestionea
 - **Încadrare automată**: practici interzise (Art. 5), risc ridicat (Anexa I / Anexa III, cu derogările Art. 6(3) și Art. 25), transparență (Art. 50), GPAI. Rezultatul are motivele și articolele citate și se actualizează live în formular.
 - **Obligații concrete** generate pe sistem și pe client (Art. 4, 26, 27, 50, 86, 9–73 pentru furnizori), cu data de aplicare, stare, notă și termen intern.
 - **Verificarea avocatului**: fiecare încadrare e „propusă” până când un avocat o aprobă sau o respinge; schimbarea răspunsurilor cere o nouă aprobare.
+- **Documente Word** generate din datele clientului: raport de conformitate, registrul sistemelor AI, politica internă de utilizare AI, informarea angajaților (Art. 26(7)), evaluarea impactului asupra drepturilor fundamentale (Art. 27). Câmpurile de completat sunt evidențiate.
 - **Analiză AI** (opțional): memoriu juridic scurt generat cu Claude.
 - **Panou**: clienți, sisteme pe niveluri de risc, ce necesită atenție, termenele AI Act.
 - Jurnal de audit pentru toate acțiunile.
@@ -39,7 +40,7 @@ npm run dev:web                 # http://localhost:3000
 
 ```bash
 npm run build -w @togato/shared && npm test -w @togato/shared
-cd apps/api && npx tsc --noEmit
+cd apps/api && npx tsc --noEmit && npm test
 cd apps/web && npx next build
 ```
 

@@ -52,3 +52,33 @@ export const apiPost = <T = any>(path: string, data?: unknown) => api<T>(path, {
 export const apiPut = <T = any>(path: string, data: unknown) => api<T>(path, { method: "PUT", body: JSON.stringify(data) });
 export const apiPatch = <T = any>(path: string, data: unknown) => api<T>(path, { method: "PATCH", body: JSON.stringify(data) });
 export const apiDelete = (path: string) => api<void>(path, { method: "DELETE" });
+
+/** Descarcă un fișier de la o rută autentificată (un simplu <a href> nu poate trimite tokenul). */
+export async function apiDownload(path: string, fallbackName = "document.docx"): Promise<void> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ApiError("Serverul nu răspunde. Verifică conexiunea și reîncearcă.", 0);
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    if (res.status === 401 && token) {
+      clearToken();
+      window.location.assign("/login");
+    }
+    throw new ApiError(body?.error || `Eroare ${res.status}`, res.status, body);
+  }
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename\*=UTF-8''([^;]+)/i) || disposition.match(/filename="([^"]+)"/i);
+  const filename = match ? decodeURIComponent(match[1]) : fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}

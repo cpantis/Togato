@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import type { Obligation, ObligationStatus } from "@togato/shared";
-import { apiPatch } from "@/lib/api";
+import { apiDownload, apiPatch } from "@/lib/api";
+import { OBLIGATION_DOCUMENTS, documentUrl } from "@/lib/documents";
 import { daysUntil, formatDate } from "@/lib/format";
 import { ObligationStatusSelect, cn, inputClass, textareaClass } from "@/components/ui";
 
@@ -11,7 +12,21 @@ function ObligationRow({ item, onChange }: { item: Obligation; onChange: (o: Obl
   const [dueDate, setDueDate] = useState(item.dueDate || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const days = daysUntil(item.appliesFrom);
+  const docDef = OBLIGATION_DOCUMENTS[item.code];
+
+  async function downloadDoc() {
+    if (!docDef) return;
+    setDownloading(true); setError(null);
+    try {
+      await apiDownload(documentUrl(item.clientId, docDef.type, docDef.perSystem ? item.aiSystemId : null));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function patch(data: Partial<{ status: ObligationStatus; note: string | null; dueDate: string | null }>) {
     setSaving(true); setError(null);
@@ -46,6 +61,12 @@ function ObligationRow({ item, onChange }: { item: Obligation; onChange: (o: Obl
       {open && (
         <div className="mt-3 space-y-3 rounded-lg bg-slate-50 p-3">
           <p className="text-[13px] text-slate-600">{item.description}</p>
+          {docDef && (
+            <button onClick={downloadDoc} disabled={downloading} className="inline-flex items-center gap-1.5 rounded-md border border-brand/30 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-brand hover:bg-brand-soft disabled:opacity-50">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+              {downloading ? "Se generează..." : `Descarcă modelul: ${docDef.label}`}
+            </button>
+          )}
           <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
             <textarea className={textareaClass} rows={2} placeholder="Notă internă: ce s-a făcut, unde e dovada..." value={note} onChange={(e) => setNote(e.target.value)} />
             <input className={inputClass} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} aria-label="Termen intern" />

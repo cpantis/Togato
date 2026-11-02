@@ -10,6 +10,7 @@ import { aiSystemRoutes, createSystemHandler } from "./routes/aiSystems";
 import { obligationRoutes } from "./routes/obligations";
 import { dashboardRoutes } from "./routes/dashboard";
 import { teamRoutes } from "./routes/team";
+import { documentRoutes } from "./routes/documents";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -44,7 +45,9 @@ app.use("/api/*", authMiddleware);
 app.use("/api/clients/lookup", rateLimit({ windowMs: 60_000, max: 20, key: "lookup" }));
 app.use("/api/ai-systems/*/memo", rateLimit({ windowMs: 60_000, max: 6, key: "memo" }));
 
+app.use("/api/clients/*/documents/*", rateLimit({ windowMs: 60_000, max: 30, key: "docs" }));
 app.route("/api/clients", createSystemHandler);
+app.route("/api/clients", documentRoutes);
 app.route("/api/clients", clientRoutes);
 app.route("/api/ai-systems", aiSystemRoutes);
 app.route("/api/obligations", obligationRoutes);

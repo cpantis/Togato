@@ -18,5 +18,6 @@ jobs:
       - run: npm test -w @togato/shared
       - run: npx tsc --noEmit
         working-directory: apps/api
+      - run: npm test -w @togato/api
       - run: npx next build
         working-directory: apps/web

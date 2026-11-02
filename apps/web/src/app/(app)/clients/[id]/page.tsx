@@ -7,6 +7,7 @@ import { apiDelete, apiGet, apiPatch } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, ProgressBar, ReviewBadge, RiskBadge } from "@/components/ui";
 import { ObligationList } from "@/components/ObligationList";
+import { DocumentsCard } from "@/components/DocumentsCard";
 
 export default function ClientPage() {
   const { id } = useParams<{ id: string }>();
@@ -105,6 +106,8 @@ export default function ClientPage() {
               </ul>
             )}
           </Card>
+
+          <DocumentsCard clientId={client.id} refreshKey={client.aiSystems.length} />
 
           {client.clientObligations.length > 0 && (
             <Card className="overflow-hidden">
