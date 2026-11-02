@@ -25,6 +25,15 @@ export interface RulesetChange {
 /** Cea mai nouă versiune e prima. */
 export const RULESET_CHANGELOG: RulesetChange[] = [
   {
+    version: "2026.3",
+    date: "2026-11-02",
+    title: "Corecturi Art. 26(11), Art. 27 și Art. 86: domeniul de aplicare",
+    summary:
+      "Verificare față de textul oficial: (1) informarea persoanelor vizate (Art. 26(11)) și dreptul la explicație (Art. 86) privesc numai sistemele cu risc ridicat din Anexa III, nu și pe cele din Anexa I; (2) evaluarea impactului asupra drepturilor fundamentale (Art. 27) și dreptul la explicație (Art. 86) nu se aplică sistemelor din Anexa III pct. 2 (infrastructură critică). Sistemele din Anexa I care sunt și în Anexa III se încadrează acum după Anexa III, cu ambele temeiuri afișate.",
+    source: "Regulamentul (UE) 2024/1689, Art. 26 alin. (11), Art. 27 alin. (1), Art. 86 alin. (1) — textul oficial în limba română",
+    articles: ["Art. 26(11)", "Art. 27", "Art. 86", "Anexa III pct. 2"],
+  },
+  {
     version: "2026.2",
     date: "2026-11-02",
     title: "Corectură Art. 26(8): înregistrarea se cere doar autorităților publice",

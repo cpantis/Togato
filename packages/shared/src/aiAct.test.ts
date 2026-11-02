@@ -37,6 +37,35 @@ describe("classifyAiSystem", () => {
     expect(autoritate).toContain("art26_8_inregistrare");
   });
 
+  it("Anexa I: fără Art. 26(11) și Art. 86 (privesc doar Anexa III)", () => {
+    const c = codes(classifyAiSystem({ annexI: true, decisionsOnPersons: true, publicService: true }));
+    expect(c).toContain("art26_2_supraveghere");
+    expect(c).not.toContain("art26_11_informare");
+    expect(c).not.toContain("art86_explicatie");
+    expect(c).not.toContain("art27_fria");
+  });
+
+  it("Anexa III pct. 2 (infrastructură critică): fără FRIA și fără Art. 86, dar cu Art. 26(11)", () => {
+    const c = codes(classifyAiSystem({ annexIII: ["2_infrastructura_critica"], publicService: true, decisionsOnPersons: true }));
+    expect(c).not.toContain("art27_fria");
+    expect(c).not.toContain("art86_explicatie");
+    expect(c).toContain("art26_11_informare");
+  });
+
+  it("pct. 2 împreună cu altă utilizare din Anexa III păstrează FRIA și Art. 86", () => {
+    const c = codes(classifyAiSystem({ annexIII: ["2_infrastructura_critica", "5a_beneficii_publice"], publicService: true, decisionsOnPersons: true }));
+    expect(c).toContain("art27_fria");
+    expect(c).toContain("art86_explicatie");
+  });
+
+  it("Anexa I + Anexa III: temeiul e Anexa III, ambele motive apar, cu avertisment pentru Anexa I", () => {
+    const r = classifyAiSystem({ annexI: true, annexIII: ["4a_recrutare"] });
+    expect(r.highRiskBasis).toBe("anexa_iii");
+    expect(r.reasons.map((x) => x.article)).toEqual(expect.arrayContaining(["Art. 6(1) + Anexa I", "Anexa III pct. 4(a)"]));
+    expect(r.warnings.some((w) => w.includes("Anexa I"))).toBe(true);
+    expect(r.obligations.find((o) => o.code === "art26_2_supraveghere")!.appliesFrom).toBe(AI_ACT_DATES.highRiskAnnexIII);
+  });
+
   it("scoring de credit cere FRIA (Art. 27)", () => {
     const r = classifyAiSystem({ annexIII: ["5b_scoring_credit"] });
     expect(codes(r)).toContain("art27_fria");

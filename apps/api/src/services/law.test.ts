@@ -21,6 +21,8 @@ function allCatalogRefs(): string[] {
     { transparency: TRANSPARENCY_TRIGGERS.map((t) => t.code) },
     { transparency: ["text_interes_public"], editorialReview: true },
     { gpaiProvider: true },
+    { annexI: true, decisionsOnPersons: true },
+    { annexI: true, annexIII: ["2_infrastructura_critica"], publicService: true, decisionsOnPersons: true },
   ];
   for (const role of roles) for (const v of variants) {
     const c = classifyAiSystem({ ...v, role });

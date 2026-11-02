@@ -286,7 +286,14 @@ const OBL = {
   },
 } satisfies Record<string, ObligationTemplate>;
 
-function highRiskDeployer(appliesFrom: string, a: AiSystemAnswers): ObligationTemplate[] {
+/** Utilizările din Anexa III în afara pct. 2 (infrastructură critică) — relevant pentru Art. 27 și Art. 86 */
+const annexIIIExceptPoint2 = (a: AiSystemAnswers) => a.annexIII.some((c) => c !== "2_infrastructura_critica");
+
+/**
+ * @param annexIIIHigh sistemul e cu risc ridicat în temeiul Anexei III (nu doar al Anexei I) —
+ *   Art. 26(11), Art. 27 și Art. 86 privesc numai sistemele din Anexa III.
+ */
+function highRiskDeployer(appliesFrom: string, a: AiSystemAnswers, annexIIIHigh: boolean): ObligationTemplate[] {
   const list: ObligationTemplate[] = [
     { code: "art26_1_instructiuni", article: "Art. 26(1)", title: "Utilizare conform instrucțiunilor furnizorului", description: "Măsuri tehnice și organizatorice pentru a folosi sistemul conform instrucțiunilor de utilizare. Obțineți și păstrați instrucțiunile de la furnizor.", appliesFrom, scope: "system" },
     { code: "art26_2_supraveghere", article: "Art. 26(2)", title: "Supraveghere umană de către persoane competente", description: "Desemnați persoanele care supraveghează sistemul — cu competența, instruirea și autoritatea necesare.", appliesFrom, scope: "system" },
@@ -301,14 +308,17 @@ function highRiskDeployer(appliesFrom: string, a: AiSystemAnswers): ObligationTe
   if (a.publicAuthority) {
     list.push({ code: "art26_8_inregistrare", article: "Art. 26(8) + Art. 49", title: "Înregistrarea utilizării în baza de date a UE", description: "Autoritățile publice care implementează sisteme cu risc ridicat respectă obligațiile de înregistrare (Art. 49) și nu folosesc un sistem care nu e înregistrat în baza de date a UE; în acest caz informează furnizorul sau distribuitorul.", appliesFrom, scope: "system" });
   }
-  if (a.decisionsOnPersons) {
-    list.push(
-      { code: "art26_11_informare", article: "Art. 26(11)", title: "Informarea persoanelor vizate de decizii", description: "Persoanele despre care sistemul ia sau asistă decizii sunt informate că fac obiectul utilizării unui sistem AI cu risc ridicat.", appliesFrom, scope: "system" },
-      { code: "art86_explicatie", article: "Art. 86", title: "Procedură pentru dreptul la explicație", description: "Persoana afectată de o decizie cu efecte juridice sau similare poate cere explicații clare despre rolul sistemului AI. Pregătiți un răspuns-tip și un responsabil.", appliesFrom, scope: "system" },
-    );
+  // Art. 26(11): numai sistemele din Anexa III care iau sau asistă decizii despre persoane fizice
+  if (annexIIIHigh && a.decisionsOnPersons) {
+    list.push({ code: "art26_11_informare", article: "Art. 26(11)", title: "Informarea persoanelor vizate de decizii", description: "Persoanele despre care sistemul ia sau asistă decizii sunt informate că fac obiectul utilizării unui sistem AI cu risc ridicat.", appliesFrom, scope: "system" });
   }
+  // Art. 86: numai Anexa III, cu excepția pct. 2 (infrastructură critică)
+  if (annexIIIHigh && a.decisionsOnPersons && annexIIIExceptPoint2(a)) {
+    list.push({ code: "art86_explicatie", article: "Art. 86", title: "Procedură pentru dreptul la explicație", description: "Persoana afectată de o decizie cu efecte juridice sau similare poate cere explicații clare despre rolul sistemului AI. Pregătiți un răspuns-tip și un responsabil.", appliesFrom, scope: "system" });
+  }
+  // Art. 27: organisme publice / servicii publice (Anexa III, fără pct. 2) și Anexa III pct. 5 lit. (b) și (c)
   const friaUses = a.annexIII.some((c) => c === "5b_scoring_credit" || c === "5c_asigurari_viata_sanatate");
-  if (a.publicService || friaUses) {
+  if (annexIIIHigh && ((a.publicService && annexIIIExceptPoint2(a)) || friaUses)) {
     list.push({ code: "art27_fria", article: "Art. 27", title: "Evaluarea impactului asupra drepturilor fundamentale (FRIA)", description: "Înainte de prima utilizare: procese în care se folosește, perioada, categoriile de persoane afectate, riscurile, măsurile de supraveghere umană și de remediere. Rezultatul se notifică autorității de supraveghere.", appliesFrom, scope: "system" });
   }
   return list;
@@ -390,11 +400,11 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
 
   // 2. Risc ridicat — Anexa I sau Anexa III (cu derogările Art. 6(3))
   let highRiskBasis: ClassificationResult["highRiskBasis"] = null;
+  let annexIIIHigh = false;
   if (a.annexI) {
-    highRiskBasis = "anexa_i";
     reasons.push({ text: "Componentă de siguranță a unui produs reglementat de legislația de armonizare a UE", article: "Art. 6(1) + Anexa I" });
   }
-  if (!highRiskBasis && a.annexIII.length > 0) {
+  if (a.annexIII.length > 0) {
     const uses = a.annexIII.map((c) => byCode(ANNEX_III_USES, c)!);
     const derogated = a.derogations.length > 0 && !a.profiling;
     if (derogated) {
@@ -408,7 +418,7 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
           : "Derogarea Art. 6(3) trebuie documentată înainte de introducerea pe piață (Art. 6(4)), iar sistemul se înregistrează în baza de date a UE (Art. 49(2)).",
       );
     } else {
-      highRiskBasis = "anexa_iii";
+      annexIIIHigh = true;
       for (const u of uses) reasons.push({ text: u.label, article: u.article });
       if (a.derogations.length > 0 && a.profiling) {
         reasons.push({ text: "Derogările nu se aplică: sistemul face profilarea persoanelor fizice", article: "Art. 6(3) ultimul paragraf" });
@@ -420,6 +430,12 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
         { code: "art49_2_inregistrare", article: "Art. 49(2)", title: "Înregistrarea în baza de date a UE (sistem derogat)", description: "Și sistemele din Anexa III considerate fără risc ridicat se înregistrează de furnizor.", appliesFrom: D.highRiskAnnexIII, scope: "system" },
       );
     }
+  }
+
+  // Anexa III are prioritate: are obligații suplimentare și se aplică mai devreme decât Anexa I
+  highRiskBasis = annexIIIHigh ? "anexa_iii" : a.annexI ? "anexa_i" : null;
+  if (annexIIIHigh && a.annexI) {
+    warnings.push("Sistemul e și componentă de siguranță a unui produs reglementat (Anexa I). Obligațiile afișate urmează termenul Anexei III; cerințele legate de produs (Anexa I) se aplică din 2 august 2028 și se verifică separat.");
   }
 
   // Rolul juridic: Art. 25 — implementatorul care rebranduiește / modifică devine furnizor pentru risc ridicat
@@ -435,7 +451,7 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
 
   if (highRiskBasis) {
     const appliesFrom = highRiskBasis === "anexa_i" ? D.highRiskAnnexI : D.highRiskAnnexIII;
-    obligations.push(...(role === "furnizor" ? highRiskProvider(appliesFrom) : highRiskDeployer(appliesFrom, a)));
+    obligations.push(...(role === "furnizor" ? highRiskProvider(appliesFrom) : highRiskDeployer(appliesFrom, a, annexIIIHigh)));
     if (role === "furnizor" && a.decisionsOnPersons) {
       warnings.push("Ca furnizor, firma poate fi și implementator, dacă folosește ea însăși sistemul — verificați și obligațiile din Art. 26.");
     }
