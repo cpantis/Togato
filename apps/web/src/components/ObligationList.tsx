@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Obligation, ObligationStatus } from "@togato/shared";
 import { apiDownload, apiPatch } from "@/lib/api";
 import { OBLIGATION_DOCUMENTS, documentUrl } from "@/lib/documents";
+import { LawRef } from "@/components/LawRef";
 import { daysUntil, formatDate } from "@/lib/format";
 import { ObligationStatusSelect, cn, inputClass, textareaClass } from "@/components/ui";
 
@@ -44,18 +45,20 @@ function ObligationRow({ item, onChange }: { item: Obligation; onChange: (o: Obl
   return (
     <li className={cn("px-4 py-3", item.status === "nu_se_aplica" && "opacity-60")}>
       <div className="flex items-start gap-3">
-        <button onClick={() => setOpen((v) => !v)} className="min-w-0 flex-1 text-left" aria-expanded={open}>
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{item.article}</span>
-            <span className={cn("text-[13px] font-semibold text-ink", item.status === "indeplinit" && "text-slate-500")}>{item.title}</span>
+            <LawRef text={item.article} />
+            <button onClick={() => setOpen((v) => !v)} className="text-left" aria-expanded={open}>
+              <span className={cn("text-[13px] font-semibold text-ink hover:underline", item.status === "indeplinit" && "text-slate-500")}>{item.title}</span>
+            </button>
             {item.recommended && <span className="text-[11px] font-medium text-slate-400">recomandat</span>}
           </div>
-          <div className="mt-0.5 text-[12px] text-slate-500">
+          <button onClick={() => setOpen((v) => !v)} className="mt-0.5 block text-left text-[12px] text-slate-500" tabIndex={-1}>
             {days > 0 ? `Se aplică din ${formatDate(item.appliesFrom)} (în ${days} zile)` : `În vigoare din ${formatDate(item.appliesFrom)}`}
             {item.dueDate && <> · termen intern <b className="font-semibold text-slate-600">{formatDate(item.dueDate)}</b></>}
             {item.note && !open && <> · <span className="italic">{item.note.length > 60 ? item.note.slice(0, 60) + "…" : item.note}</span></>}
-          </div>
-        </button>
+          </button>
+        </div>
         <ObligationStatusSelect value={item.status} disabled={saving} onChange={(status) => patch({ status })} />
       </div>
       {open && (

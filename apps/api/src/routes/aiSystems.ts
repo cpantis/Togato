@@ -26,6 +26,7 @@ const answersSchema = z.object({
   transparency: codes,
   editorialReview: z.boolean().default(false),
   publicService: z.boolean().default(false),
+  publicAuthority: z.boolean().default(false),
   workplace: z.boolean().default(false),
   decisionsOnPersons: z.boolean().default(false),
   gpaiProvider: z.boolean().default(false),

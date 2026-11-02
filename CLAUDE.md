@@ -21,8 +21,13 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Identitatea vizuală a cabinetului (`organizations.brandColor`, `logoUrl`) se setează din `/settings` (doar admin) și se folosește în portal.
 - Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Emailul nu se trimite încă — adminul copiază linkul.
 
+## Textul oficial al legii
+- `apps/api/src/legal/ai_act_ro.json` — Regulamentul (UE) 2024/1689 în limba română, structurat pe articole / alineate / anexe / puncte / litere. Generat cu `python3 -I scripts/import_ai_act.py <pagina EUR-Lex .html> apps/api/src/legal/ai_act_ro.json` (nu se editează de mână). Versiunea curentă: textul inițial din JO L 12.7.2024 — **fără** modificările Omnibus.
+- `packages/shared/src/lawRefs.ts` transformă trimiterile din catalog („Art. 26(7)”, „Anexa III pct. 4(a)”, „Art. 26(9) + GDPR Art. 35”) în referințe; `apps/api/src/services/law.ts` le rezolvă la text; `GET /api/law?ref=...`. În web, componenta `LawRef` face orice articol clicabil.
+- `services/law.test.ts` verifică faptul că **fiecare** trimitere din catalog există în textul oficial. O trimitere nouă greșită face testul să pice.
+
 ## Când se modifică legislația
-1. Modifică regulile în `packages/shared/src/aiAct.ts` și acoperă schimbarea cu teste în `aiAct.test.ts`.
+1. Modifică regulile în `packages/shared/src/aiAct.ts` și acoperă schimbarea cu teste în `aiAct.test.ts`. Dacă s-a schimbat textul legii, reimportă-l (vezi „Textul oficial al legii”) și actualizează `source.version` / `note`.
 2. Adaugă o intrare **la începutul** lui `RULESET_CHANGELOG` din `packages/shared/src/legislation.ts`, cu o versiune nouă (`AAAA.N`), data, titlul, rezumatul pe înțelesul avocatului, sursa și articolele.
 3. La pornire, API-ul (`services/reclassify.ts`, cu advisory lock) reîncadrează toate sistemele cu `rulesetVersion` mai veche:
    - schimbări minore (termene, texte) → aplicate direct, fără reverificare;
@@ -39,7 +44,8 @@ cd apps/web && npx next build
 Dacă oricare eșuează, nu face commit.
 
 ## De verificat / deschis
-- Textul final al Omnibus-ului (numărul regulamentului, formularea Art. 4, perioada de grație Art. 50(2)) — verificat doar din surse secundare.
+- Textul final al Omnibus-ului (numărul regulamentului, formularea Art. 4, perioada de grație Art. 50(2)) — verificat doar din surse secundare. Textul importat e cel inițial (2024); când apare versiunea consolidată pe EUR-Lex, se reimportă.
+- Memoriul AI nu folosește încă textul oficial (următorul pas: trimiterea articolelor relevante către Claude).
 - Lookup ANAF (`services/companyLookup.ts`, API v9) netestat contra serviciului real.
 - Trimiterea pe email a invitațiilor (acum linkul se copiază manual).
 - Documentele sunt modele deterministe; o variantă viitoare poate folosi Claude pentru a redacta secțiunile „de completat” din descrierea sistemului.

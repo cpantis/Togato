@@ -5,6 +5,7 @@ import type { LegislationData } from "@togato/shared";
 import { apiGet } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { Alert, Card, LoadingBlock, PageHeader, RiskBadge } from "@/components/ui";
+import { LawRef } from "@/components/LawRef";
 
 export default function LegislationPage() {
   const [data, setData] = useState<LegislationData | null>(null);
@@ -61,7 +62,7 @@ export default function LegislationPage() {
               <p className="mt-2 text-[13px] leading-relaxed text-slate-600">{c.summary}</p>
               <p className="mt-2 text-[12px] text-slate-500"><b className="font-semibold">Sursa:</b> {c.source}</p>
               <div className="mt-2 flex flex-wrap gap-1">
-                {c.articles.map((a) => <span key={a} className="rounded bg-slate-50 px-1.5 py-0.5 font-mono text-[11px] text-slate-500">{a}</span>)}
+                {c.articles.map((a) => <LawRef key={a} text={a} />)}
               </div>
             </Card>
           </li>

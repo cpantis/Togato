@@ -29,6 +29,14 @@ describe("classifyAiSystem", () => {
     expect(r.obligations.find((o) => o.code === "art26_2_supraveghere")!.appliesFrom).toBe(AI_ACT_DATES.highRiskAnnexIII);
   });
 
+  it("înregistrarea Art. 26(8) se cere doar autorităților publice, FRIA și serviciilor publice", () => {
+    const privat = codes(classifyAiSystem({ annexIII: ["5a_beneficii_publice"], publicService: true }));
+    expect(privat).toContain("art27_fria");
+    expect(privat).not.toContain("art26_8_inregistrare");
+    const autoritate = codes(classifyAiSystem({ annexIII: ["5a_beneficii_publice"], publicService: true, publicAuthority: true }));
+    expect(autoritate).toContain("art26_8_inregistrare");
+  });
+
   it("scoring de credit cere FRIA (Art. 27)", () => {
     const r = classifyAiSystem({ annexIII: ["5b_scoring_credit"] });
     expect(codes(r)).toContain("art27_fria");

@@ -5,6 +5,7 @@ import {
   classifyAiSystem, type AiSystemAnswers, type Option,
 } from "@togato/shared";
 import { Alert, Button, Card, Field, RiskBadge, cn, inputClass, textareaClass } from "@/components/ui";
+import { LawRef } from "@/components/LawRef";
 
 export interface SystemFormValue {
   name: string;
@@ -52,7 +53,7 @@ function CheckList({ options, value, onChange, tone = "default" }: { options: Op
           <label key={o.code} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition", checked ? (tone === "danger" ? "border-red-300 bg-red-50" : "border-brand/40 bg-brand-soft") : "border-slate-200 hover:border-slate-300")}>
             <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[#7a1f3a]" checked={checked} onChange={() => toggle(o.code)} />
             <span className="min-w-0 flex-1 text-[13px] text-slate-700">{o.label}</span>
-            <span className="shrink-0 font-mono text-[11px] text-slate-400">{o.article}</span>
+            <LawRef text={o.article} className="shrink-0" />
           </label>
         );
       })}
@@ -170,7 +171,8 @@ export function SystemForm({ initial, onSubmit, onCancel, submitLabel }: {
         <Section n={6} title="Context" subtitle="Precizează ce obligații suplimentare se aplică.">
           <YesNo label="Folosit la locul de muncă, privește angajații?" help="Art. 26(7) — informarea angajaților" value={a.workplace} onChange={(x) => setA("workplace", x)} />
           <YesNo label="Ia sau asistă decizii despre persoane fizice?" help="Art. 26(11) și Art. 86 — informare și dreptul la explicație" value={a.decisionsOnPersons} onChange={(x) => setA("decisionsOnPersons", x)} />
-          <YesNo label="Clientul e organism public sau prestează servicii publice?" help="Art. 27 — evaluarea impactului asupra drepturilor fundamentale" value={a.publicService} onChange={(x) => setA("publicService", x)} />
+          <YesNo label="Clientul e organism de drept public sau entitate privată care prestează servicii publice?" help="Art. 27 — evaluarea impactului asupra drepturilor fundamentale" value={a.publicService} onChange={(x) => setA("publicService", x)} />
+          <YesNo label="Clientul este autoritate publică?" help="Art. 26(8) — înregistrarea utilizării în baza de date a UE" value={a.publicAuthority} onChange={(x) => setA("publicAuthority", x)} />
           <YesNo label="Clientul dezvoltă un model AI de uz general?" help="Regim separat, Capitolul V" value={a.gpaiProvider} onChange={(x) => setA("gpaiProvider", x)} />
         </Section>
       </div>
@@ -184,7 +186,7 @@ export function SystemForm({ initial, onSubmit, onCancel, submitLabel }: {
           </div>
           <ul className="mt-3 space-y-1.5">
             {preview.reasons.slice(0, 5).map((r, i) => (
-              <li key={i} className="text-[12px] text-slate-600"><span className="font-mono text-slate-400">{r.article}</span> {r.text}</li>
+              <li key={i} className="text-[12px] text-slate-600"><LawRef text={r.article} /> {r.text}</li>
             ))}
           </ul>
           {preview.warnings.length > 0 && (

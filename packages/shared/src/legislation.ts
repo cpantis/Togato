@@ -25,6 +25,15 @@ export interface RulesetChange {
 /** Cea mai nouă versiune e prima. */
 export const RULESET_CHANGELOG: RulesetChange[] = [
   {
+    version: "2026.2",
+    date: "2026-11-02",
+    title: "Corectură Art. 26(8): înregistrarea se cere doar autorităților publice",
+    summary:
+      "Verificare față de textul oficial: obligația de înregistrare a utilizării unui sistem cu risc ridicat (Art. 26(8) + Art. 49) privește autoritățile publice și instituțiile UE, nu și entitățile private care prestează servicii publice (acestea rămân vizate de evaluarea de impact din Art. 27). Chestionarul are o întrebare nouă: „Clientul este autoritate publică?”. Sistemele unde obligația a fost eliminată revin la verificare; dacă clientul e autoritate publică, bifați întrebarea nouă.",
+    source: "Regulamentul (UE) 2024/1689, Art. 26 alin. (8) și Art. 27 alin. (1) — textul oficial în limba română",
+    articles: ["Art. 26(8)", "Art. 27", "Art. 49"],
+  },
+  {
     version: "2026.1",
     date: "2026-11-02",
     title: "AI Act după pachetul Omnibus digital",

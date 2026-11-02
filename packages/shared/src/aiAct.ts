@@ -123,6 +123,8 @@ export interface AiSystemAnswers {
   editorialReview: boolean;
   /** clientul e organism de drept public sau entitate privată care prestează servicii publice (Art. 27) */
   publicService: boolean;
+  /** clientul e autoritate publică / instituție a UE (Art. 26(8) — înregistrarea utilizării) */
+  publicAuthority: boolean;
   /** sistemul e folosit la locul de muncă și îi privește pe angajați (Art. 26(7)) */
   workplace: boolean;
   /** ia sau asistă decizii despre persoane fizice (Art. 26(11), Art. 86) */
@@ -141,6 +143,7 @@ export const EMPTY_ANSWERS: AiSystemAnswers = {
   transparency: [],
   editorialReview: false,
   publicService: false,
+  publicAuthority: false,
   workplace: false,
   decisionsOnPersons: false,
   gpaiProvider: false,
@@ -295,8 +298,8 @@ function highRiskDeployer(appliesFrom: string, a: AiSystemAnswers): ObligationTe
   if (a.workplace) {
     list.push({ code: "art26_7_angajati", article: "Art. 26(7)", title: "Informarea angajaților și a reprezentanților lor", description: "Înainte de punerea în funcțiune la locul de muncă, angajatorul informează reprezentanții angajaților și angajații afectați.", appliesFrom, scope: "system" });
   }
-  if (a.publicService) {
-    list.push({ code: "art26_8_inregistrare", article: "Art. 26(8) + Art. 49", title: "Înregistrarea utilizării în baza de date a UE", description: "Autoritățile publice care implementează sisteme cu risc ridicat respectă obligațiile de înregistrare. Verificați că sistemul e înregistrat de furnizor.", appliesFrom, scope: "system" });
+  if (a.publicAuthority) {
+    list.push({ code: "art26_8_inregistrare", article: "Art. 26(8) + Art. 49", title: "Înregistrarea utilizării în baza de date a UE", description: "Autoritățile publice care implementează sisteme cu risc ridicat respectă obligațiile de înregistrare (Art. 49) și nu folosesc un sistem care nu e înregistrat în baza de date a UE; în acest caz informează furnizorul sau distribuitorul.", appliesFrom, scope: "system" });
   }
   if (a.decisionsOnPersons) {
     list.push(
@@ -354,6 +357,7 @@ export function normalizeAnswers(input: Partial<AiSystemAnswers> | null | undefi
     profiling: !!a.profiling,
     editorialReview: !!a.editorialReview,
     publicService: !!a.publicService,
+    publicAuthority: !!a.publicAuthority,
     workplace: !!a.workplace,
     decisionsOnPersons: !!a.decisionsOnPersons,
     gpaiProvider: !!a.gpaiProvider,
