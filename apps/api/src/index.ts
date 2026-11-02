@@ -14,6 +14,8 @@ import { documentRoutes } from "./routes/documents";
 import { portalRoutes } from "./routes/portal";
 import { clientPortalRoutes } from "./routes/clientPortal";
 import { organizationRoutes } from "./routes/organization";
+import { legislationRoutes } from "./routes/legislation";
+import { reclassifyOutdated } from "./services/reclassify";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -63,11 +65,18 @@ app.route("/api/obligations", obligationRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/team", teamRoutes);
 app.route("/api/organization", organizationRoutes);
+app.route("/api/legislation", legislationRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);
 
 if (require.main === module) {
   const port = Number(process.env.PORT || 8080);
-  serve({ fetch: app.fetch, port }, () => console.log(`Togato API pornit pe :${port}`));
+  serve({ fetch: app.fetch, port }, () => {
+    console.log(`Togato API pornit pe :${port}`);
+    // Reîncadrează sistemele salvate pe o versiune mai veche a regulilor AI Act
+    reclassifyOutdated()
+      .then((r) => { if (r.processed) console.log(`[legislație] reîncadrate ${r.processed} sisteme (${r.needsReview} de verificat, ${r.minorUpdates} actualizări minore)`); })
+      .catch((e) => console.error("[legislație] reîncadrarea a eșuat:", e));
+  });
 }

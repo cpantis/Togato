@@ -47,7 +47,17 @@ export async function syncClientObligations(tx: Tx, organizationId: string, clie
     await tx.delete(obligations).where(clientLevel);
     return;
   }
-  const existing = await tx.select({ code: obligations.code }).from(obligations).where(clientLevel);
+  const existing = await tx.select({ id: obligations.id, code: obligations.code }).from(obligations).where(clientLevel);
+  const catalog = new Map(CLIENT_OBLIGATIONS.map((t) => [t.code, t]));
+  const stale = existing.filter((o) => !catalog.has(o.code)).map((o) => o.id);
+  if (stale.length) await tx.delete(obligations).where(inArray(obligations.id, stale));
+  for (const o of existing) {
+    const t = catalog.get(o.code);
+    if (!t) continue;
+    await tx.update(obligations).set({
+      article: t.article, title: t.title, description: t.description, appliesFrom: t.appliesFrom, recommended: !!t.recommended,
+    }).where(eq(obligations.id, o.id));
+  }
   const have = new Set(existing.map((o) => o.code));
   const toInsert = CLIENT_OBLIGATIONS.filter((t) => !have.has(t.code));
   if (toInsert.length) {

@@ -17,8 +17,18 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Roluri: `admin` / `membru`. Rutele de administrare a echipei folosesc `requireAdmin`. Cabinetul trebuie să rămână mereu cu cel puțin un administrator activ; nimeni nu își poate retrage singur rolul de admin sau dezactiva propriul cont.
 - Documente Word: `services/documents/` — `common.ts` (stiluri, antet, `fill()` pentru câmpuri de completat evidențiate galben, `loadDocContext`), `templates.ts` (conținutul celor 5 documente), `index.ts` (registrul: tip, disponibilitate, obligația legată). Documentele se generează la cerere, nu se stochează. Un document nou = o funcție în `templates.ts` + o intrare în `DOCUMENTS` + test în `documents.test.ts`; dacă e legat de o obligație, și în `apps/web/src/lib/documents.ts`.
 - Portalul clientului: rute publice în `routes/portal.ts` (montate înainte de `authMiddleware`, autentificate prin token — `lib/portalToken.ts`), administrare în `routes/clientPortal.ts`. Un singur link activ per client (regenerarea îl invalidează pe cel vechi), valabil 90 de zile, păstrat doar ca hash. Clientul NU vede încadrarea juridică; poate retrage doar instrumentele proprii neaprobate. Întrebările simple și maparea lor la chestionarul AI Act sunt în `packages/shared/src/portal.ts` (`portalToAnswers`, testat); biometria nu se mapează automat — e semnalată avocatului. Sistemele din portal au `source = "portal"` și `portalAnswers`.
+- Încadrarea manuală a avocatului: `POST /ai-systems/:id/override` (motivare obligatorie). `riskLevel` = nivelul efectiv (override ?? calculat); nivelul calculat rămâne în `classification.riskLevel`. Obligațiile rămân cele calculate.
 - Identitatea vizuală a cabinetului (`organizations.brandColor`, `logoUrl`) se setează din `/settings` (doar admin) și se folosește în portal.
 - Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Emailul nu se trimite încă — adminul copiază linkul.
+
+## Când se modifică legislația
+1. Modifică regulile în `packages/shared/src/aiAct.ts` și acoperă schimbarea cu teste în `aiAct.test.ts`.
+2. Adaugă o intrare **la începutul** lui `RULESET_CHANGELOG` din `packages/shared/src/legislation.ts`, cu o versiune nouă (`AAAA.N`), data, titlul, rezumatul pe înțelesul avocatului, sursa și articolele.
+3. La pornire, API-ul (`services/reclassify.ts`, cu advisory lock) reîncadrează toate sistemele cu `rulesetVersion` mai veche:
+   - schimbări minore (termene, texte) → aplicate direct, fără reverificare;
+   - schimbări de fond (nivel de risc, rol, obligații noi/eliminate) → `reviewStatus = propus` + `reclassNote` cu diferențele; nota dispare când avocatul aprobă/respinge.
+   Stările, notele și termenele interne ale obligațiilor se păstrează (prin `obligationsSync`). Încadrarea manuală (`riskOverride`) nu se suprascrie niciodată — conflictul e doar semnalat.
+4. Nu schimba niciodată codul unei obligații existente (`code`) doar pentru că s-a schimbat textul — codul e cheia care păstrează starea și notele.
 
 ## Înainte de commit
 ```bash

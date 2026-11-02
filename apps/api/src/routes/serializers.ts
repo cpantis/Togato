@@ -1,7 +1,7 @@
 import { normalizeAnswers, normalizePortalAnswers } from "@togato/shared";
 import type { aiSystems, obligations } from "../db/schema";
 
-type SystemRow = typeof aiSystems.$inferSelect & { reviewer?: { name: string } | null };
+type SystemRow = typeof aiSystems.$inferSelect & { reviewer?: { name: string } | null; overrider?: { name: string } | null };
 
 export function serializeSystem(s: SystemRow) {
   return {
@@ -21,6 +21,14 @@ export function serializeSystem(s: SystemRow) {
     reviewedByName: s.reviewer?.name ?? null,
     aiMemo: s.aiMemo,
     aiMemoAt: s.aiMemoAt?.toISOString() ?? null,
+    computedRiskLevel: s.classification?.riskLevel ?? null,
+    riskOverride: s.riskOverride,
+    overrideReason: s.overrideReason,
+    overrideByName: s.overrider?.name ?? null,
+    overrideAt: s.overrideAt?.toISOString() ?? null,
+    rulesetVersion: s.rulesetVersion,
+    reclassNote: s.reclassNote,
+    reclassifiedAt: s.reclassifiedAt?.toISOString() ?? null,
     source: s.source,
     portalAnswers: s.source === "portal" ? normalizePortalAnswers(s.portalAnswers as any) : null,
     submittedByName: s.submittedByName,

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { and, eq, ne, sql } from "drizzle-orm";
 import type { DashboardData } from "@togato/shared";
-import { AI_ACT_DATES } from "@togato/shared";
+import { AI_ACT_DATES, RULESET_CHANGELOG, RULESET_VERSION } from "@togato/shared";
 import { db } from "../db";
 import { aiSystems, clients, obligations } from "../db/schema";
 import type { AppEnv } from "../types/hono";
@@ -28,11 +28,16 @@ dashboardRoutes.get("/", async (c) => {
   // Sisteme care cer atenție: interzise, cu risc ridicat neaprobate, respinse la verificare
   const attentionRows = await db.select({
     clientId: clients.id, clientName: clients.name, systemId: aiSystems.id, systemName: aiSystems.name,
-    riskLevel: aiSystems.riskLevel, reviewStatus: aiSystems.reviewStatus, source: aiSystems.source,
+    riskLevel: aiSystems.riskLevel, reviewStatus: aiSystems.reviewStatus, source: aiSystems.source, reclassNote: aiSystems.reclassNote,
   }).from(aiSystems).innerJoin(clients, eq(clients.id, aiSystems.clientId))
     .where(and(eq(aiSystems.organizationId, organizationId), sql`(${aiSystems.riskLevel} = 'interzis' or ${aiSystems.reviewStatus} <> 'aprobat')`))
-    .orderBy(sql`case ${aiSystems.riskLevel} when 'interzis' then 0 when 'risc_ridicat' then 1 when 'transparenta' then 2 else 3 end`, aiSystems.updatedAt)
+    .orderBy(sql`case when ${aiSystems.reclassNote} is not null then -1 else 0 end`, sql`case ${aiSystems.riskLevel} when 'interzis' then 0 when 'risc_ridicat' then 1 when 'transparenta' then 2 else 3 end`, aiSystems.updatedAt)
     .limit(12);
+
+  const [law] = await db.select({
+    systems: sql<number>`count(*)::int`,
+    clients: sql<number>`count(distinct ${aiSystems.clientId})::int`,
+  }).from(aiSystems).where(and(eq(aiSystems.organizationId, organizationId), sql`${aiSystems.reclassNote} is not null`));
 
   const open = (r: { status: string }) => r.status === "de_facut" || r.status === "in_lucru";
   const today = new Date().toISOString().slice(0, 10);
@@ -42,11 +47,13 @@ dashboardRoutes.get("/", async (c) => {
     systems: risk.reduce((s, r) => s + r.n, 0),
     riskCounts: Object.fromEntries(risk.map((r) => [r.riskLevel, r.n])),
     pendingReview: pending,
+    lawUpdate: { systems: law.systems, clients: law.clients, version: RULESET_VERSION, date: RULESET_CHANGELOG[0].date, title: RULESET_CHANGELOG[0].title },
     obligationsOpen: obl.filter(open).reduce((s, r) => s + r.n, 0),
     obligationsDone: obl.filter((r) => r.status === "indeplinit").reduce((s, r) => s + r.n, 0),
     attention: attentionRows.map((r) => ({
       clientId: r.clientId, clientName: r.clientName, systemId: r.systemId, systemName: r.systemName, riskLevel: r.riskLevel,
       reason: r.riskLevel === "interzis" ? "Practică interzisă — utilizarea trebuie oprită"
+        : r.reclassNote ? "Reîncadrat după modificarea legislației — de verificat"
         : r.reviewStatus === "respins" ? "Încadrare respinsă — de reanalizat"
         : r.source === "portal" ? "Adăugat de client prin portal — de verificat"
         : "Încadrare propusă, neverificată de avocat",

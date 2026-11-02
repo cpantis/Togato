@@ -48,6 +48,18 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <>
+          {data.lawUpdate.systems > 0 && (
+            <Link href="/legislation" className="mb-5 flex flex-col gap-1 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 transition hover:border-amber-300 sm:flex-row sm:items-center sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-semibold text-amber-900">Legislația s-a actualizat: {data.lawUpdate.title}</div>
+                <div className="text-[13px] text-amber-800">
+                  {data.lawUpdate.systems === 1 ? "Un sistem" : `${data.lawUpdate.systems} sisteme`} la {data.lawUpdate.clients === 1 ? "un client" : `${data.lawUpdate.clients} clienți`} {data.lawUpdate.systems === 1 ? "a fost reîncadrat și trebuie verificat" : "au fost reîncadrate și trebuie verificate"}.
+                </div>
+              </div>
+              <span className="text-[13px] font-semibold text-amber-900">Vezi ce s-a schimbat ›</span>
+            </Link>
+          )}
+
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Clienți" value={data.clients} />
             <Stat label="Sisteme AI inventariate" value={data.systems} />

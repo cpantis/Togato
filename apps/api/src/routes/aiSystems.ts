@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { classifyAiSystem, normalizeAnswers } from "@togato/shared";
+import { RULESET_VERSION, classifyAiSystem, normalizeAnswers } from "@togato/shared";
 import { db } from "../db";
 import { aiSystems, clients, obligations } from "../db/schema";
 import type { AppEnv } from "../types/hono";
@@ -43,7 +43,7 @@ const systemSchema = z.object({
 async function loadSystem(organizationId: string, id: string) {
   const row = await db.query.aiSystems.findFirst({
     where: and(eq(aiSystems.id, id), eq(aiSystems.organizationId, organizationId)),
-    with: { reviewer: { columns: { name: true } }, client: true },
+    with: { reviewer: { columns: { name: true } }, overrider: { columns: { name: true } }, client: true },
   });
   if (!row) notFound("Sistemul AI nu a fost găsit");
   return row;
@@ -83,6 +83,7 @@ export const createSystemHandler = new Hono<AppEnv>().post("/:clientId/ai-system
       answers,
       riskLevel: classification.riskLevel,
       classification,
+      rulesetVersion: RULESET_VERSION,
       createdBy: auth.userId,
     }).returning({ id: aiSystems.id });
     await syncSystemObligations(tx, { organizationId: auth.organizationId, clientId, aiSystemId: row.id, templates: classification.obligations });
@@ -115,8 +116,9 @@ aiSystemRoutes.put("/:id", async (c) => {
       purpose: body.purpose,
       department: body.department,
       answers,
-      riskLevel: classification.riskLevel,
+      riskLevel: existing.riskOverride ?? classification.riskLevel,
       classification,
+      rulesetVersion: RULESET_VERSION,
       updatedAt: new Date(),
       ...(classificationChanged ? { reviewStatus: "propus" as const, reviewedAt: null, reviewedBy: null } : {}),
     }).where(and(eq(aiSystems.id, existing.id), eq(aiSystems.organizationId, auth.organizationId)));
@@ -150,6 +152,8 @@ aiSystemRoutes.post("/:id/review", async (c) => {
     reviewNote: body.note,
     reviewedBy: body.status === "propus" ? null : auth.userId,
     reviewedAt: body.status === "propus" ? null : new Date(),
+    // decizia avocatului închide nota de reîncadrare după o modificare legislativă
+    ...(body.status !== "propus" ? { reclassNote: null } : {}),
   }).where(and(eq(aiSystems.id, existing.id), eq(aiSystems.organizationId, auth.organizationId)));
   await audit(auth, "review", "ai_system", existing.id, { status: body.status });
   return c.json(await systemResponse(auth.organizationId, existing.id));
@@ -178,4 +182,29 @@ aiSystemRoutes.post("/:id/memo", async (c) => {
     return c.json({ error: (e as Error).message.startsWith("Analiza") ? (e as Error).message : "Serviciul AI nu răspunde momentan. Reîncearcă peste câteva minute." }, 502);
   }
   return c.json(await systemResponse(auth.organizationId, s.id));
+});
+
+const RISK_LEVELS = ["minim", "transparenta", "risc_ridicat", "interzis"] as const;
+
+/** POST /:id/override { riskLevel | null, reason } — încadrarea stabilită manual de avocat */
+aiSystemRoutes.post("/:id/override", async (c) => {
+  const auth = c.get("auth");
+  const existing = await loadSystem(auth.organizationId, uuidParam(c.req.param("id")));
+  const body = z.object({
+    riskLevel: z.enum(RISK_LEVELS).nullable(),
+    reason: z.string().trim().max(5000).nullish().transform((v) => (v ? v : null)),
+  }).refine((b) => b.riskLevel === null || (b.reason && b.reason.length >= 5), { message: "Motivați încadrarea manuală (minimum 5 caractere)", path: ["reason"] })
+    .parse(await c.req.json());
+
+  const computed = existing.classification?.riskLevel ?? classifyAiSystem(normalizeAnswers(existing.answers)).riskLevel;
+  await db.update(aiSystems).set(body.riskLevel
+    ? {
+      riskOverride: body.riskLevel, overrideReason: body.reason, overrideBy: auth.userId, overrideAt: new Date(), riskLevel: body.riskLevel,
+      // încadrarea manuală este chiar decizia avocatului
+      reviewStatus: "aprobat", reviewedBy: auth.userId, reviewedAt: new Date(), reclassNote: null,
+    }
+    : { riskOverride: null, overrideReason: null, overrideBy: null, overrideAt: null, riskLevel: computed, reviewStatus: "propus", reviewedBy: null, reviewedAt: null },
+  ).where(and(eq(aiSystems.id, existing.id), eq(aiSystems.organizationId, auth.organizationId)));
+  await audit(auth, body.riskLevel ? "override" : "override_clear", "ai_system", existing.id, { riskLevel: body.riskLevel, computed, reason: body.reason });
+  return c.json(await systemResponse(auth.organizationId, existing.id));
 });

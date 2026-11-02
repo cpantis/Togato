@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { AiSystem, Obligation, ReviewStatus } from "@togato/shared";
+import type { AiSystem, Obligation, ReviewStatus, RiskLevel } from "@togato/shared";
+import { RISK_LABELS } from "@togato/shared";
 import { ANNEX_III_USES, PORTAL_QUESTIONS, PROHIBITED_PRACTICES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS, portalFlags } from "@togato/shared";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { formatDate } from "@/lib/format";
@@ -44,6 +45,64 @@ function ReviewPanel({ system, onChange }: { system: SystemDetail; onChange: (s:
         <Button size="sm" className="flex-1" onClick={() => review("aprobat")} loading={busy === "aprobat"} disabled={!!busy}>Aprob încadrarea</Button>
         <Button size="sm" variant="secondary" className="flex-1" onClick={() => review("respins")} loading={busy === "respins"} disabled={!!busy}>Resping</Button>
       </div>
+    </Card>
+  );
+}
+
+const OVERRIDE_LEVELS: RiskLevel[] = ["minim", "transparenta", "risc_ridicat", "interzis"];
+
+function OverridePanel({ system, onChange }: { system: SystemDetail; onChange: (s: SystemDetail) => void }) {
+  const [open, setOpen] = useState(false);
+  const [level, setLevel] = useState<RiskLevel>(system.riskOverride ?? system.computedRiskLevel ?? "minim");
+  const [reason, setReason] = useState(system.overrideReason || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(riskLevel: RiskLevel | null) {
+    setBusy(true); setError(null);
+    try {
+      onChange(await apiPost<SystemDetail>(`/api/ai-systems/${system.id}/override`, { riskLevel, reason: riskLevel ? reason : null }));
+      setOpen(false);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <h2 className="text-[14px] font-semibold text-ink">Încadrare manuală</h2>
+      {system.riskOverride ? (
+        <div className="mt-2 space-y-2 text-[13px] text-slate-600">
+          <p>Avocatul a stabilit <b className="text-ink">{RISK_LABELS[system.riskOverride]}</b>{system.computedRiskLevel && system.computedRiskLevel !== system.riskOverride && <> (calculat: {RISK_LABELS[system.computedRiskLevel]})</>}.</p>
+          {system.overrideReason && <p className="rounded-lg bg-slate-50 p-2.5 text-[12px] italic">„{system.overrideReason}”</p>}
+          <p className="text-[12px] text-slate-400">{system.overrideByName} · {formatDate(system.overrideAt)}</p>
+          <p className="text-[12px] text-slate-500">Obligațiile rămân cele calculate; marcați-le „Nu se aplică” acolo unde e cazul. La o modificare a legii, încadrarea manuală nu se suprascrie.</p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setOpen((v) => !v)} disabled={busy}>Modifică</Button>
+            <Button size="sm" variant="ghost" onClick={() => save(null)} loading={busy && !open}>Revino la cea calculată</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-1">
+          <p className="text-[12px] text-slate-500">Dacă analiza dumneavoastră diferă de încadrarea propusă, o puteți stabili manual, cu motivare.</p>
+          {!open && <Button size="sm" variant="secondary" className="mt-3" onClick={() => setOpen(true)}>Stabilește manual</Button>}
+        </div>
+      )}
+      {open && (
+        <div className="mt-3 space-y-2">
+          <select className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[13px]" value={level} onChange={(e) => setLevel(e.target.value as RiskLevel)} aria-label="Nivel de risc">
+            {OVERRIDE_LEVELS.map((l) => <option key={l} value={l}>{RISK_LABELS[l]}</option>)}
+          </select>
+          <textarea className={textareaClass} rows={3} placeholder="Motivarea (obligatorie): de ce încadrarea diferă de cea calculată" value={reason} onChange={(e) => setReason(e.target.value)} />
+          {error && <Alert>{error}</Alert>}
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => save(level)} loading={busy}>Salvează încadrarea</Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Renunță</Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -154,6 +213,14 @@ export default function SystemPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
+          {system.reclassNote && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+              <div className="text-[14px] font-semibold text-amber-900">Reîncadrat după modificarea legislației</div>
+              <p className="mt-1 text-[13px] leading-relaxed text-amber-800">{system.reclassNote}</p>
+              <p className="mt-2 text-[12px] text-amber-700">Verificați încadrarea și obligațiile, apoi aprobați sau respingeți încadrarea în panoul din dreapta. {system.reclassifiedAt && `Reîncadrat la ${formatDate(system.reclassifiedAt)}.`}</p>
+            </div>
+          )}
+
           {system.source === "portal" && system.portalAnswers && (
             <Card className="border-sky-200 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -177,6 +244,9 @@ export default function SystemPage() {
           {c && (
             <Card className="p-5">
               <h2 className="text-[14px] font-semibold text-ink">De ce această încadrare</h2>
+              {system.riskOverride && system.riskOverride !== c.riskLevel && (
+                <div className="mt-2"><Alert kind="info">Încadrarea afișată ({RISK_LABELS[system.riskOverride]}) a fost stabilită manual de avocat. Mai jos este încadrarea calculată: {RISK_LABELS[c.riskLevel]}.</Alert></div>
+              )}
               <p className="mt-1 text-[13px] text-slate-500">Rol: <b className="text-slate-700">{c.role === "furnizor" ? "furnizor" : "implementator"}</b>{c.highRiskBasis && <> · temei: <b className="text-slate-700">{c.highRiskBasis === "anexa_i" ? "Anexa I" : "Anexa III"}</b></>}</p>
               <ul className="mt-3 space-y-2">
                 {c.reasons.map((r, i) => (
@@ -187,6 +257,7 @@ export default function SystemPage() {
                 ))}
               </ul>
               {c.warnings.length > 0 && <div className="mt-3 space-y-2">{c.warnings.map((w, i) => <Alert key={i} kind="warning">{w}</Alert>)}</div>}
+              <p className="mt-3 text-[11px] text-slate-400">Calculat după regulile AI Act, versiunea {system.rulesetVersion}.</p>
             </Card>
           )}
 
@@ -214,6 +285,7 @@ export default function SystemPage() {
 
         <div className="space-y-5">
           <ReviewPanel system={system} onChange={setSystem} />
+          <OverridePanel key={`${system.riskOverride}-${system.overrideAt}`} system={system} onChange={setSystem} />
           <MemoPanel system={system} onChange={setSystem} />
         </div>
       </div>

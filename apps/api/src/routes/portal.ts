@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { classifyAiSystem, normalizePortalAnswers, portalToAnswers } from "@togato/shared";
+import { RULESET_VERSION, classifyAiSystem, normalizePortalAnswers, portalToAnswers } from "@togato/shared";
 import { db } from "../db";
 import { aiSystems, auditLog, portalLinks } from "../db/schema";
 import { resolvePortalToken } from "../lib/portalToken";
@@ -89,6 +89,7 @@ portalRoutes.post("/:token/systems", async (c) => {
       riskLevel: classification.riskLevel,
       classification,
       source: "portal",
+      rulesetVersion: RULESET_VERSION,
       portalAnswers,
       submittedByName: body.contactName,
       submittedByEmail: body.contactEmail,

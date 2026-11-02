@@ -73,6 +73,14 @@ export interface AiSystem {
   reviewedByName: string | null;
   aiMemo: string | null;
   aiMemoAt: string | null;
+  computedRiskLevel: RiskLevel | null;
+  riskOverride: RiskLevel | null;
+  overrideReason: string | null;
+  overrideByName: string | null;
+  overrideAt: string | null;
+  rulesetVersion: string;
+  reclassNote: string | null;
+  reclassifiedAt: string | null;
   source: "cabinet" | "portal";
   portalAnswers: PortalAnswers | null;
   submittedByName: string | null;
@@ -127,6 +135,7 @@ export interface DashboardData {
   systems: number;
   riskCounts: Partial<Record<RiskLevel | "neclasificat", number>>;
   pendingReview: number;
+  lawUpdate: { systems: number; clients: number; version: string; date: string; title: string };
   obligationsOpen: number;
   obligationsDone: number;
   attention: { clientId: string; clientName: string; systemId: string; systemName: string; reason: string; riskLevel: RiskLevel | "neclasificat" }[];
@@ -183,4 +192,10 @@ export interface PortalLinkStatus {
   createdAt: string | null;
   expiresAt: string | null;
   lastUsedAt: string | null;
+}
+
+export interface LegislationData {
+  current: string;
+  changelog: import("./legislation").RulesetChange[];
+  affected: { id: string; name: string; clientId: string; clientName: string; note: string; reclassifiedAt: string | null; riskLevel: RiskLevel | "neclasificat" }[];
 }

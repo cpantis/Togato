@@ -120,6 +120,16 @@ export const aiSystems = pgTable("ai_systems", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   aiMemo: text("ai_memo"),
   aiMemoAt: timestamp("ai_memo_at", { withTimezone: true }),
+  /** versiunea regulilor AI Act după care a fost calculată încadrarea (vezi RULESET_CHANGELOG) */
+  rulesetVersion: text("ruleset_version").notNull().default("2026.1"),
+  /** nota de reîncadrare după o modificare legislativă de fond; se șterge la verificarea avocatului */
+  reclassNote: text("reclass_note"),
+  reclassifiedAt: timestamp("reclassified_at", { withTimezone: true }),
+  /** încadrarea stabilită manual de avocat — are prioritate față de cea calculată */
+  riskOverride: riskLevelEnum("risk_override"),
+  overrideReason: text("override_reason"),
+  overrideBy: uuid("override_by").references(() => users.id, { onDelete: "set null" }),
+  overrideAt: timestamp("override_at", { withTimezone: true }),
   /** cine a adăugat sistemul: cabinetul sau clientul, prin portal */
   source: systemSourceEnum("source").notNull().default("cabinet"),
   /** răspunsurile clientului din portal, păstrate neprelucrate pentru avocat */
@@ -132,6 +142,7 @@ export const aiSystems = pgTable("ai_systems", {
 }, (t) => [
   index("ai_systems_org_idx").on(t.organizationId),
   index("ai_systems_client_idx").on(t.clientId),
+  index("ai_systems_ruleset_idx").on(t.rulesetVersion),
 ]);
 
 /** Obligație concretă de îndeplinit — la nivel de client (aiSystemId null) sau de sistem */
@@ -182,7 +193,8 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
 
 export const aiSystemsRelations = relations(aiSystems, ({ one, many }) => ({
   client: one(clients, { fields: [aiSystems.clientId], references: [clients.id] }),
-  reviewer: one(users, { fields: [aiSystems.reviewedBy], references: [users.id] }),
+  reviewer: one(users, { fields: [aiSystems.reviewedBy], references: [users.id], relationName: "reviewer" }),
+  overrider: one(users, { fields: [aiSystems.overrideBy], references: [users.id], relationName: "overrider" }),
   obligations: many(obligations),
 }));
 

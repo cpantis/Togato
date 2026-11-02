@@ -127,7 +127,7 @@ clientRoutes.get("/:id", async (c) => {
 
   const systems = await db.query.aiSystems.findMany({
     where: eq(aiSystems.clientId, row.id),
-    with: { reviewer: { columns: { name: true } } },
+    with: { reviewer: { columns: { name: true } }, overrider: { columns: { name: true } } },
     orderBy: [desc(aiSystems.createdAt)],
   });
   const counts = await db.select({
