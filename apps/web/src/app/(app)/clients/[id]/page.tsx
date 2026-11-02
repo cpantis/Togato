@@ -2,8 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { ClientDetail, Obligation } from "@togato/shared";
-import { apiDelete, apiGet } from "@/lib/api";
+import type { ClientDetail, Obligation, TeamData } from "@togato/shared";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, ProgressBar, ReviewBadge, RiskBadge } from "@/components/ui";
 import { ObligationList } from "@/components/ObligationList";
@@ -14,6 +14,25 @@ export default function ClientPage() {
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [team, setTeam] = useState<TeamData["members"]>([]);
+  const [assigning, setAssigning] = useState(false);
+
+  useEffect(() => {
+    apiGet<TeamData>("/api/team").then((d) => setTeam(d.members)).catch(() => setTeam([]));
+  }, []);
+
+  async function assign(userId: string) {
+    setAssigning(true);
+    try {
+      await apiPatch(`/api/clients/${id}/responsible`, { userId: userId || null });
+      const m = team.find((t) => t.id === userId);
+      setClient((c) => c && { ...c, responsibleUserId: userId || null, responsibleName: m?.name ?? null });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAssigning(false);
+    }
+  }
 
   const load = useCallback(() => {
     apiGet<ClientDetail>(`/api/clients/${id}`).then(setClient).catch((e) => setError(e.message));
@@ -99,7 +118,20 @@ export default function ClientPage() {
         </div>
 
         <Card className="h-fit p-5">
-          <h2 className="text-[14px] font-semibold text-ink">Date firmă</h2>
+          <h2 className="text-[14px] font-semibold text-ink">Avocat responsabil</h2>
+          <select
+            className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-[13px]"
+            value={client.responsibleUserId ?? ""}
+            disabled={assigning}
+            onChange={(e) => assign(e.target.value)}
+            aria-label="Avocat responsabil"
+          >
+            <option value="">Nealocat</option>
+            {team.filter((m) => m.status === "activ" || m.id === client.responsibleUserId).map((m) => (
+              <option key={m.id} value={m.id}>{m.name}{m.status !== "activ" ? " (dezactivat)" : ""}</option>
+            ))}
+          </select>
+          <h2 className="mt-5 text-[14px] font-semibold text-ink">Date firmă</h2>
           <dl className="mt-3 space-y-2.5">
             {info.length === 0 && <div className="text-[13px] text-slate-400">Fără date suplimentare.</div>}
             {info.map(([k, v]) => (

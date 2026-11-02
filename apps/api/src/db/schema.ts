@@ -37,6 +37,23 @@ export const users = pgTable("users", {
   index("users_org_idx").on(t.organizationId),
 ]);
 
+/** Invitație pentru un coleg — tokenul se păstrează doar ca hash SHA-256 */
+export const invitations = pgTable("invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  name: text("name"),
+  role: userRoleEnum("role").notNull().default("membru"),
+  tokenHash: text("token_hash").notNull(),
+  invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("invitations_token_unique").on(t.tokenHash),
+  index("invitations_org_idx").on(t.organizationId),
+]);
+
 /** Firma-client a cabinetului */
 export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -56,11 +73,14 @@ export const clients = pgTable("clients", {
   contactEmail: text("contact_email"),
   notes: text("notes"),
   sourceData: jsonb("source_data"),
+  /** avocatul / consultantul responsabil de client */
+  responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("clients_org_idx").on(t.organizationId),
+  index("clients_responsible_idx").on(t.responsibleUserId),
   uniqueIndex("clients_org_cui_unique").on(t.organizationId, t.cui),
 ]);
 
@@ -131,7 +151,8 @@ export const auditLog = pgTable("audit_log", {
 
 // ─── Relații ─────────────────────────────────────────────
 
-export const clientsRelations = relations(clients, ({ many }) => ({
+export const clientsRelations = relations(clients, ({ one, many }) => ({
+  responsible: one(users, { fields: [clients.responsibleUserId], references: [users.id] }),
   aiSystems: many(aiSystems),
   obligations: many(obligations),
 }));

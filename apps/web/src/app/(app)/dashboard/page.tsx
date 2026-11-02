@@ -105,7 +105,7 @@ export default function DashboardPage() {
                           <span className="font-medium text-ink">{m.label}</span>
                           <span className={days < 0 ? "text-red-600" : "text-slate-500"}>{days < 0 ? "în vigoare" : `în ${days} zile`}</span>
                         </div>
-                        <div className="text-[12px] text-slate-400">{formatDate(m.date)} · {m.obligationsOpen} obligații deschise</div>
+                        <div className="text-[12px] text-slate-400">{formatDate(m.date)} · {m.obligationsOpen === 1 ? "o obligație deschisă" : `${m.obligationsOpen} obligații deschise`}</div>
                       </li>
                     );
                   })}

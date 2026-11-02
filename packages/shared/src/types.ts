@@ -28,6 +28,8 @@ export interface ClientSummary {
   caenDescription: string | null;
   employees: number | null;
   createdAt: string;
+  responsibleUserId: string | null;
+  responsibleName: string | null;
   systemsCount: number;
   riskCounts: Partial<Record<RiskLevel | "neclasificat", number>>;
   pendingReview: number;
@@ -91,6 +93,8 @@ export interface ClientDetail {
   contactEmail: string | null;
   notes: string | null;
   createdAt: string;
+  responsibleUserId: string | null;
+  responsibleName: string | null;
   aiSystems: AiSystem[];
   clientObligations: Obligation[];
 }
@@ -120,4 +124,29 @@ export interface DashboardData {
   obligationsDone: number;
   attention: { clientId: string; clientName: string; systemId: string; systemName: string; reason: string; riskLevel: RiskLevel | "neclasificat" }[];
   upcoming: { date: string; label: string; obligationsOpen: number }[];
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status: "activ" | "dezactivat";
+  lastActiveAt: string | null;
+  createdAt: string;
+  clientsCount: number;
+}
+
+export interface PendingInvitation {
+  id: string;
+  email: string;
+  name: string | null;
+  role: UserRole;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface TeamData {
+  members: TeamMember[];
+  invitations: PendingInvitation[];
 }

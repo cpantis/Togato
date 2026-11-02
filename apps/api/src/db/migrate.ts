@@ -10,7 +10,7 @@ async function main() {
     console.error("DATABASE_URL nu e setat");
     process.exit(1);
   }
-  const client = postgres(url, { max: 1 });
+  const client = postgres(url, { max: 1, onnotice: () => {} });
   // __dirname = src/db (tsx) sau dist/db (build); migrațiile SQL stau în src/db/migrations
   const folder = path.resolve(__dirname, "../../src/db/migrations");
   await migrate(drizzle(client), { migrationsFolder: folder });

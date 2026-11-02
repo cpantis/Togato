@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import type { ClientSummary } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, clients, obligations } from "../db/schema";
+import { aiSystems, clients, obligations, users } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { badRequest, notFound, uuidParam } from "../lib/http";
@@ -29,8 +29,16 @@ const clientSchema = z.object({
   contactName: optionalText(200),
   contactEmail: z.string().trim().email("Email de contact invalid").max(200).nullish().or(z.literal("")).transform((v) => (v ? v : null)),
   notes: optionalText(5000),
+  responsibleUserId: z.string().uuid("Avocat responsabil invalid").nullish(),
   sourceData: z.unknown().optional(),
 });
+
+/** Avocatul responsabil trebuie să fie un membru activ al aceluiași cabinet. */
+async function checkResponsible(organizationId: string, userId: string | null | undefined) {
+  if (!userId) return;
+  const u = await db.query.users.findFirst({ where: and(eq(users.id, userId), eq(users.organizationId, organizationId), eq(users.status, "activ")) });
+  if (!u) badRequest("Avocatul responsabil nu e un membru activ al cabinetului.");
+}
 
 /** POST /lookup { cui } — datele firmei de la ANAF (și ListaFirme, dacă e configurat) */
 clientRoutes.post("/lookup", async (c) => {
@@ -48,11 +56,16 @@ clientRoutes.post("/lookup", async (c) => {
 clientRoutes.get("/", async (c) => {
   const auth = c.get("auth");
   const search = c.req.query("search")?.trim();
+  const mine = c.req.query("mine") === "1";
   const where = and(
     eq(clients.organizationId, auth.organizationId),
+    mine ? eq(clients.responsibleUserId, auth.userId) : undefined,
     search ? or(ilike(clients.name, `%${search}%`), ilike(clients.cui, `%${search.replace(/\D/g, "") || search}%`)) : undefined,
   );
-  const rows = await db.select().from(clients).where(where).orderBy(asc(clients.name)).limit(500);
+  const rows = await db.select({ client: clients, responsibleName: users.name }).from(clients)
+    .leftJoin(users, eq(users.id, clients.responsibleUserId))
+    .where(where).orderBy(asc(clients.name)).limit(500)
+    .then((list) => list.map((r) => ({ ...r.client, responsibleName: r.responsibleName })));
   const ids = rows.map((r) => r.id);
 
   const risk = ids.length
@@ -70,6 +83,7 @@ clientRoutes.get("/", async (c) => {
     return {
       id: r.id, cui: r.cui, name: r.name, city: r.city, county: r.county, caen: r.caen, caenDescription: r.caenDescription,
       employees: r.employees, createdAt: r.createdAt.toISOString(),
+      responsibleUserId: r.responsibleUserId, responsibleName: r.responsibleName,
       systemsCount: rr.reduce((s, x) => s + x.n, 0),
       riskCounts: Object.fromEntries(rr.map((x) => [x.riskLevel, x.n])),
       pendingReview: rr.reduce((s, x) => s + x.pending, 0),
@@ -84,6 +98,7 @@ clientRoutes.post("/", async (c) => {
   const auth = c.get("auth");
   const body = clientSchema.parse(await c.req.json());
   if (body.cui && !isValidCui(body.cui)) badRequest("CUI invalid — verifică cifrele.");
+  await checkResponsible(auth.organizationId, body.responsibleUserId);
   if (body.cui) {
     const dup = await db.query.clients.findFirst({ where: and(eq(clients.organizationId, auth.organizationId), eq(clients.cui, body.cui)) });
     if (dup) return c.json({ error: `Clientul cu CUI ${body.cui} există deja: ${dup.name}`, clientId: dup.id }, 409);
@@ -91,6 +106,8 @@ clientRoutes.post("/", async (c) => {
   const [row] = await db.insert(clients).values({
     ...body,
     sourceData: body.sourceData ?? null,
+    // implicit, cine adaugă clientul devine responsabil
+    responsibleUserId: body.responsibleUserId === undefined ? auth.userId : body.responsibleUserId,
     organizationId: auth.organizationId,
     createdBy: auth.userId,
   }).returning();
@@ -126,6 +143,8 @@ clientRoutes.get("/:id", async (c) => {
     id: row.id, cui: row.cui, name: row.name, regCom: row.regCom, address: row.address, city: row.city, county: row.county,
     caen: row.caen, caenDescription: row.caenDescription, employees: row.employees, turnover: row.turnover, vatPayer: row.vatPayer,
     contactName: row.contactName, contactEmail: row.contactEmail, notes: row.notes, createdAt: row.createdAt.toISOString(),
+    responsibleUserId: row.responsibleUserId,
+    responsibleName: row.responsibleUserId ? (await db.query.users.findFirst({ where: eq(users.id, row.responsibleUserId), columns: { name: true } }))?.name ?? null : null,
     aiSystems: systems.map((s) => {
       const cnt = counts.find((x) => x.aiSystemId === s.id);
       return { ...serializeSystem(s), obligationsTotal: cnt?.total ?? 0, obligationsDone: cnt?.done ?? 0 };
@@ -138,13 +157,19 @@ clientRoutes.put("/:id", async (c) => {
   const auth = c.get("auth");
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
   const body = clientSchema.parse(await c.req.json());
+  await checkResponsible(auth.organizationId, body.responsibleUserId);
   if (body.cui && body.cui !== row.cui) {
     if (!isValidCui(body.cui)) badRequest("CUI invalid — verifică cifrele.");
     const dup = await db.query.clients.findFirst({ where: and(eq(clients.organizationId, auth.organizationId), eq(clients.cui, body.cui)) });
     if (dup) return c.json({ error: `CUI-ul ${body.cui} aparține deja clientului ${dup.name}` }, 409);
   }
-  const { sourceData, ...fields } = body;
-  await db.update(clients).set({ ...fields, ...(sourceData !== undefined ? { sourceData } : {}), updatedAt: new Date() })
+  const { sourceData, responsibleUserId, ...fields } = body;
+  await db.update(clients).set({
+    ...fields,
+    ...(sourceData !== undefined ? { sourceData } : {}),
+    ...(responsibleUserId !== undefined ? { responsibleUserId } : {}),
+    updatedAt: new Date(),
+  })
     .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
   await audit(auth, "update", "client", row.id, { name: body.name });
   return c.json({ ok: true });
@@ -156,4 +181,16 @@ clientRoutes.delete("/:id", async (c) => {
   await db.delete(clients).where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
   await audit(auth, "delete", "client", row.id, { name: row.name, cui: row.cui });
   return c.body(null, 204);
+});
+
+/** PATCH /:id/responsible { userId } — schimbă doar avocatul responsabil */
+clientRoutes.patch("/:id/responsible", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  const { userId } = z.object({ userId: z.string().uuid().nullable() }).parse(await c.req.json());
+  await checkResponsible(auth.organizationId, userId);
+  await db.update(clients).set({ responsibleUserId: userId, updatedAt: new Date() })
+    .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await audit(auth, "assign", "client", row.id, { responsibleUserId: userId });
+  return c.json({ ok: true });
 });

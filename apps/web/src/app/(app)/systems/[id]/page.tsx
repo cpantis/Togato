@@ -161,7 +161,7 @@ export default function SystemPage() {
               <ul className="mt-3 space-y-2">
                 {c.reasons.map((r, i) => (
                   <li key={i} className="flex gap-3 text-[13px] text-slate-700">
-                    <span className="w-28 shrink-0 font-mono text-[12px] text-slate-400">{r.article}</span>
+                    <span className="w-36 shrink-0 font-mono text-[11px] leading-5 text-slate-400">{r.article}</span>
                     <span>{r.text}</span>
                   </li>
                 ))}

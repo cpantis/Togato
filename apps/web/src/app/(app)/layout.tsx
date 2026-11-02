@@ -6,9 +6,20 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button, LoadingBlock, Logo, cn } from "@/components/ui";
 import { daysUntil, initials } from "@/lib/format";
 
-const NAV = [
-  { href: "/dashboard", label: "Panou", icon: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" },
-  { href: "/clients", label: "Clienți", icon: "M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" },
+const NAV_SECTIONS = [
+  {
+    title: "Conformitate",
+    items: [
+      { href: "/dashboard", label: "Panou", icon: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" },
+      { href: "/clients", label: "Clienți", icon: "M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01" },
+    ],
+  },
+  {
+    title: "Cabinet",
+    items: [
+      { href: "/team", label: "Echipă", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
+    ],
+  },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -45,9 +56,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="truncate text-[11px] text-slate-400">{organization?.name}</div>
         </div>
       </div>
-      <div className="px-3">
-        <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Conformitate</div>
-        {NAV.map((item) => {
+      {NAV_SECTIONS.map((section) => (
+      <div key={section.title} className="mb-4 px-3">
+        <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{section.title}</div>
+        {section.items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/") || (item.href === "/clients" && pathname.startsWith("/systems"));
           return (
             <Link key={item.href} href={item.href} className={cn("mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition", active ? "bg-brand-soft text-brand" : "text-slate-600 hover:bg-slate-100 hover:text-ink")}>
@@ -57,6 +69,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           );
         })}
       </div>
+      ))}
       <div className="mt-auto border-t border-slate-100 p-3">
         {trialDays !== null && (
           <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2 text-[12px] text-brand">

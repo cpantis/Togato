@@ -9,6 +9,7 @@ import { clientRoutes } from "./routes/clients";
 import { aiSystemRoutes, createSystemHandler } from "./routes/aiSystems";
 import { obligationRoutes } from "./routes/obligations";
 import { dashboardRoutes } from "./routes/dashboard";
+import { teamRoutes } from "./routes/team";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -35,6 +36,8 @@ app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({
 
 app.use("/api/auth/signup", rateLimit({ windowMs: 60_000, max: 5, key: "signup" }));
 app.use("/api/auth/login", rateLimit({ windowMs: 60_000, max: 10, key: "login" }));
+app.use("/api/auth/invitation/*", rateLimit({ windowMs: 60_000, max: 20, key: "invitation" }));
+app.use("/api/auth/accept-invitation", rateLimit({ windowMs: 60_000, max: 5, key: "accept" }));
 app.route("/api/auth", authRoutes);
 
 app.use("/api/*", authMiddleware);
@@ -46,6 +49,7 @@ app.route("/api/clients", clientRoutes);
 app.route("/api/ai-systems", aiSystemRoutes);
 app.route("/api/obligations", obligationRoutes);
 app.route("/api/dashboard", dashboardRoutes);
+app.route("/api/team", teamRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

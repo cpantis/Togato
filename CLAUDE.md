@@ -14,6 +14,8 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Obligațiile se sincronizează doar prin `services/obligationsSync.ts` (păstrează starea și notele celor care rămân aplicabile).
 - Analiza AI: `services/memo.ts`, model `claude-opus-5-5`, cu fallback server-side (`fallbacks: "default"`). Nu inventa articole în prompturi.
 - Hard delete peste tot (CASCADE pe FK).
+- Roluri: `admin` / `membru`. Rutele de administrare a echipei folosesc `requireAdmin`. Cabinetul trebuie să rămână mereu cu cel puțin un administrator activ; nimeni nu își poate retrage singur rolul de admin sau dezactiva propriul cont.
+- Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Emailul nu se trimite încă — adminul copiază linkul.
 
 ## Înainte de commit
 ```bash
@@ -26,4 +28,5 @@ Dacă oricare eșuează, nu face commit.
 ## De verificat / deschis
 - Textul final al Omnibus-ului (numărul regulamentului, formularea Art. 4, perioada de grație Art. 50(2)) — verificat doar din surse secundare.
 - Lookup ANAF (`services/companyLookup.ts`, API v9) netestat contra serviciului real.
-- Următorii pași: invitarea colegilor în cabinet, portalul clientului (white-label), generarea documentelor (politică AI, notificare angajați, FRIA), modulul GDPR.
+- Trimiterea pe email a invitațiilor (acum linkul se copiază manual).
+- Următorii pași: generarea documentelor (politică AI, notificare angajați, FRIA, registru AI), portalul clientului (white-label), modulul GDPR.
