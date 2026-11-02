@@ -1,0 +1,45 @@
+import { normalizeAnswers } from "@togato/shared";
+import type { aiSystems, obligations } from "../db/schema";
+
+type SystemRow = typeof aiSystems.$inferSelect & { reviewer?: { name: string } | null };
+
+export function serializeSystem(s: SystemRow) {
+  return {
+    id: s.id,
+    clientId: s.clientId,
+    name: s.name,
+    vendor: s.vendor,
+    description: s.description,
+    purpose: s.purpose,
+    department: s.department,
+    answers: normalizeAnswers(s.answers),
+    riskLevel: s.riskLevel,
+    classification: s.classification,
+    reviewStatus: s.reviewStatus,
+    reviewNote: s.reviewNote,
+    reviewedAt: s.reviewedAt?.toISOString() ?? null,
+    reviewedByName: s.reviewer?.name ?? null,
+    aiMemo: s.aiMemo,
+    aiMemoAt: s.aiMemoAt?.toISOString() ?? null,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+export function serializeObligation(o: typeof obligations.$inferSelect) {
+  return {
+    id: o.id,
+    clientId: o.clientId,
+    aiSystemId: o.aiSystemId,
+    code: o.code,
+    article: o.article,
+    title: o.title,
+    description: o.description,
+    appliesFrom: o.appliesFrom,
+    recommended: o.recommended,
+    status: o.status,
+    note: o.note,
+    dueDate: o.dueDate,
+    completedAt: o.completedAt?.toISOString() ?? null,
+  };
+}

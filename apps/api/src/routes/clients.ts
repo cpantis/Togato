@@ -1,0 +1,159 @@
+import { Hono } from "hono";
+import { z } from "zod";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import type { ClientSummary } from "@togato/shared";
+import { db } from "../db";
+import { aiSystems, clients, obligations } from "../db/schema";
+import type { AppEnv } from "../types/hono";
+import { audit } from "../lib/audit";
+import { badRequest, notFound, uuidParam } from "../lib/http";
+import { cleanCui, isValidCui, lookupCompany } from "../services/companyLookup";
+import { serializeObligation, serializeSystem } from "./serializers";
+
+export const clientRoutes = new Hono<AppEnv>();
+
+const optionalText = (max: number) => z.string().trim().max(max).nullish().transform((v) => (v ? v : null));
+
+const clientSchema = z.object({
+  cui: z.string().trim().max(20).nullish().transform((v) => (v ? cleanCui(v) : null)),
+  name: z.string().trim().min(2, "Denumirea e obligatorie").max(300),
+  regCom: optionalText(50),
+  address: optionalText(500),
+  city: optionalText(100),
+  county: optionalText(100),
+  caen: optionalText(10),
+  caenDescription: optionalText(300),
+  employees: z.number().int().min(0).max(10_000_000).nullish().transform((v) => v ?? null),
+  turnover: z.number().min(0).max(1e15).nullish().transform((v) => (v === null || v === undefined ? null : Math.round(v))),
+  vatPayer: z.boolean().nullish().transform((v) => v ?? null),
+  contactName: optionalText(200),
+  contactEmail: z.string().trim().email("Email de contact invalid").max(200).nullish().or(z.literal("")).transform((v) => (v ? v : null)),
+  notes: optionalText(5000),
+  sourceData: z.unknown().optional(),
+});
+
+/** POST /lookup { cui } — datele firmei de la ANAF (și ListaFirme, dacă e configurat) */
+clientRoutes.post("/lookup", async (c) => {
+  const { cui } = z.object({ cui: z.string().trim().min(2).max(20) }).parse(await c.req.json());
+  if (!isValidCui(cui)) badRequest("CUI invalid — verifică cifrele (cifra de control nu se potrivește).");
+  try {
+    const data = await lookupCompany(cui);
+    if (!data) return c.json({ error: "Nu am găsit nicio firmă cu acest CUI." }, 404);
+    return c.json(data);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 502);
+  }
+});
+
+clientRoutes.get("/", async (c) => {
+  const auth = c.get("auth");
+  const search = c.req.query("search")?.trim();
+  const where = and(
+    eq(clients.organizationId, auth.organizationId),
+    search ? or(ilike(clients.name, `%${search}%`), ilike(clients.cui, `%${search.replace(/\D/g, "") || search}%`)) : undefined,
+  );
+  const rows = await db.select().from(clients).where(where).orderBy(asc(clients.name)).limit(500);
+  const ids = rows.map((r) => r.id);
+
+  const risk = ids.length
+    ? await db.select({ clientId: aiSystems.clientId, riskLevel: aiSystems.riskLevel, n: sql<number>`count(*)::int`, pending: sql<number>`count(*) filter (where ${aiSystems.reviewStatus} <> 'aprobat')::int` })
+      .from(aiSystems).where(inArray(aiSystems.clientId, ids)).groupBy(aiSystems.clientId, aiSystems.riskLevel)
+    : [];
+  const obl = ids.length
+    ? await db.select({ clientId: obligations.clientId, total: sql<number>`count(*) filter (where ${obligations.status} <> 'nu_se_aplica')::int`, done: sql<number>`count(*) filter (where ${obligations.status} = 'indeplinit')::int` })
+      .from(obligations).where(inArray(obligations.clientId, ids)).groupBy(obligations.clientId)
+    : [];
+
+  const data: ClientSummary[] = rows.map((r) => {
+    const rr = risk.filter((x) => x.clientId === r.id);
+    const o = obl.find((x) => x.clientId === r.id);
+    return {
+      id: r.id, cui: r.cui, name: r.name, city: r.city, county: r.county, caen: r.caen, caenDescription: r.caenDescription,
+      employees: r.employees, createdAt: r.createdAt.toISOString(),
+      systemsCount: rr.reduce((s, x) => s + x.n, 0),
+      riskCounts: Object.fromEntries(rr.map((x) => [x.riskLevel, x.n])),
+      pendingReview: rr.reduce((s, x) => s + x.pending, 0),
+      obligationsTotal: o?.total ?? 0,
+      obligationsDone: o?.done ?? 0,
+    };
+  });
+  return c.json({ data });
+});
+
+clientRoutes.post("/", async (c) => {
+  const auth = c.get("auth");
+  const body = clientSchema.parse(await c.req.json());
+  if (body.cui && !isValidCui(body.cui)) badRequest("CUI invalid — verifică cifrele.");
+  if (body.cui) {
+    const dup = await db.query.clients.findFirst({ where: and(eq(clients.organizationId, auth.organizationId), eq(clients.cui, body.cui)) });
+    if (dup) return c.json({ error: `Clientul cu CUI ${body.cui} există deja: ${dup.name}`, clientId: dup.id }, 409);
+  }
+  const [row] = await db.insert(clients).values({
+    ...body,
+    sourceData: body.sourceData ?? null,
+    organizationId: auth.organizationId,
+    createdBy: auth.userId,
+  }).returning();
+  await audit(auth, "create", "client", row.id, { name: row.name, cui: row.cui });
+  return c.json({ id: row.id }, 201);
+});
+
+async function loadClient(organizationId: string, id: string) {
+  const row = await db.query.clients.findFirst({ where: and(eq(clients.id, id), eq(clients.organizationId, organizationId)) });
+  if (!row) notFound("Clientul nu a fost găsit");
+  return row;
+}
+
+clientRoutes.get("/:id", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+
+  const systems = await db.query.aiSystems.findMany({
+    where: eq(aiSystems.clientId, row.id),
+    with: { reviewer: { columns: { name: true } } },
+    orderBy: [desc(aiSystems.createdAt)],
+  });
+  const counts = await db.select({
+    aiSystemId: obligations.aiSystemId,
+    total: sql<number>`count(*) filter (where ${obligations.status} <> 'nu_se_aplica')::int`,
+    done: sql<number>`count(*) filter (where ${obligations.status} = 'indeplinit')::int`,
+  }).from(obligations).where(eq(obligations.clientId, row.id)).groupBy(obligations.aiSystemId);
+  const clientObl = await db.select().from(obligations)
+    .where(and(eq(obligations.clientId, row.id), isNull(obligations.aiSystemId)))
+    .orderBy(asc(obligations.appliesFrom), asc(obligations.code));
+
+  return c.json({
+    id: row.id, cui: row.cui, name: row.name, regCom: row.regCom, address: row.address, city: row.city, county: row.county,
+    caen: row.caen, caenDescription: row.caenDescription, employees: row.employees, turnover: row.turnover, vatPayer: row.vatPayer,
+    contactName: row.contactName, contactEmail: row.contactEmail, notes: row.notes, createdAt: row.createdAt.toISOString(),
+    aiSystems: systems.map((s) => {
+      const cnt = counts.find((x) => x.aiSystemId === s.id);
+      return { ...serializeSystem(s), obligationsTotal: cnt?.total ?? 0, obligationsDone: cnt?.done ?? 0 };
+    }),
+    clientObligations: clientObl.map(serializeObligation),
+  });
+});
+
+clientRoutes.put("/:id", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  const body = clientSchema.parse(await c.req.json());
+  if (body.cui && body.cui !== row.cui) {
+    if (!isValidCui(body.cui)) badRequest("CUI invalid — verifică cifrele.");
+    const dup = await db.query.clients.findFirst({ where: and(eq(clients.organizationId, auth.organizationId), eq(clients.cui, body.cui)) });
+    if (dup) return c.json({ error: `CUI-ul ${body.cui} aparține deja clientului ${dup.name}` }, 409);
+  }
+  const { sourceData, ...fields } = body;
+  await db.update(clients).set({ ...fields, ...(sourceData !== undefined ? { sourceData } : {}), updatedAt: new Date() })
+    .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await audit(auth, "update", "client", row.id, { name: body.name });
+  return c.json({ ok: true });
+});
+
+clientRoutes.delete("/:id", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  await db.delete(clients).where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await audit(auth, "delete", "client", row.id, { name: row.name, cui: row.cui });
+  return c.body(null, 204);
+});

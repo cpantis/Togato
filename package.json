@@ -1,0 +1,19 @@
+{
+  "name": "togato",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "dev:web": "npm run dev -w @togato/web",
+    "dev:api": "npm run dev -w @togato/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  }
+}
