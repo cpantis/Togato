@@ -8,6 +8,7 @@ import { formatNumber } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, ProgressBar, ReviewBadge, RiskBadge } from "@/components/ui";
 import { ObligationList } from "@/components/ObligationList";
 import { DocumentsCard } from "@/components/DocumentsCard";
+import { PortalCard } from "@/components/PortalCard";
 
 export default function ClientPage() {
   const { id } = useParams<{ id: string }>();
@@ -82,7 +83,7 @@ export default function ClientPage() {
           <Card className="overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
               <h2 className="text-[14px] font-semibold text-ink">Inventar AI</h2>
-              <span className="text-[12px] text-slate-400">{client.aiSystems.length} sisteme</span>
+              <span className="text-[12px] text-slate-400">{client.aiSystems.length === 1 ? "1 sistem" : `${client.aiSystems.length} sisteme`}</span>
             </div>
             {client.aiSystems.length === 0 ? (
               <EmptyState title="Niciun sistem inventariat" text="Adaugă fiecare instrument AI folosit de client: ChatGPT, Copilot, un chatbot pe site, un modul de HR cu AI..." action={<Link href={`/clients/${id}/systems/new`}><Button>Adaugă primul sistem</Button></Link>} />
@@ -92,7 +93,7 @@ export default function ClientPage() {
                   <li key={s.id}>
                     <Link href={`/systems/${s.id}`} className="flex flex-col gap-2 px-5 py-3.5 hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[14px] font-semibold text-ink">{s.name}</div>
+                        <div className="truncate text-[14px] font-semibold text-ink">{s.name}{s.source === "portal" && <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 align-middle text-[11px] font-semibold text-sky-700">din portal</span>}</div>
                         <div className="truncate text-[12px] text-slate-400">{[s.vendor, s.department, s.purpose].filter(Boolean).join(" · ") || "—"}</div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -120,6 +121,8 @@ export default function ClientPage() {
           )}
         </div>
 
+        <div className="space-y-5">
+        <PortalCard clientId={client.id} clientName={client.name} />
         <Card className="h-fit p-5">
           <h2 className="text-[14px] font-semibold text-ink">Avocat responsabil</h2>
           <select
@@ -151,6 +154,7 @@ export default function ClientPage() {
             )}
           </dl>
         </Card>
+        </div>
       </div>
     </div>
   );

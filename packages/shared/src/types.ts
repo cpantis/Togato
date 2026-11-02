@@ -1,4 +1,5 @@
 import type { AiSystemAnswers, ClassificationResult, ObligationStatus, ReviewStatus, RiskLevel } from "./aiAct";
+import type { PortalAnswers } from "./portal";
 
 export type UserRole = "admin" | "membru";
 
@@ -16,6 +17,8 @@ export interface Organization {
   plan: string;
   status: "trial" | "activ" | "suspendat";
   trialEndsAt: string | null;
+  brandColor: string | null;
+  logoUrl: string | null;
 }
 
 export interface ClientSummary {
@@ -70,6 +73,10 @@ export interface AiSystem {
   reviewedByName: string | null;
   aiMemo: string | null;
   aiMemoAt: string | null;
+  source: "cabinet" | "portal";
+  portalAnswers: PortalAnswers | null;
+  submittedByName: string | null;
+  submittedByEmail: string | null;
   createdAt: string;
   updatedAt: string;
   obligationsTotal?: number;
@@ -149,4 +156,31 @@ export interface PendingInvitation {
 export interface TeamData {
   members: TeamMember[];
   invitations: PendingInvitation[];
+}
+
+export interface PortalSystem {
+  id: string;
+  name: string;
+  vendor: string | null;
+  department: string | null;
+  purpose: string | null;
+  addedBy: "client" | "cabinet";
+  status: "in_analiza" | "analizat";
+  canDelete: boolean;
+  createdAt: string;
+}
+
+export interface PortalData {
+  cabinet: { name: string; brandColor: string | null; logoUrl: string | null };
+  client: { name: string };
+  expiresAt: string;
+  systems: PortalSystem[];
+}
+
+export interface PortalLinkStatus {
+  active: boolean;
+  expired: boolean;
+  createdAt: string | null;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
 }

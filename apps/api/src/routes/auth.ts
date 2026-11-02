@@ -18,7 +18,7 @@ function publicUser(u: typeof users.$inferSelect) {
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {
-  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null };
+  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl };
 }
 
 const signupSchema = z.object({

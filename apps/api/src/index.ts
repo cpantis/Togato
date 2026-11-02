@@ -11,6 +11,9 @@ import { obligationRoutes } from "./routes/obligations";
 import { dashboardRoutes } from "./routes/dashboard";
 import { teamRoutes } from "./routes/team";
 import { documentRoutes } from "./routes/documents";
+import { portalRoutes } from "./routes/portal";
+import { clientPortalRoutes } from "./routes/clientPortal";
+import { organizationRoutes } from "./routes/organization";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -41,6 +44,11 @@ app.use("/api/auth/invitation/*", rateLimit({ windowMs: 60_000, max: 20, key: "i
 app.use("/api/auth/accept-invitation", rateLimit({ windowMs: 60_000, max: 5, key: "accept" }));
 app.route("/api/auth", authRoutes);
 
+// Portalul public al clientului (fără cont, autentificat prin tokenul din link)
+app.use("/api/portal/*", rateLimit({ windowMs: 60_000, max: 60, key: "portal" }));
+app.on("POST", "/api/portal/*", rateLimit({ windowMs: 60_000, max: 10, key: "portal-write" }));
+app.route("/api/portal", portalRoutes);
+
 app.use("/api/*", authMiddleware);
 app.use("/api/clients/lookup", rateLimit({ windowMs: 60_000, max: 20, key: "lookup" }));
 app.use("/api/ai-systems/*/memo", rateLimit({ windowMs: 60_000, max: 6, key: "memo" }));
@@ -48,11 +56,13 @@ app.use("/api/ai-systems/*/memo", rateLimit({ windowMs: 60_000, max: 6, key: "me
 app.use("/api/clients/*/documents/*", rateLimit({ windowMs: 60_000, max: 30, key: "docs" }));
 app.route("/api/clients", createSystemHandler);
 app.route("/api/clients", documentRoutes);
+app.route("/api/clients", clientPortalRoutes);
 app.route("/api/clients", clientRoutes);
 app.route("/api/ai-systems", aiSystemRoutes);
 app.route("/api/obligations", obligationRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/team", teamRoutes);
+app.route("/api/organization", organizationRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

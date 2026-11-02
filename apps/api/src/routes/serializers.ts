@@ -1,4 +1,4 @@
-import { normalizeAnswers } from "@togato/shared";
+import { normalizeAnswers, normalizePortalAnswers } from "@togato/shared";
 import type { aiSystems, obligations } from "../db/schema";
 
 type SystemRow = typeof aiSystems.$inferSelect & { reviewer?: { name: string } | null };
@@ -21,6 +21,10 @@ export function serializeSystem(s: SystemRow) {
     reviewedByName: s.reviewer?.name ?? null,
     aiMemo: s.aiMemo,
     aiMemoAt: s.aiMemoAt?.toISOString() ?? null,
+    source: s.source,
+    portalAnswers: s.source === "portal" ? normalizePortalAnswers(s.portalAnswers as any) : null,
+    submittedByName: s.submittedByName,
+    submittedByEmail: s.submittedByEmail,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   };

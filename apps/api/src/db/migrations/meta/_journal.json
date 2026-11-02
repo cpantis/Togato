@@ -15,6 +15,13 @@
       "when": 1793615587867,
       "tag": "0001_team",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793618086562,
+      "tag": "0002_portal",
+      "breakpoints": true
     }
   ]
 }

@@ -28,7 +28,7 @@ dashboardRoutes.get("/", async (c) => {
   // Sisteme care cer atenție: interzise, cu risc ridicat neaprobate, respinse la verificare
   const attentionRows = await db.select({
     clientId: clients.id, clientName: clients.name, systemId: aiSystems.id, systemName: aiSystems.name,
-    riskLevel: aiSystems.riskLevel, reviewStatus: aiSystems.reviewStatus,
+    riskLevel: aiSystems.riskLevel, reviewStatus: aiSystems.reviewStatus, source: aiSystems.source,
   }).from(aiSystems).innerJoin(clients, eq(clients.id, aiSystems.clientId))
     .where(and(eq(aiSystems.organizationId, organizationId), sql`(${aiSystems.riskLevel} = 'interzis' or ${aiSystems.reviewStatus} <> 'aprobat')`))
     .orderBy(sql`case ${aiSystems.riskLevel} when 'interzis' then 0 when 'risc_ridicat' then 1 when 'transparenta' then 2 else 3 end`, aiSystems.updatedAt)
@@ -48,6 +48,7 @@ dashboardRoutes.get("/", async (c) => {
       clientId: r.clientId, clientName: r.clientName, systemId: r.systemId, systemName: r.systemName, riskLevel: r.riskLevel,
       reason: r.riskLevel === "interzis" ? "Practică interzisă — utilizarea trebuie oprită"
         : r.reviewStatus === "respins" ? "Încadrare respinsă — de reanalizat"
+        : r.source === "portal" ? "Adăugat de client prin portal — de verificat"
         : "Încadrare propusă, neverificată de avocat",
     })),
     upcoming: MILESTONES.map((m) => ({

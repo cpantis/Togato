@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { AiSystem, Obligation, ReviewStatus } from "@togato/shared";
-import { ANNEX_III_USES, PROHIBITED_PRACTICES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS } from "@togato/shared";
+import { ANNEX_III_USES, PORTAL_QUESTIONS, PROHIBITED_PRACTICES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS, portalFlags } from "@togato/shared";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { Alert, Button, Card, LoadingBlock, PageHeader, ProgressBar, ReviewBadge, RiskBadge, Spinner, textareaClass } from "@/components/ui";
@@ -154,6 +154,26 @@ export default function SystemPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
+          {system.source === "portal" && system.portalAnswers && (
+            <Card className="border-sky-200 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-[14px] font-semibold text-ink">Trimis de client prin portal</h2>
+                <span className="text-[12px] text-slate-500">{system.submittedByName}{system.submittedByEmail ? ` · ${system.submittedByEmail}` : ""} · {formatDate(system.createdAt)}</span>
+              </div>
+              <p className="mt-1 text-[12px] text-slate-500">Încadrarea de mai jos e dedusă automat din răspunsurile clientului. Verificați-o și completați chestionarul cu „Editează răspunsurile”.</p>
+              {portalFlags(system.portalAnswers).map((f, i) => <div key={i} className="mt-2"><Alert kind="warning">{f}</Alert></div>)}
+              <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100">
+                {PORTAL_QUESTIONS.map((q) => (
+                  <li key={q.key} className="flex items-start justify-between gap-3 px-3 py-2 text-[13px]">
+                    <span className="text-slate-600">{q.label}</span>
+                    <span className={system.portalAnswers![q.key] ? "font-semibold text-ink" : "text-slate-400"}>{system.portalAnswers![q.key] ? "Da" : "Nu"}</span>
+                  </li>
+                ))}
+              </ul>
+              {system.portalAnswers.notes && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-[13px] italic text-slate-700">„{system.portalAnswers.notes}”</p>}
+            </Card>
+          )}
+
           {c && (
             <Card className="p-5">
               <h2 className="text-[14px] font-semibold text-ink">De ce această încadrare</h2>

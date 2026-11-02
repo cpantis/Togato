@@ -7,6 +7,7 @@ export const userRoleEnum = pgEnum("user_role", ["admin", "membru"]);
 export const userStatusEnum = pgEnum("user_status", ["activ", "dezactivat"]);
 export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis"]);
 export const reviewStatusEnum = pgEnum("review_status", ["propus", "aprobat", "respins"]);
+export const systemSourceEnum = pgEnum("system_source", ["cabinet", "portal"]);
 export const obligationStatusEnum = pgEnum("obligation_status", ["de_facut", "in_lucru", "indeplinit", "nu_se_aplica"]);
 
 /** Cabinetul de avocatură / consultanță — chiriașul (tenant) aplicației */
@@ -52,6 +53,22 @@ export const invitations = pgTable("invitations", {
 }, (t) => [
   uniqueIndex("invitations_token_unique").on(t.tokenHash),
   index("invitations_org_idx").on(t.organizationId),
+]);
+
+/** Linkul de portal al unui client — tokenul se păstrează doar ca hash; un singur link activ per client */
+export const portalLinks = pgTable("portal_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("portal_links_token_unique").on(t.tokenHash),
+  uniqueIndex("portal_links_client_unique").on(t.clientId),
+  index("portal_links_org_idx").on(t.organizationId),
 ]);
 
 /** Firma-client a cabinetului */
@@ -103,6 +120,12 @@ export const aiSystems = pgTable("ai_systems", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   aiMemo: text("ai_memo"),
   aiMemoAt: timestamp("ai_memo_at", { withTimezone: true }),
+  /** cine a adăugat sistemul: cabinetul sau clientul, prin portal */
+  source: systemSourceEnum("source").notNull().default("cabinet"),
+  /** răspunsurile clientului din portal, păstrate neprelucrate pentru avocat */
+  portalAnswers: jsonb("portal_answers"),
+  submittedByName: text("submitted_by_name"),
+  submittedByEmail: text("submitted_by_email"),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
