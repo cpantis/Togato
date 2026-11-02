@@ -17,6 +17,7 @@ import { organizationRoutes } from "./routes/organization";
 import { legislationRoutes } from "./routes/legislation";
 import { lawRoutes } from "./routes/law";
 import { snapshotRoutes } from "./routes/snapshots";
+import { accountRoutes } from "./routes/account";
 import { reclassifyOutdated } from "./services/reclassify";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
@@ -44,6 +45,7 @@ app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({
 
 app.use("/api/auth/signup", rateLimit({ windowMs: 60_000, max: 5, key: "signup" }));
 app.use("/api/auth/login", rateLimit({ windowMs: 60_000, max: 10, key: "login" }));
+app.use("/api/auth/login/mfa", rateLimit({ windowMs: 60_000, max: 10, key: "login-mfa" }));
 app.use("/api/auth/invitation/*", rateLimit({ windowMs: 60_000, max: 20, key: "invitation" }));
 app.use("/api/auth/accept-invitation", rateLimit({ windowMs: 60_000, max: 5, key: "accept" }));
 app.route("/api/auth", authRoutes);
@@ -70,6 +72,8 @@ app.route("/api/organization", organizationRoutes);
 app.route("/api/legislation", legislationRoutes);
 app.route("/api/law", lawRoutes);
 app.route("/api/snapshots", snapshotRoutes);
+app.use("/api/account/2fa/*", rateLimit({ windowMs: 60_000, max: 15, key: "2fa" }));
+app.route("/api/account", accountRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

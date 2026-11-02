@@ -5,6 +5,8 @@ import { apiGet, apiPut } from "@/lib/api";
 import { DEFAULT_BRAND, softOf, textOn } from "@/lib/brand";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, Card, Field, LoadingBlock, PageHeader, inputClass } from "@/components/ui";
+import { PoliciesCard } from "@/components/PoliciesCard";
+import { TwoFactorCard } from "@/components/TwoFactorCard";
 
 const PRESETS = ["#7a1f3a", "#1e3a8a", "#0f766e", "#334155", "#9a3412", "#4c1d95"];
 
@@ -46,7 +48,7 @@ export default function SettingsPage() {
 
   return (
     <div className="fade-up">
-      <PageHeader title="Setări cabinet" subtitle="Numele și identitatea vizuală folosite în portalul clienților." />
+      <PageHeader title="Setări cabinet" subtitle="Identitatea vizuală, confidențialitatea și securitatea contului." />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="p-5">
           <form onSubmit={save} className="space-y-4">
@@ -99,6 +101,12 @@ export default function SettingsPage() {
           </div>
           {form.logoUrl && !logoOk && <p className="mt-2 text-[12px] text-red-600">Imaginea logo-ului nu se poate încărca de la această adresă.</p>}
         </div>
+      </div>
+
+      <h2 id="securitate" className="mb-3 mt-8 text-[15px] font-semibold text-ink">Securitate</h2>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <PoliciesCard org={org} onChange={setOrg} />
+        <TwoFactorCard />
       </div>
     </div>
   );

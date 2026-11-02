@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Button, LoadingBlock, Logo, cn } from "@/components/ui";
 import { daysUntil, initials } from "@/lib/format";
+import { TwoFactorCard } from "@/components/TwoFactorCard";
 
 const NAV_SECTIONS = [
   {
@@ -43,6 +44,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="text-[15px] font-semibold">Serverul nu răspunde</div>
         <div className="text-[13px] text-slate-500">{error}</div>
         <Button onClick={() => refresh()}>Reîncearcă</Button>
+      </div>
+    );
+  }
+
+  // politica cabinetului: fără autentificare în doi pași nu se poate accesa nimic altceva
+  if (organization?.require2fa && !user.totpEnabled) {
+    return (
+      <div className="flex min-h-screen items-start justify-center bg-[#f6f7f9] px-4 py-12">
+        <div className="w-full max-w-2xl space-y-4">
+          <div className="flex items-center gap-3"><Logo size={32} /><span className="text-lg font-bold tracking-tight">Togato</span></div>
+          <h1 className="text-[22px] font-bold tracking-tight text-ink">Activați autentificarea în doi pași</h1>
+          <p className="text-[13px] text-slate-600">{organization.name} cere autentificarea în doi pași pentru toți membrii, pentru protecția datelor clienților. Durează un minut.</p>
+          <TwoFactorCard onEnabled={() => refresh()} />
+          <button onClick={() => { logout(); router.replace("/login"); }} className="text-[13px] font-medium text-slate-500 hover:text-slate-700">Ieșire</button>
+        </div>
       </div>
     );
   }

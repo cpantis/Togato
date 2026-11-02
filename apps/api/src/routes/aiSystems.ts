@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { RULESET_VERSION, classifyAiSystem, normalizeAnswers } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, clients, obligations } from "../db/schema";
+import { aiSystems, clients, obligations, organizations } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { notFound, uuidParam } from "../lib/http";
@@ -173,6 +173,8 @@ aiSystemRoutes.post("/:id/review", async (c) => {
 /** POST /:id/memo — memoriu juridic generat cu AI */
 aiSystemRoutes.post("/:id/memo", async (c) => {
   const auth = c.get("auth");
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId), columns: { aiEnabled: true } });
+  if (!org?.aiEnabled) return c.json({ error: "Analiza AI este dezactivată pentru cabinet. Un administrator o poate activa din Setări.", code: "ai_disabled" }, 403);
   if (!memoAvailable()) return c.json({ error: "Analiza AI nu e configurată (lipsește ANTHROPIC_API_KEY pe server)." }, 503);
   const s = await loadSystem(auth.organizationId, uuidParam(c.req.param("id")));
   const answers = normalizeAnswers(s.answers);

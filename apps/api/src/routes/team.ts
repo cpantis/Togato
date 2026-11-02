@@ -22,7 +22,7 @@ function inviteUrl(token: string) {
 teamRoutes.get("/", async (c) => {
   const { organizationId, role } = c.get("auth");
   const members = await db.select({
-    id: users.id, name: users.name, email: users.email, role: users.role, status: users.status,
+    id: users.id, name: users.name, email: users.email, role: users.role, status: users.status, totpEnabled: users.totpEnabled,
     lastActiveAt: users.lastActiveAt, createdAt: users.createdAt,
     clientsCount: sql<number>`count(${clients.id})::int`,
   }).from(users)
@@ -108,5 +108,18 @@ teamRoutes.patch("/members/:id", requireAdmin, async (c) => {
   await db.update(users).set({ ...(body.role ? { role: body.role } : {}), ...(body.status ? { status: body.status } : {}) })
     .where(and(eq(users.id, id), eq(users.organizationId, auth.organizationId)));
   await audit(auth, "update", "user", id, body);
+  return c.json({ ok: true });
+});
+
+/** POST /members/:id/reset-2fa — un administrator dezactivează 2FA pentru un coleg care și-a pierdut telefonul */
+teamRoutes.post("/members/:id/reset-2fa", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const id = uuidParam(c.req.param("id"));
+  if (id === auth.userId) badRequest("Pentru propriul cont folosiți Setări → Securitate.");
+  const member = await db.query.users.findFirst({ where: and(eq(users.id, id), eq(users.organizationId, auth.organizationId)) });
+  if (!member) notFound("Membrul nu a fost găsit");
+  await db.update(users).set({ totpEnabled: false, totpSecret: null, totpPendingSecret: null, totpLastStep: null, recoveryCodes: null, totpEnabledAt: null })
+    .where(and(eq(users.id, id), eq(users.organizationId, auth.organizationId)));
+  await audit(auth, "2fa_reset", "user", id, { member: member.email });
   return c.json({ ok: true });
 });

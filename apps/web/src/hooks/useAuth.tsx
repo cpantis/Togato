@@ -11,7 +11,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
+  /** întoarce `{ mfaToken }` dacă e nevoie de pasul al doilea */
+  login: (email: string, password: string) => Promise<{ mfaToken: string } | null>;
+  completeMfa: (mfaToken: string, code: string) => Promise<{ recoveryCodesLeft?: number }>;
   signup: (data: { name: string; email: string; password: string; cabinetName: string }) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -50,11 +52,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await api<{ token: string; user: AuthUser; organization: Organization }>("/api/auth/login", {
+    const data = await api<{ token?: string; user?: AuthUser; organization?: Organization; mfaRequired?: boolean; mfaToken?: string }>("/api/auth/login", {
       method: "POST", body: JSON.stringify({ email, password }),
+    });
+    if (data.mfaRequired && data.mfaToken) return { mfaToken: data.mfaToken };
+    setToken(data.token!);
+    setState({ user: data.user!, organization: data.organization ?? null, loading: false, error: null });
+    return null;
+  }, []);
+
+  const completeMfa = useCallback(async (mfaToken: string, code: string) => {
+    const data = await api<{ token: string; user: AuthUser; organization: Organization; recoveryCodesLeft?: number }>("/api/auth/login/mfa", {
+      method: "POST", body: JSON.stringify({ mfaToken, code }),
     });
     setToken(data.token);
     setState({ user: data.user, organization: data.organization, loading: false, error: null });
+    return { recoveryCodesLeft: data.recoveryCodesLeft };
   }, []);
 
   const signup = useCallback(async (payload: { name: string; email: string; password: string; cabinetName: string }) => {
@@ -70,5 +83,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ user: null, organization: null, loading: false, error: null });
   }, []);
 
-  return <AuthContext.Provider value={{ ...state, login, signup, logout, refresh }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ ...state, login, completeMfa, signup, logout, refresh }}>{children}</AuthContext.Provider>;
 }

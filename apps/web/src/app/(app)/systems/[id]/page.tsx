@@ -12,6 +12,7 @@ import { ObligationList } from "@/components/ObligationList";
 import { Markdown } from "@/components/Markdown";
 import { SystemForm } from "@/components/SystemForm";
 import { LawRef } from "@/components/LawRef";
+import { useAuth } from "@/hooks/useAuth";
 import { SnapshotsCard } from "@/components/SnapshotsCard";
 
 type SystemDetail = AiSystem & { client: { id: string; name: string; cui: string | null }; obligations: Obligation[] };
@@ -110,6 +111,7 @@ function OverridePanel({ system, onChange }: { system: SystemDetail; onChange: (
 }
 
 function MemoPanel({ system, onChange }: { system: SystemDetail; onChange: (s: SystemDetail) => void }) {
+  const { organization, user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,8 +130,14 @@ function MemoPanel({ system, onChange }: { system: SystemDetail; onChange: (s: S
     <Card className="p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-[14px] font-semibold text-ink">Analiză AI</h2>
-        <Button size="sm" variant="secondary" onClick={generate} loading={busy}>{system.aiMemo ? "Regenerează" : "Generează"}</Button>
+        <Button size="sm" variant="secondary" onClick={generate} loading={busy} disabled={!organization?.aiEnabled}>{system.aiMemo ? "Regenerează" : "Generează"}</Button>
       </div>
+      {!organization?.aiEnabled && (
+        <p className="mt-2 text-[12px] text-slate-500">
+          Analiza AI e dezactivată pentru cabinet, deoarece trimite date despre client către furnizorul modelului.{" "}
+          {user?.role === "admin" ? <Link href="/settings#securitate" className="font-semibold text-brand hover:underline">Activați-o din Setări</Link> : "Un administrator o poate activa din Setări."}
+        </p>
+      )}
       {busy && <p className="mt-3 flex items-center gap-2 text-[12px] text-slate-500"><Spinner className="h-3.5 w-3.5" /> Se analizează dosarul (poate dura până la un minut)...</p>}
       {error && <div className="mt-3"><Alert>{error}</Alert></div>}
       {system.aiMemo ? (

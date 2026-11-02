@@ -5,7 +5,8 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { invitations, organizations, users } from "../db/schema";
 import { hashToken } from "../lib/tokens";
-import { signToken, userFromRequest } from "../middleware/auth";
+import { signMfaToken, signToken, userFromMfaToken, userFromRequest } from "../middleware/auth";
+import { checkSecondFactor } from "../services/mfa";
 
 export const authRoutes = new Hono();
 
@@ -14,11 +15,11 @@ const TRIAL_DAYS = 14;
 const DUMMY_HASH = bcrypt.hashSync("togato-dummy-password", 12);
 
 function publicUser(u: typeof users.$inferSelect) {
-  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId };
+  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled };
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {
-  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl };
+  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, aiEnabled: o.aiEnabled, require2fa: o.require2fa };
 }
 
 const signupSchema = z.object({
@@ -65,9 +66,30 @@ authRoutes.post("/login", async (c) => {
   if (!user || !ok) return c.json({ error: "Email sau parolă incorectă" }, 401);
   if (user.status !== "activ") return c.json({ error: "Contul este dezactivat" }, 403);
 
+  // pasul al doilea: sesiunea se emite abia după codul din aplicația de autentificare
+  if (user.totpEnabled) {
+    return c.json({ mfaRequired: true, mfaToken: await signMfaToken(user.id) });
+  }
+
   await db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, user.id));
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId) });
   return c.json({ token: await signToken(user.id), user: publicUser(user), organization: org ? publicOrg(org) : null });
+});
+
+/** POST /login/mfa { mfaToken, code } — al doilea pas: cod TOTP sau cod de recuperare */
+authRoutes.post("/login/mfa", async (c) => {
+  const body = z.object({ mfaToken: z.string().min(10).max(2000), code: z.string().trim().min(6).max(20) }).parse(await c.req.json());
+  const user = await userFromMfaToken(body.mfaToken);
+  if (!user) return c.json({ error: "Sesiunea de autentificare a expirat. Introduceți din nou parola." }, 401);
+  const result = await checkSecondFactor(user, body.code);
+  if (!result.ok) return c.json({ error: "Cod incorect sau deja folosit" }, 401);
+
+  await db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, user.id));
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId) });
+  return c.json({
+    token: await signToken(user.id), user: publicUser(user), organization: org ? publicOrg(org) : null,
+    ...(result.usedRecovery ? { recoveryCodesLeft: result.recoveryLeft } : {}),
+  });
 });
 
 authRoutes.get("/me", async (c) => {

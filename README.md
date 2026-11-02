@@ -15,6 +15,7 @@ Platformă SaaS pentru cabinetele de avocatură și consultanță care gestionea
 - **Verificarea avocatului**: fiecare încadrare e „propusă” până când un avocat o aprobă sau o respinge; schimbarea răspunsurilor cere o nouă aprobare.
 - **Documente Word** generate din datele clientului: raport de conformitate, registrul sistemelor AI, politica internă de utilizare AI, informarea angajaților (Art. 26(7)), evaluarea impactului asupra drepturilor fundamentale (Art. 27). Câmpurile de completat sunt evidențiate.
 - **Avize înghețate**: la fiecare aprobare se salvează o copie imuabilă a analizei (răspunsuri, încadrare, obligații cu stările lor, memoriu, versiunea legii), cu amprentă SHA-256 și export PDF datat. Modificările ulterioare nu ating avizele deja date.
+- **Securitate**: autentificare în doi pași (TOTP, compatibilă cu Google/Microsoft Authenticator), coduri de recuperare, politică de cabinet „2FA obligatoriu”, resetare de către administrator. Analiza AI e dezactivată implicit; un administrator o activează explicit, după ce vede ce date se trimit.
 - **Analiză AI** (opțional): memoriu juridic scurt generat cu Claude, pe baza pasajelor relevante din textul oficial al legii; fiecare afirmație citată are o trimitere [n] la citatul exact.
 - **Textul oficial al legii**: orice articol afișat în aplicație („Art. 26(7)”, „Anexa III pct. 4(a)”) se deschide cu un clic, cu textul oficial în limba română (EUR-Lex), litera relevantă evidențiată și linkul către sursă. Un test verifică automat că fiecare trimitere din reguli există în lege.
 - **Actualizări legislative**: regulile sunt versionate; la o versiune nouă, sistemele se reîncadrează automat — termenele se actualizează direct, schimbările de fond trimit sistemul înapoi la avocat, cu diferențele explicate. Stările și notele obligațiilor se păstrează; încadrarea manuală a avocatului nu se suprascrie. Pagina „Noutăți legislative” ține istoricul.
@@ -55,6 +56,7 @@ cd apps/web && npx next build
 |---|---|---|
 | `DATABASE_URL` | api | PostgreSQL |
 | `JWT_SECRET` | api | semnarea sesiunilor |
+| `ENCRYPTION_KEY` | api | criptarea secretelor 2FA (64 hex; dacă lipsește, se derivă din `JWT_SECRET`) |
 | `FRONTEND_URL` | api | originea permisă CORS |
 | `ANTHROPIC_API_KEY` | api | opțional — analiza AI |
 | `LISTAFIRME_API_KEY` | api | opțional — date extinse despre firme |

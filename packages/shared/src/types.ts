@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string;
   role: UserRole;
   organizationId: string;
+  totpEnabled: boolean;
 }
 
 export interface Organization {
@@ -19,6 +20,9 @@ export interface Organization {
   trialEndsAt: string | null;
   brandColor: string | null;
   logoUrl: string | null;
+  aiEnabled: boolean;
+  aiEnabledAt?: string | null;
+  require2fa: boolean;
 }
 
 export interface ClientSummary {
@@ -149,6 +153,7 @@ export interface TeamMember {
   email: string;
   role: UserRole;
   status: "activ" | "dezactivat";
+  totpEnabled: boolean;
   lastActiveAt: string | null;
   createdAt: string;
   clientsCount: number;

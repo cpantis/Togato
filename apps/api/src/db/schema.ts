@@ -20,6 +20,12 @@ export const organizations = pgTable("organizations", {
   /** white-label (portalul clientului) */
   brandColor: text("brand_color"),
   logoUrl: text("logo_url"),
+  /** analiza AI trimite date ale clienților către Anthropic — dezactivată până o activează un administrator */
+  aiEnabled: boolean("ai_enabled").notNull().default(false),
+  aiEnabledBy: uuid("ai_enabled_by"),
+  aiEnabledAt: timestamp("ai_enabled_at", { withTimezone: true }),
+  /** autentificarea în doi pași e obligatorie pentru toți membrii */
+  require2fa: boolean("require_2fa").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -32,6 +38,13 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("membru"),
   status: userStatusEnum("status").notNull().default("activ"),
   lastActiveAt: timestamp("last_active_at", { withTimezone: true }),
+  /** TOTP (RFC 6238): secretul e criptat (AES-256-GCM); codurile de recuperare sunt păstrate ca hash */
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
+  totpSecret: text("totp_secret"),
+  totpPendingSecret: text("totp_pending_secret"),
+  totpLastStep: integer("totp_last_step"),
+  recoveryCodes: jsonb("recovery_codes").$type<string[]>(),
+  totpEnabledAt: timestamp("totp_enabled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex("users_email_unique").on(t.email),

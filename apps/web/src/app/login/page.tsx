@@ -7,10 +7,12 @@ import { AuthLayout } from "@/components/AuthLayout";
 import { Alert, Button, Field, inputClass } from "@/components/ui";
 
 export default function LoginPage() {
-  const { login, user, loading } = useAuth();
+  const { login, completeMfa, user, loading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,13 +23,50 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await login(email, password);
+      const step = await login(email, password);
+      if (step) {
+        setMfaToken(step.mfaToken);
+        return;
+      }
       router.replace("/dashboard");
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mfaToken) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await completeMfa(mfaToken, code);
+      if (res.recoveryCodesLeft !== undefined) {
+        try { sessionStorage.setItem("togato-recovery-left", String(res.recoveryCodesLeft)); } catch { /* ignorat */ }
+      }
+      router.replace("/dashboard");
+    } catch (err) {
+      setError((err as Error).message);
+      if (/expirat/i.test((err as Error).message)) { setMfaToken(null); setCode(""); }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (mfaToken) {
+    return (
+      <AuthLayout title="Cod de verificare" subtitle="Introduceți codul de 6 cifre din aplicația de autentificare." footer={<button onClick={() => { setMfaToken(null); setCode(""); setError(null); }} className="font-semibold text-brand hover:underline">Înapoi la autentificare</button>}>
+        <form onSubmit={submitCode} className="space-y-4">
+          {error && <Alert>{error}</Alert>}
+          <Field label="Cod" hint="Ați pierdut telefonul? Folosiți unul dintre codurile de recuperare (XXXXX-XXXXX).">
+            <input className={`${inputClass} text-center font-mono text-lg tracking-[0.3em]`} inputMode="text" autoComplete="one-time-code" autoFocus required maxLength={11} value={code} onChange={(e) => setCode(e.target.value)} aria-label="Cod de verificare" />
+          </Field>
+          <Button type="submit" className="w-full" loading={busy}>Verifică</Button>
+        </form>
+      </AuthLayout>
+    );
   }
 
   return (

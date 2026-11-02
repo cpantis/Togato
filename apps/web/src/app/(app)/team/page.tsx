@@ -100,18 +100,27 @@ function MemberRow({ m, isAdmin, isSelf, onChanged, onError }: { m: TeamMember; 
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[12px] font-bold text-slate-600">{initials(m.name)}</div>
         <div className="min-w-0">
           <div className="truncate text-[14px] font-semibold text-ink">{m.name}{isSelf && <span className="ml-1.5 text-[12px] font-normal text-slate-400">(tu)</span>}</div>
-          <div className="truncate text-[12px] text-slate-500">{m.email}</div>
+          <div className="truncate text-[12px] text-slate-500">{m.email}{" "}
+            <span className={cn("ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold", m.totpEnabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}>{m.totpEnabled ? "2FA activ" : "fără 2FA"}</span>
+          </div>
         </div>
       </div>
       <div className="text-[12px] text-slate-500 sm:w-28">{m.clientsCount === 1 ? "1 client" : `${m.clientsCount} clienți`}</div>
       <div className="text-[12px] text-slate-500 sm:w-36">{disabled ? <span className="font-medium text-red-600">Dezactivat</span> : m.lastActiveAt ? `Activ ${formatDate(m.lastActiveAt)}` : "Nu s-a autentificat încă"}</div>
-      <div className="flex items-center gap-2 sm:w-64 sm:justify-end">
+      <div className="flex flex-wrap items-center gap-2 sm:w-80 sm:justify-end">
         {isAdmin && !isSelf ? (
           <>
             <select className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[12px]" value={m.role} disabled={busy || disabled} onChange={(e) => patch({ role: e.target.value as UserRole })} aria-label={`Rolul lui ${m.name}`}>
               <option value="membru">Membru</option>
               <option value="admin">Administrator</option>
             </select>
+            {m.totpEnabled && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={async () => {
+                if (!confirm(`Resetați autentificarea în doi pași pentru ${m.name}? Va trebui să o configureze din nou (ex. după pierderea telefonului).`)) return;
+                setBusy(true);
+                try { await apiPost(`/api/team/members/${m.id}/reset-2fa`); onChanged(); } catch (e) { onError((e as Error).message); } finally { setBusy(false); }
+              }}>Resetează 2FA</Button>
+            )}
             <Button size="sm" variant={disabled ? "secondary" : "ghost"} disabled={busy} onClick={() => patch({ status: disabled ? "activ" : "dezactivat" })}>
               {disabled ? "Reactivează" : "Dezactivează"}
             </Button>
