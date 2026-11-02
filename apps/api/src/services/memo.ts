@@ -9,7 +9,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import {
-  ANNEX_III_USES, DEROGATIONS, PROHIBITED_PRACTICES, RISK_LABELS, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS,
+  ANNEX_III_USES, DEROGATIONS, PROHIBITED_PRACTICES, QUALIFICATION_OPTIONS, RISK_LABELS, ROLE_OPTIONS, SCOPE_EXCLUSIONS, TRANSPARENCY_TRIGGERS,
   parseLawRefs, type AiSystemAnswers, type ClassificationResult, type LawRef,
 } from "@togato/shared";
 import { loadLaw, resolveRef, type LawData } from "./law";
@@ -57,6 +57,8 @@ export function selectLegalPassages(input: { answers: AiSystemAnswers; classific
   for (const r of c.reasons) texts.push(r.article);
   for (const o of c.obligations) texts.push(o.article);
   // contextul de încadrare, chiar dacă nu apare în obligații
+  if (a.qualification !== "da") texts.push("Art. 3 pct. 1");
+  for (const code of a.scopeExclusions) texts.push(SCOPE_EXCLUSIONS.find((e) => e.code === code)?.article ?? "");
   if (a.prohibited.length) texts.push("Art. 5(1)");
   if (a.annexIII.length) texts.push("Art. 6(2)", "Art. 6(3)");
   if (a.role === "implementator_modificat") texts.push("Art. 25(1)");
@@ -144,6 +146,8 @@ export function dossierText(input: MemoInput): string {
     `Scop: ${input.system.purpose || "nespecificat"}`,
     "",
     "Răspunsuri la chestionar:",
+    `- E sistem de IA (Art. 3 pct. 1): ${QUALIFICATION_OPTIONS.find((q) => q.code === a.qualification)?.label}`,
+    `- Excluderi din domeniul de aplicare (Art. 2): ${labels(a.scopeExclusions, SCOPE_EXCLUSIONS).join("; ") || "niciuna"}`,
     `- Rolul firmei: ${ROLE_OPTIONS.find((r) => r.code === a.role)?.label}`,
     `- Practici interzise bifate: ${labels(a.prohibited, PROHIBITED_PRACTICES).join("; ") || "niciuna"}`,
     `- Domenii Anexa III bifate: ${labels(a.annexIII, ANNEX_III_USES).join("; ") || "niciunul"}`,

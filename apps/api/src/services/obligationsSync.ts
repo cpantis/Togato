@@ -1,4 +1,4 @@
-import { and, eq, isNull, inArray, sql } from "drizzle-orm";
+import { and, eq, isNull, inArray, ne, sql } from "drizzle-orm";
 import { CLIENT_OBLIGATIONS, type ObligationTemplate } from "@togato/shared";
 import type { Tx } from "../db";
 import { aiSystems, obligations } from "../db/schema";
@@ -40,7 +40,9 @@ export async function syncSystemObligations(
 
 /** Obligațiile generale ale clientului există cât timp clientul are cel puțin un sistem AI. */
 export async function syncClientObligations(tx: Tx, organizationId: string, clientId: string) {
-  const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(aiSystems).where(eq(aiSystems.clientId, clientId));
+  // sistemele „În afara AI Act” nu declanșează obligațiile generale (ex. Art. 4)
+  const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(aiSystems)
+    .where(and(eq(aiSystems.clientId, clientId), ne(aiSystems.riskLevel, "neaplicabil")));
   const clientLevel = and(eq(obligations.clientId, clientId), isNull(obligations.aiSystemId));
 
   if (count === 0) {

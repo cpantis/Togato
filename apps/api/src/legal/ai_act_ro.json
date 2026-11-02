@@ -129,154 +129,426 @@
 {
 "n":null,
 "lines":[
-"În sensul prezentului regulament, se aplică următoarele definiții:",
-"1.",
-"„sistem de IA” înseamnă un sistem bazat pe o mașină care este conceput să funcționeze cu diferite niveluri de autonomie și care poate prezenta adaptabilitate după implementare, și care, urmărind obiective explicite sau implicite, deduce, din datele de intrare pe care le primește, modul de generare a unor rezultate precum previziuni, conținut, recomandări sau decizii care pot influența mediile fizice sau virtuale;",
-"2.",
-"„risc” înseamnă combinația dintre probabilitatea producerii unui prejudiciu și gravitatea acestuia;",
-"3.",
-"„furnizor” înseamnă o persoană fizică sau juridică, o autoritate publică, o agenție sau un alt organism care dezvoltă un sistem de IA sau un model de IA de uz general sau care comandă dezvoltarea unui sistem de IA sau a unui model de IA de uz general și îl introduce pe piață sau pune în funcțiune sistemul de IA sub propriul nume sau propria marcă comercială, contra cost sau gratuit;",
-"4.",
-"„implementator” înseamnă o persoană fizică sau juridică, autoritate publică, agenție sau alt organism care utilizează un sistem de IA aflat sub autoritatea sa, cu excepția cazului în care sistemul de IA este utilizat în cursul unei activități personale, fără caracter profesional;",
-"5.",
-"„reprezentant autorizat” înseamnă o persoană fizică sau juridică aflată sau stabilită în Uniune care a primit și a acceptat un mandat scris din partea unui furnizor al unui sistem de IA sau al unui model de IA de uz general pentru a exercita și, respectiv, a îndeplini, în numele său, obligațiile și procedurile stabilite prin prezentul regulament;",
-"6.",
-"„importator” înseamnă o persoană fizică sau juridică aflată sau stabilită în Uniune care introduce pe piață un sistem de IA care poartă numele sau marca unei persoane fizice sau juridice stabilite într-o țară terță;",
-"7.",
-"„distribuitor” înseamnă o persoană fizică sau juridică din lanțul de aprovizionare, alta decât furnizorul sau importatorul, care pune la dispoziție un sistem de IA pe piața Uniunii;",
-"8.",
-"„operator” înseamnă furnizor, fabricant de produse, implementator, reprezentant autorizat, importator sau distribuitor;",
-"9.",
-"„introducere pe piață” înseamnă prima punere la dispoziție a unui sistem de IA sau a unui model de IA de uz general pe piața Uniunii;",
-"10.",
-"„punere la dispoziție pe piață” înseamnă furnizarea unui sistem de IA sau a unui model de IA de uz general pentru distribuție sau uz pe piața Uniunii în cursul unei activități comerciale, contra cost sau gratuit;",
-"11.",
-"„punere în funcțiune” înseamnă furnizarea unui sistem de IA pentru prima utilizare direct implementatorului sau pentru uz propriu în Uniune, în scopul său preconizat;",
-"12.",
-"„scop preconizat” înseamnă utilizarea preconizată de către furnizor a unui sistem de IA, inclusiv contextul specific și condițiile de utilizare, astfel cum se specifică în informațiile oferite de furnizor în instrucțiunile de utilizare, în materialele promoționale sau de vânzare și în declarații, precum și în documentația tehnică;",
-"13.",
-"„utilizare necorespunzătoare previzibilă în mod rezonabil” înseamnă utilizarea unui sistem de IA într-un mod care nu este în conformitate cu scopul său preconizat, dar care poate rezulta din comportamentul uman sau din interacțiunea previzibilă în mod rezonabil cu alte sisteme, inclusiv cu alte sisteme de IA;",
-"14.",
-"„componentă de siguranță” înseamnă o componentă a unui produs sau a unui sistem de IA care îndeplinește o funcție de siguranță pentru produsul sau sistemul de IA respectiv sau a cărei defectare sau funcționare defectuoasă pune în pericol sănătatea și siguranța persoanelor sau a bunurilor;",
-"15.",
-"„instrucțiuni de utilizare” înseamnă informațiile oferite de furnizor pentru a informa implementatorul, în special cu privire la scopul preconizat și utilizarea corespunzătoare a unui sistem de IA;",
-"16.",
-"„rechemare a unui sistem de IA” înseamnă orice măsură care are drept scop returnarea către furnizor, scoaterea din funcțiune sau dezactivarea utilizării unui sistem de IA deja pus la dispoziția implementatorilor;",
-"17.",
-"„retragere a unui sistem de IA” înseamnă orice măsură care are drept scop împiedicarea punerii la dispoziție pe piață a unui sistem de IA din lanțul de aprovizionare;",
-"18.",
-"„performanță a unui sistem de IA” înseamnă capacitatea unui sistem de IA de a-și îndeplini scopul preconizat;",
-"19.",
-"„autoritate de notificare” înseamnă autoritatea națională responsabilă cu instituirea și îndeplinirea procedurilor necesare pentru evaluarea, desemnarea și notificarea organismelor de evaluare a conformității și pentru monitorizarea acestora;",
-"20.",
-"„evaluare a conformității” înseamnă procesul prin care se demonstrează dacă au fost îndeplinite sau nu cerințele prevăzute în capitolul III secțiunea 2 referitoare la un sistem de IA cu grad ridicat de risc;",
-"21.",
-"„organism de evaluare a conformității” înseamnă un organism care efectuează activități de evaluare a conformității ca parte terță, incluzând testarea, certificarea și inspecția;",
-"22.",
-"„organism notificat” înseamnă un organism de evaluare a conformității notificat în conformitate cu prezentul regulament și cu alte acte legislative relevante de armonizare ale Uniunii;",
-"23.",
-"„modificare substanțială” înseamnă o modificare a unui sistem de IA după introducerea sa pe piață sau punerea sa în funcțiune, care nu este prevăzută sau planificată în evaluarea inițială a conformității realizată de furnizor și în urma căreia este afectată conformitatea sistemului de IA cu cerințele prevăzute în capitolul III secțiunea 2 sau care conduce la o modificare a scopului preconizat pentru care a fost evaluat sistemul de IA;",
-"24.",
-"„marcaj CE” înseamnă un marcaj prin care un furnizor indică faptul că un sistem de IA este în conformitate cu cerințele prevăzute în capitolul III secțiunea 2 și în alte acte legislative de armonizare aplicabile ale Uniunii care prevăd aplicarea acestui marcaj;",
-"25.",
-"„sistem de monitorizare ulterioară introducerii pe piață” înseamnă toate activitățile desfășurate de furnizorii de sisteme de IA pentru a colecta și a revizui experiența dobândită în urma utilizării sistemelor de IA pe care le introduc pe piață sau le pun în funcțiune, în scopul identificării oricărei nevoi de a aplica imediat orice măsură corectivă sau preventivă necesară;",
-"26.",
-"„autoritate de supraveghere a pieței” înseamnă autoritatea națională care desfășoară activități și ia măsuri în temeiul Regulamentului (UE) 2019/1020;",
-"27.",
-"„standard armonizat” înseamnă un standard armonizat, în sensul definiției de la articolul 2 punctul 1 litera (c) din Regulamentul (UE) nr. 1025/2012;",
-"28.",
-"„specificație comună” înseamnă un set de specificații tehnice, astfel cum sunt definite la articolul 2 punctul 4 din Regulamentul (UE) nr. 1025/2012, care oferă mijloacele de a respecta anumite cerințe stabilite în temeiul prezentului regulament;",
-"29.",
-"„date de antrenament” înseamnă datele utilizate pentru antrenarea unui sistem de IA prin adaptarea parametrilor săi care pot fi învățați;",
-"30.",
-"„date de validare” înseamnă datele utilizate pentru a furniza o evaluare a sistemului de IA antrenat și pentru a-i ajusta parametrii care nu pot fi învățați și procesul său de învățare, printre altele, pentru a preveni subadaptarea sau supraadaptarea;",
-"31.",
-"„set de date de validare” înseamnă un set de date separat sau o parte a setului de date de antrenament, sub forma unei divizări fixe sau variabile;",
-"32.",
-"„date de testare” înseamnă datele utilizate pentru a furniza o evaluare independentă a sistemului de IA, în scopul de a confirma performanța preconizată a sistemului respectiv înainte de introducerea sa pe piață sau de punerea sa în funcțiune;",
-"33.",
-"„date de intrare” înseamnă datele furnizate unui sistem de IA sau dobândite direct de acesta, pe baza cărora sistemul produce un rezultat;",
-"34.",
-"„date biometrice” înseamnă datele cu caracter personal rezultate dintr-o prelucrare tehnică specifică, referitoare la caracteristicile fizice, fiziologice sau comportamentale ale unei persoane fizice, cum ar fi imaginile faciale sau datele dactiloscopice;",
-"35.",
-"„identificare biometrică” înseamnă recunoașterea automată a caracteristicilor fizice, fiziologice, comportamentale sau psihologice ale omului în scopul stabilirii identității unei persoane fizice prin compararea datelor biometrice ale persoanei respective cu datele biometrice ale persoanelor stocate într-o bază de date;",
-"36.",
-"„verificare biometrică” înseamnă verificarea automată, pe baza unei comparații între două seturi de date, inclusiv autentificarea, a identității persoanelor fizice prin compararea datelor biometrice ale acestora cu datele biometrice furnizate anterior;",
-"37.",
-"„categorii speciale de date cu caracter personal” înseamnă categoriile de date cu caracter personal menționate la articolul 9 alineatul (1) din Regulamentul (UE) 2016/679, la articolul 10 din Directiva (UE) 2016/680 și la articolul 10 alineatul (1) din Regulamentul (UE) 2018/1725;",
-"38.",
-"„date operaționale sensibile” înseamnă date operaționale legate de activități de prevenire, depistare, investigare sau urmărire penală a infracțiunilor a căror divulgare ar putea pune în pericol integritatea unor proceduri penale;",
-"39.",
-"„sistem de recunoaștere a emoțiilor” înseamnă un sistem de IA al cărui scop este de a identifica sau a deduce emoțiile sau intențiile persoanelor fizice pe baza datelor lor biometrice;",
-"40.",
-"„sistem de clasificare biometrică” înseamnă un sistem de IA al cărui scop este de a încadra persoanele fizice în categorii specifice pe baza datelor lor biometrice, cu excepția cazului în care acesta este auxiliar unui alt serviciu comercial și strict necesar din motive tehnice obiective;",
-"41.",
-"„sistem de identificare biometrică la distanță” înseamnă un sistem de IA al cărui scop este de a identifica persoanele fizice, fără implicarea activă a acestora, de obicei la distanță, prin compararea datelor biometrice ale unei persoane cu datele biometrice conținute într-o bază de date de referință;",
-"42.",
-"„sistem de identificare biometrică la distanță în timp real” înseamnă un sistem de identificare biometrică la distanță în care atât capturarea datelor biometrice, cât și compararea și identificarea au loc fără întârzieri semnificative, incluzând nu numai identificarea instantanee, ci și întârzieri scurte limitate pentru a se evita eludarea;",
-"43.",
-"„sistem de identificare biometrică la distanță ulterioară” înseamnă un alt sistem de identificare biometrică la distanță decât sistemul de identificare biometrică la distanță în timp real;",
-"44.",
-"„spațiu accesibil publicului” înseamnă orice loc fizic aflat în proprietate publică sau privată, accesibil unui număr nedeterminat de persoane fizice, indiferent dacă se pot aplica anumite condiții de acces și indiferent de potențiale restricții de capacitate;",
-"45.",
-"„autoritate de aplicare a legii” înseamnă:",
+"În sensul prezentului regulament, se aplică următoarele definiții:"
+]
+},
+{
+"n":"1",
+"lines":[
+"1. „sistem de IA” înseamnă un sistem bazat pe o mașină care este conceput să funcționeze cu diferite niveluri de autonomie și care poate prezenta adaptabilitate după implementare, și care, urmărind obiective explicite sau implicite, deduce, din datele de intrare pe care le primește, modul de generare a unor rezultate precum previziuni, conținut, recomandări sau decizii care pot influența mediile fizice sau virtuale;"
+]
+},
+{
+"n":"2",
+"lines":[
+"2. „risc” înseamnă combinația dintre probabilitatea producerii unui prejudiciu și gravitatea acestuia;"
+]
+},
+{
+"n":"3",
+"lines":[
+"3. „furnizor” înseamnă o persoană fizică sau juridică, o autoritate publică, o agenție sau un alt organism care dezvoltă un sistem de IA sau un model de IA de uz general sau care comandă dezvoltarea unui sistem de IA sau a unui model de IA de uz general și îl introduce pe piață sau pune în funcțiune sistemul de IA sub propriul nume sau propria marcă comercială, contra cost sau gratuit;"
+]
+},
+{
+"n":"4",
+"lines":[
+"4. „implementator” înseamnă o persoană fizică sau juridică, autoritate publică, agenție sau alt organism care utilizează un sistem de IA aflat sub autoritatea sa, cu excepția cazului în care sistemul de IA este utilizat în cursul unei activități personale, fără caracter profesional;"
+]
+},
+{
+"n":"5",
+"lines":[
+"5. „reprezentant autorizat” înseamnă o persoană fizică sau juridică aflată sau stabilită în Uniune care a primit și a acceptat un mandat scris din partea unui furnizor al unui sistem de IA sau al unui model de IA de uz general pentru a exercita și, respectiv, a îndeplini, în numele său, obligațiile și procedurile stabilite prin prezentul regulament;"
+]
+},
+{
+"n":"6",
+"lines":[
+"6. „importator” înseamnă o persoană fizică sau juridică aflată sau stabilită în Uniune care introduce pe piață un sistem de IA care poartă numele sau marca unei persoane fizice sau juridice stabilite într-o țară terță;"
+]
+},
+{
+"n":"7",
+"lines":[
+"7. „distribuitor” înseamnă o persoană fizică sau juridică din lanțul de aprovizionare, alta decât furnizorul sau importatorul, care pune la dispoziție un sistem de IA pe piața Uniunii;"
+]
+},
+{
+"n":"8",
+"lines":[
+"8. „operator” înseamnă furnizor, fabricant de produse, implementator, reprezentant autorizat, importator sau distribuitor;"
+]
+},
+{
+"n":"9",
+"lines":[
+"9. „introducere pe piață” înseamnă prima punere la dispoziție a unui sistem de IA sau a unui model de IA de uz general pe piața Uniunii;"
+]
+},
+{
+"n":"10",
+"lines":[
+"10. „punere la dispoziție pe piață” înseamnă furnizarea unui sistem de IA sau a unui model de IA de uz general pentru distribuție sau uz pe piața Uniunii în cursul unei activități comerciale, contra cost sau gratuit;"
+]
+},
+{
+"n":"11",
+"lines":[
+"11. „punere în funcțiune” înseamnă furnizarea unui sistem de IA pentru prima utilizare direct implementatorului sau pentru uz propriu în Uniune, în scopul său preconizat;"
+]
+},
+{
+"n":"12",
+"lines":[
+"12. „scop preconizat” înseamnă utilizarea preconizată de către furnizor a unui sistem de IA, inclusiv contextul specific și condițiile de utilizare, astfel cum se specifică în informațiile oferite de furnizor în instrucțiunile de utilizare, în materialele promoționale sau de vânzare și în declarații, precum și în documentația tehnică;"
+]
+},
+{
+"n":"13",
+"lines":[
+"13. „utilizare necorespunzătoare previzibilă în mod rezonabil” înseamnă utilizarea unui sistem de IA într-un mod care nu este în conformitate cu scopul său preconizat, dar care poate rezulta din comportamentul uman sau din interacțiunea previzibilă în mod rezonabil cu alte sisteme, inclusiv cu alte sisteme de IA;"
+]
+},
+{
+"n":"14",
+"lines":[
+"14. „componentă de siguranță” înseamnă o componentă a unui produs sau a unui sistem de IA care îndeplinește o funcție de siguranță pentru produsul sau sistemul de IA respectiv sau a cărei defectare sau funcționare defectuoasă pune în pericol sănătatea și siguranța persoanelor sau a bunurilor;"
+]
+},
+{
+"n":"15",
+"lines":[
+"15. „instrucțiuni de utilizare” înseamnă informațiile oferite de furnizor pentru a informa implementatorul, în special cu privire la scopul preconizat și utilizarea corespunzătoare a unui sistem de IA;"
+]
+},
+{
+"n":"16",
+"lines":[
+"16. „rechemare a unui sistem de IA” înseamnă orice măsură care are drept scop returnarea către furnizor, scoaterea din funcțiune sau dezactivarea utilizării unui sistem de IA deja pus la dispoziția implementatorilor;"
+]
+},
+{
+"n":"17",
+"lines":[
+"17. „retragere a unui sistem de IA” înseamnă orice măsură care are drept scop împiedicarea punerii la dispoziție pe piață a unui sistem de IA din lanțul de aprovizionare;"
+]
+},
+{
+"n":"18",
+"lines":[
+"18. „performanță a unui sistem de IA” înseamnă capacitatea unui sistem de IA de a-și îndeplini scopul preconizat;"
+]
+},
+{
+"n":"19",
+"lines":[
+"19. „autoritate de notificare” înseamnă autoritatea națională responsabilă cu instituirea și îndeplinirea procedurilor necesare pentru evaluarea, desemnarea și notificarea organismelor de evaluare a conformității și pentru monitorizarea acestora;"
+]
+},
+{
+"n":"20",
+"lines":[
+"20. „evaluare a conformității” înseamnă procesul prin care se demonstrează dacă au fost îndeplinite sau nu cerințele prevăzute în capitolul III secțiunea 2 referitoare la un sistem de IA cu grad ridicat de risc;"
+]
+},
+{
+"n":"21",
+"lines":[
+"21. „organism de evaluare a conformității” înseamnă un organism care efectuează activități de evaluare a conformității ca parte terță, incluzând testarea, certificarea și inspecția;"
+]
+},
+{
+"n":"22",
+"lines":[
+"22. „organism notificat” înseamnă un organism de evaluare a conformității notificat în conformitate cu prezentul regulament și cu alte acte legislative relevante de armonizare ale Uniunii;"
+]
+},
+{
+"n":"23",
+"lines":[
+"23. „modificare substanțială” înseamnă o modificare a unui sistem de IA după introducerea sa pe piață sau punerea sa în funcțiune, care nu este prevăzută sau planificată în evaluarea inițială a conformității realizată de furnizor și în urma căreia este afectată conformitatea sistemului de IA cu cerințele prevăzute în capitolul III secțiunea 2 sau care conduce la o modificare a scopului preconizat pentru care a fost evaluat sistemul de IA;"
+]
+},
+{
+"n":"24",
+"lines":[
+"24. „marcaj CE” înseamnă un marcaj prin care un furnizor indică faptul că un sistem de IA este în conformitate cu cerințele prevăzute în capitolul III secțiunea 2 și în alte acte legislative de armonizare aplicabile ale Uniunii care prevăd aplicarea acestui marcaj;"
+]
+},
+{
+"n":"25",
+"lines":[
+"25. „sistem de monitorizare ulterioară introducerii pe piață” înseamnă toate activitățile desfășurate de furnizorii de sisteme de IA pentru a colecta și a revizui experiența dobândită în urma utilizării sistemelor de IA pe care le introduc pe piață sau le pun în funcțiune, în scopul identificării oricărei nevoi de a aplica imediat orice măsură corectivă sau preventivă necesară;"
+]
+},
+{
+"n":"26",
+"lines":[
+"26. „autoritate de supraveghere a pieței” înseamnă autoritatea națională care desfășoară activități și ia măsuri în temeiul Regulamentului (UE) 2019/1020;"
+]
+},
+{
+"n":"27",
+"lines":[
+"27. „standard armonizat” înseamnă un standard armonizat, în sensul definiției de la articolul 2 punctul 1 litera (c) din Regulamentul (UE) nr. 1025/2012;"
+]
+},
+{
+"n":"28",
+"lines":[
+"28. „specificație comună” înseamnă un set de specificații tehnice, astfel cum sunt definite la articolul 2 punctul 4 din Regulamentul (UE) nr. 1025/2012, care oferă mijloacele de a respecta anumite cerințe stabilite în temeiul prezentului regulament;"
+]
+},
+{
+"n":"29",
+"lines":[
+"29. „date de antrenament” înseamnă datele utilizate pentru antrenarea unui sistem de IA prin adaptarea parametrilor săi care pot fi învățați;"
+]
+},
+{
+"n":"30",
+"lines":[
+"30. „date de validare” înseamnă datele utilizate pentru a furniza o evaluare a sistemului de IA antrenat și pentru a-i ajusta parametrii care nu pot fi învățați și procesul său de învățare, printre altele, pentru a preveni subadaptarea sau supraadaptarea;"
+]
+},
+{
+"n":"31",
+"lines":[
+"31. „set de date de validare” înseamnă un set de date separat sau o parte a setului de date de antrenament, sub forma unei divizări fixe sau variabile;"
+]
+},
+{
+"n":"32",
+"lines":[
+"32. „date de testare” înseamnă datele utilizate pentru a furniza o evaluare independentă a sistemului de IA, în scopul de a confirma performanța preconizată a sistemului respectiv înainte de introducerea sa pe piață sau de punerea sa în funcțiune;"
+]
+},
+{
+"n":"33",
+"lines":[
+"33. „date de intrare” înseamnă datele furnizate unui sistem de IA sau dobândite direct de acesta, pe baza cărora sistemul produce un rezultat;"
+]
+},
+{
+"n":"34",
+"lines":[
+"34. „date biometrice” înseamnă datele cu caracter personal rezultate dintr-o prelucrare tehnică specifică, referitoare la caracteristicile fizice, fiziologice sau comportamentale ale unei persoane fizice, cum ar fi imaginile faciale sau datele dactiloscopice;"
+]
+},
+{
+"n":"35",
+"lines":[
+"35. „identificare biometrică” înseamnă recunoașterea automată a caracteristicilor fizice, fiziologice, comportamentale sau psihologice ale omului în scopul stabilirii identității unei persoane fizice prin compararea datelor biometrice ale persoanei respective cu datele biometrice ale persoanelor stocate într-o bază de date;"
+]
+},
+{
+"n":"36",
+"lines":[
+"36. „verificare biometrică” înseamnă verificarea automată, pe baza unei comparații între două seturi de date, inclusiv autentificarea, a identității persoanelor fizice prin compararea datelor biometrice ale acestora cu datele biometrice furnizate anterior;"
+]
+},
+{
+"n":"37",
+"lines":[
+"37. „categorii speciale de date cu caracter personal” înseamnă categoriile de date cu caracter personal menționate la articolul 9 alineatul (1) din Regulamentul (UE) 2016/679, la articolul 10 din Directiva (UE) 2016/680 și la articolul 10 alineatul (1) din Regulamentul (UE) 2018/1725;"
+]
+},
+{
+"n":"38",
+"lines":[
+"38. „date operaționale sensibile” înseamnă date operaționale legate de activități de prevenire, depistare, investigare sau urmărire penală a infracțiunilor a căror divulgare ar putea pune în pericol integritatea unor proceduri penale;"
+]
+},
+{
+"n":"39",
+"lines":[
+"39. „sistem de recunoaștere a emoțiilor” înseamnă un sistem de IA al cărui scop este de a identifica sau a deduce emoțiile sau intențiile persoanelor fizice pe baza datelor lor biometrice;"
+]
+},
+{
+"n":"40",
+"lines":[
+"40. „sistem de clasificare biometrică” înseamnă un sistem de IA al cărui scop este de a încadra persoanele fizice în categorii specifice pe baza datelor lor biometrice, cu excepția cazului în care acesta este auxiliar unui alt serviciu comercial și strict necesar din motive tehnice obiective;"
+]
+},
+{
+"n":"41",
+"lines":[
+"41. „sistem de identificare biometrică la distanță” înseamnă un sistem de IA al cărui scop este de a identifica persoanele fizice, fără implicarea activă a acestora, de obicei la distanță, prin compararea datelor biometrice ale unei persoane cu datele biometrice conținute într-o bază de date de referință;"
+]
+},
+{
+"n":"42",
+"lines":[
+"42. „sistem de identificare biometrică la distanță în timp real” înseamnă un sistem de identificare biometrică la distanță în care atât capturarea datelor biometrice, cât și compararea și identificarea au loc fără întârzieri semnificative, incluzând nu numai identificarea instantanee, ci și întârzieri scurte limitate pentru a se evita eludarea;"
+]
+},
+{
+"n":"43",
+"lines":[
+"43. „sistem de identificare biometrică la distanță ulterioară” înseamnă un alt sistem de identificare biometrică la distanță decât sistemul de identificare biometrică la distanță în timp real;"
+]
+},
+{
+"n":"44",
+"lines":[
+"44. „spațiu accesibil publicului” înseamnă orice loc fizic aflat în proprietate publică sau privată, accesibil unui număr nedeterminat de persoane fizice, indiferent dacă se pot aplica anumite condiții de acces și indiferent de potențiale restricții de capacitate;"
+]
+},
+{
+"n":"45",
+"lines":[
+"45. „autoritate de aplicare a legii” înseamnă:",
 "(a) orice autoritate publică competentă în materie de prevenire, investigare, depistare sau urmărire penală a infracțiunilor sau de executare a sancțiunilor penale, inclusiv în materie de protejare împotriva amenințărilor la adresa securității publice și de prevenire a acestora; sau",
-"(b) orice alt organism sau entitate împuternicit(ă) de dreptul statului membru să exercite autoritate publică și competențe publice în scopul prevenirii, investigării, depistării sau urmăririi penale a infracțiunilor sau al executării sancțiunilor penale, inclusiv al protejării împotriva amenințărilor la adresa securității publice și al prevenirii acestora;",
-"46.",
-"„aplicarea legii” înseamnă activitățile desfășurate de autoritățile de aplicare a legii sau în numele acestora pentru prevenirea, investigarea, depistarea sau urmărirea penală a infracțiunilor sau pentru executarea sancțiunilor penale, inclusiv pentru protejarea împotriva amenințărilor la adresa securității publice și prevenirea acestora;",
-"47.",
-"„Oficiul pentru IA” înseamnă funcția Comisiei de a contribui la punerea în aplicare, monitorizarea și supravegherea sistemelor de IA și a modelelor de IA de uz general și la guvernanța IA, prevăzută în Decizia din 24 ianuarie 2024 a Comisiei; trimiterile din prezentul regulament la Oficiul pentru IA se interpretează ca trimiteri la Comisie;",
-"48.",
-"„autoritate națională competentă” înseamnă o autoritate de notificare sau o autoritate de supraveghere a pieței; în ceea ce privește sistemele de IA puse în funcțiune sau utilizate de instituțiile, agențiile, oficiile și organele Uniunii, mențiunile referitoare la autoritățile naționale competente sau la autoritățile de supraveghere a pieței din prezentul regulament se interpretează ca mențiuni referitoare la Autoritatea Europeană pentru Protecția Datelor;",
-"49.",
-"„incident grav” înseamnă un incident sau funcționarea necorespunzătoare a unui sistem de IA care, direct sau indirect, conduce la oricare dintre următoarele:",
+"(b) orice alt organism sau entitate împuternicit(ă) de dreptul statului membru să exercite autoritate publică și competențe publice în scopul prevenirii, investigării, depistării sau urmăririi penale a infracțiunilor sau al executării sancțiunilor penale, inclusiv al protejării împotriva amenințărilor la adresa securității publice și al prevenirii acestora;"
+]
+},
+{
+"n":"46",
+"lines":[
+"46. „aplicarea legii” înseamnă activitățile desfășurate de autoritățile de aplicare a legii sau în numele acestora pentru prevenirea, investigarea, depistarea sau urmărirea penală a infracțiunilor sau pentru executarea sancțiunilor penale, inclusiv pentru protejarea împotriva amenințărilor la adresa securității publice și prevenirea acestora;"
+]
+},
+{
+"n":"47",
+"lines":[
+"47. „Oficiul pentru IA” înseamnă funcția Comisiei de a contribui la punerea în aplicare, monitorizarea și supravegherea sistemelor de IA și a modelelor de IA de uz general și la guvernanța IA, prevăzută în Decizia din 24 ianuarie 2024 a Comisiei; trimiterile din prezentul regulament la Oficiul pentru IA se interpretează ca trimiteri la Comisie;"
+]
+},
+{
+"n":"48",
+"lines":[
+"48. „autoritate națională competentă” înseamnă o autoritate de notificare sau o autoritate de supraveghere a pieței; în ceea ce privește sistemele de IA puse în funcțiune sau utilizate de instituțiile, agențiile, oficiile și organele Uniunii, mențiunile referitoare la autoritățile naționale competente sau la autoritățile de supraveghere a pieței din prezentul regulament se interpretează ca mențiuni referitoare la Autoritatea Europeană pentru Protecția Datelor;"
+]
+},
+{
+"n":"49",
+"lines":[
+"49. „incident grav” înseamnă un incident sau funcționarea necorespunzătoare a unui sistem de IA care, direct sau indirect, conduce la oricare dintre următoarele:",
 "(a) decesul unei persoane sau vătămarea gravă a sănătății unei persoane;",
 "(b) o perturbare gravă și ireversibilă a gestionării sau a funcționării infrastructurii critice;",
 "(c) încălcarea obligațiilor care decurg din dreptul Uniunii menit să protejeze drepturile fundamentale;",
-"(d) daune grave aduse bunurilor sau mediului;",
-"50.",
-"„date cu caracter personal” înseamnă datele cu caracter personal astfel cum sunt definite la articolul 4 punctul 1 din Regulamentul (UE) 2016/679;",
-"51.",
-"„date fără caracter personal” înseamnă date, altele decât datele cu caracter personal definite la articolul 4 punctul 1 din Regulamentul (UE) 2016/679;",
-"52.",
-"„creare de profiluri” înseamnă creare de profiluri în sensul definiției de la articolul 4 punctul 4 din Regulamentul (UE) 2016/679;",
-"53.",
-"„plan de testare în condiții reale” înseamnă un document care descrie obiectivele, metodologia, domeniul de aplicare geografic, demografic și temporal, monitorizarea, organizarea și efectuarea testelor în condiții reale;",
-"54.",
-"„plan privind spațiul de testare” înseamnă un document convenit între furnizorul participant și autoritatea competentă care descrie obiectivele, condițiile, calendarul, metodologia și cerințele pentru activitățile desfășurate în spațiul de testare;",
-"55.",
-"„spațiu de testare în materie de reglementare în domeniul IA” înseamnă un cadru controlat instituit de o autoritate competentă care oferă furnizorilor sau potențialilor furnizori de sisteme de IA posibilitatea de a dezvolta, de a antrena, de a valida și de a testa, după caz în condiții reale, un sistem de IA inovator, pe baza unui plan privind spațiul de testare, pentru o perioadă limitată de timp, sub supraveghere reglementară;",
-"56.",
-"„alfabetizare în domeniul IA” înseamnă competențele, cunoștințele și înțelegerea care le permit furnizorilor, implementatorilor și persoanelor afectate, ținând seama de drepturile și obligațiile lor respective în contextul prezentului regulament, să implementeze sistemele de IA în cunoștință de cauză și să conștientizeze oportunitățile și riscurile pe care le implică IA, precum și prejudiciile pe care le pot aduce;",
-"57.",
-"„testare în condiții reale” înseamnă testarea temporară a unui sistem de IA în scopul său preconizat, în condiții reale, în afara unui laborator sau a unui mediu simulat în alt mod, în vederea colectării de date fiabile și solide și a evaluării și verificării conformității sistemului de IA cu cerințele prezentului regulament și nu se consideră introducere pe piață sau punere în funcțiune a sistemului de IA în sensul prezentului regulament, dacă sunt îndeplinite toate condițiile prevăzute la articolul 57 sau 60;",
-"58.",
-"„subiect” în scopul testării în condiții reale înseamnă o persoană fizică care participă la testarea în condiții reale;",
-"59.",
-"„consimțământ în cunoștință de cauză” înseamnă exprimarea liberă, specifică, neechivocă și voluntară de către un subiect a dorinței sale de a participa la o anumită testare în condiții reale, după ce a fost informat cu privire la toate aspectele testării care sunt relevante pentru decizia sa de a participa;",
-"60.",
-"„deepfake” înseamnă o imagine ori un conținut audio sau video generat sau manipulat de IA care prezintă o asemănare cu persoane, obiecte, locuri sau alte entități ori evenimente existente și care ar crea unei persoane impresia falsă că este autentic sau adevărat;",
-"61.",
-"„încălcare pe scară largă” înseamnă orice acțiuni sau omisiuni contrare dreptului Uniunii care protejează interesele persoanelor fizice și care:",
+"(d) daune grave aduse bunurilor sau mediului;"
+]
+},
+{
+"n":"50",
+"lines":[
+"50. „date cu caracter personal” înseamnă datele cu caracter personal astfel cum sunt definite la articolul 4 punctul 1 din Regulamentul (UE) 2016/679;"
+]
+},
+{
+"n":"51",
+"lines":[
+"51. „date fără caracter personal” înseamnă date, altele decât datele cu caracter personal definite la articolul 4 punctul 1 din Regulamentul (UE) 2016/679;"
+]
+},
+{
+"n":"52",
+"lines":[
+"52. „creare de profiluri” înseamnă creare de profiluri în sensul definiției de la articolul 4 punctul 4 din Regulamentul (UE) 2016/679;"
+]
+},
+{
+"n":"53",
+"lines":[
+"53. „plan de testare în condiții reale” înseamnă un document care descrie obiectivele, metodologia, domeniul de aplicare geografic, demografic și temporal, monitorizarea, organizarea și efectuarea testelor în condiții reale;"
+]
+},
+{
+"n":"54",
+"lines":[
+"54. „plan privind spațiul de testare” înseamnă un document convenit între furnizorul participant și autoritatea competentă care descrie obiectivele, condițiile, calendarul, metodologia și cerințele pentru activitățile desfășurate în spațiul de testare;"
+]
+},
+{
+"n":"55",
+"lines":[
+"55. „spațiu de testare în materie de reglementare în domeniul IA” înseamnă un cadru controlat instituit de o autoritate competentă care oferă furnizorilor sau potențialilor furnizori de sisteme de IA posibilitatea de a dezvolta, de a antrena, de a valida și de a testa, după caz în condiții reale, un sistem de IA inovator, pe baza unui plan privind spațiul de testare, pentru o perioadă limitată de timp, sub supraveghere reglementară;"
+]
+},
+{
+"n":"56",
+"lines":[
+"56. „alfabetizare în domeniul IA” înseamnă competențele, cunoștințele și înțelegerea care le permit furnizorilor, implementatorilor și persoanelor afectate, ținând seama de drepturile și obligațiile lor respective în contextul prezentului regulament, să implementeze sistemele de IA în cunoștință de cauză și să conștientizeze oportunitățile și riscurile pe care le implică IA, precum și prejudiciile pe care le pot aduce;"
+]
+},
+{
+"n":"57",
+"lines":[
+"57. „testare în condiții reale” înseamnă testarea temporară a unui sistem de IA în scopul său preconizat, în condiții reale, în afara unui laborator sau a unui mediu simulat în alt mod, în vederea colectării de date fiabile și solide și a evaluării și verificării conformității sistemului de IA cu cerințele prezentului regulament și nu se consideră introducere pe piață sau punere în funcțiune a sistemului de IA în sensul prezentului regulament, dacă sunt îndeplinite toate condițiile prevăzute la articolul 57 sau 60;"
+]
+},
+{
+"n":"58",
+"lines":[
+"58. „subiect” în scopul testării în condiții reale înseamnă o persoană fizică care participă la testarea în condiții reale;"
+]
+},
+{
+"n":"59",
+"lines":[
+"59. „consimțământ în cunoștință de cauză” înseamnă exprimarea liberă, specifică, neechivocă și voluntară de către un subiect a dorinței sale de a participa la o anumită testare în condiții reale, după ce a fost informat cu privire la toate aspectele testării care sunt relevante pentru decizia sa de a participa;"
+]
+},
+{
+"n":"60",
+"lines":[
+"60. „deepfake” înseamnă o imagine ori un conținut audio sau video generat sau manipulat de IA care prezintă o asemănare cu persoane, obiecte, locuri sau alte entități ori evenimente existente și care ar crea unei persoane impresia falsă că este autentic sau adevărat;"
+]
+},
+{
+"n":"61",
+"lines":[
+"61. „încălcare pe scară largă” înseamnă orice acțiuni sau omisiuni contrare dreptului Uniunii care protejează interesele persoanelor fizice și care:",
 "(a) au adus sau ar putea aduce prejudicii intereselor colective ale persoanelor care își au reședința în cel puțin două state membre diferite de statul membru în care:",
 "  (i) au fost inițiate sau au avut loc acțiunile sau omisiunile în cauză;",
 "  (ii) se află sau este stabilit furnizorul în cauză sau, după caz, reprezentantul său autorizat; sau",
 "  (iii) este stabilit implementatorul, atunci când încălcarea este comisă de implementator;",
-"(b) au adus, aduc sau sunt susceptibile să aducă prejudicii intereselor colective ale persoanelor și au caracteristici comune, cum ar fi aceeași practică ilegală, încălcarea aceluiași interes, care survin în același timp, fiind comise de același operator, în cel puțin trei state membre;",
-"62.",
-"„infrastructură critică” înseamnă infrastructură critică în sensul definiției de la articolul 2 punctul 4 din Directiva (UE) 2022/2557;",
-"63.",
-"„model de IA de uz general” înseamnă un model de IA, inclusiv în cazul în care un astfel de model de IA este antrenat cu un volum mare de date care utilizează autosupravegherea la scară largă, care prezintă o generalitate semnificativă și este capabil să îndeplinească în mod competent o gamă largă de sarcini distincte, indiferent de modul în care este introdus pe piață și care poate fi integrat într-o varietate de sisteme sau aplicații din aval, cu excepția modelelor de IA care sunt utilizate pentru activități de cercetare, dezvoltare sau creare de prototipuri înainte de introducerea pe piață;",
-"64.",
-"„capabilități cu impact ridicat” înseamnă capabilități care corespund capabilităților înregistrate în cele mai avansate modele de IA de uz general sau depășesc capabilitățile respective;",
-"65.",
-"„risc sistemic” înseamnă un risc specific capabilităților cu impact ridicat ale modelelor de IA de uz general, având un impact semnificativ asupra pieței Uniunii ca urmare a amplorii acestora sau a efectelor negative reale sau previzibile în mod rezonabil asupra sănătății publice, siguranței, securității publice, drepturilor fundamentale sau asupra societății în ansamblu, care poate fi propagat la scară largă de-a lungul lanțului valoric;",
-"66.",
-"„sistem de IA de uz general” înseamnă un sistem de IA care se bazează pe un model de IA de uz general și care are capabilitatea de a deservi o varietate de scopuri, atât pentru utilizare directă, cât și pentru integrarea în alte sisteme de IA;",
-"67.",
-"„operație în virgulă mobilă” înseamnă orice operație matematică sau atribuire care implică numere în virgulă mobilă, care sunt o subcategorie a numerelor reale și sunt reprezentate de regulă în informatică printr-un număr întreg cu precizie fixă multiplicat cu o bază fixă având un exponent număr întreg;",
-"68.",
-"„furnizor din aval” înseamnă un furnizor al unui sistem de IA, inclusiv al unui sistem de IA de uz general, care integrează un model de IA, indiferent dacă modelul de IA este furnizat de furnizorul însuși și integrat vertical sau dacă acesta este furnizat de o altă entitate pe baza unor relații contractuale."
+"(b) au adus, aduc sau sunt susceptibile să aducă prejudicii intereselor colective ale persoanelor și au caracteristici comune, cum ar fi aceeași practică ilegală, încălcarea aceluiași interes, care survin în același timp, fiind comise de același operator, în cel puțin trei state membre;"
+]
+},
+{
+"n":"62",
+"lines":[
+"62. „infrastructură critică” înseamnă infrastructură critică în sensul definiției de la articolul 2 punctul 4 din Directiva (UE) 2022/2557;"
+]
+},
+{
+"n":"63",
+"lines":[
+"63. „model de IA de uz general” înseamnă un model de IA, inclusiv în cazul în care un astfel de model de IA este antrenat cu un volum mare de date care utilizează autosupravegherea la scară largă, care prezintă o generalitate semnificativă și este capabil să îndeplinească în mod competent o gamă largă de sarcini distincte, indiferent de modul în care este introdus pe piață și care poate fi integrat într-o varietate de sisteme sau aplicații din aval, cu excepția modelelor de IA care sunt utilizate pentru activități de cercetare, dezvoltare sau creare de prototipuri înainte de introducerea pe piață;"
+]
+},
+{
+"n":"64",
+"lines":[
+"64. „capabilități cu impact ridicat” înseamnă capabilități care corespund capabilităților înregistrate în cele mai avansate modele de IA de uz general sau depășesc capabilitățile respective;"
+]
+},
+{
+"n":"65",
+"lines":[
+"65. „risc sistemic” înseamnă un risc specific capabilităților cu impact ridicat ale modelelor de IA de uz general, având un impact semnificativ asupra pieței Uniunii ca urmare a amplorii acestora sau a efectelor negative reale sau previzibile în mod rezonabil asupra sănătății publice, siguranței, securității publice, drepturilor fundamentale sau asupra societății în ansamblu, care poate fi propagat la scară largă de-a lungul lanțului valoric;"
+]
+},
+{
+"n":"66",
+"lines":[
+"66. „sistem de IA de uz general” înseamnă un sistem de IA care se bazează pe un model de IA de uz general și care are capabilitatea de a deservi o varietate de scopuri, atât pentru utilizare directă, cât și pentru integrarea în alte sisteme de IA;"
+]
+},
+{
+"n":"67",
+"lines":[
+"67. „operație în virgulă mobilă” înseamnă orice operație matematică sau atribuire care implică numere în virgulă mobilă, care sunt o subcategorie a numerelor reale și sunt reprezentate de regulă în informatică printr-un număr întreg cu precizie fixă multiplicat cu o bază fixă având un exponent număr întreg;"
+]
+},
+{
+"n":"68",
+"lines":[
+"68. „furnizor din aval” înseamnă un furnizor al unui sistem de IA, inclusiv al unui sistem de IA de uz general, care integrează un model de IA, indiferent dacă modelul de IA este furnizat de furnizorul însuși și integrat vertical sau dacă acesta este furnizat de o altă entitate pe baza unor relații contractuale."
 ]
 }
 ]
@@ -4266,24 +4538,48 @@
 {
 "n":null,
 "lines":[
-"Regulamentul (UE) 2018/1139 se modifică după cum urmează:",
-"1.",
-"La articolul 17, se adaugă următorul alineat:",
-"„(3) Fără a aduce atingere alineatului (2), la adoptarea actelor de punere în aplicare în temeiul alineatului (1) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689 al Parlamentului European și al Consiliului (*), se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.",
-"2.",
-"La articolul 19, se adaugă următorul alineat:",
-"„(4) La adoptarea actelor delegate în temeiul alineatelor (1) și (2) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689, se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”",
-"3.",
-"La articolul 43, se adaugă următorul alineat:",
-"„(4) La adoptarea actelor de punere în aplicare în temeiul alineatului (1) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689, se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”",
-"4.",
-"La articolul 47, se adaugă următorul alineat:",
-"„(3) La adoptarea actelor delegate în temeiul alineatelor (1) și (2) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689 se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”",
-"5.",
-"La articolul 57, se adaugă următorul paragraf:",
-"„La adoptarea actelor de punere în aplicare în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689 se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”",
-"6.",
-"La articolul 58, se adaugă următorul alineat:",
+"Regulamentul (UE) 2018/1139 se modifică după cum urmează:"
+]
+},
+{
+"n":"1",
+"lines":[
+"1. La articolul 17, se adaugă următorul alineat:",
+"„(3) Fără a aduce atingere alineatului (2), la adoptarea actelor de punere în aplicare în temeiul alineatului (1) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689 al Parlamentului European și al Consiliului (*), se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv."
+]
+},
+{
+"n":"2",
+"lines":[
+"2. La articolul 19, se adaugă următorul alineat:",
+"„(4) La adoptarea actelor delegate în temeiul alineatelor (1) și (2) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689, se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”"
+]
+},
+{
+"n":"3",
+"lines":[
+"3. La articolul 43, se adaugă următorul alineat:",
+"„(4) La adoptarea actelor de punere în aplicare în temeiul alineatului (1) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689, se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”"
+]
+},
+{
+"n":"4",
+"lines":[
+"4. La articolul 47, se adaugă următorul alineat:",
+"„(3) La adoptarea actelor delegate în temeiul alineatelor (1) și (2) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689 se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”"
+]
+},
+{
+"n":"5",
+"lines":[
+"5. La articolul 57, se adaugă următorul paragraf:",
+"„La adoptarea actelor de punere în aplicare în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689 se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”"
+]
+},
+{
+"n":"6",
+"lines":[
+"6. La articolul 58, se adaugă următorul alineat:",
 "„(3) La adoptarea actelor delegate în temeiul alineatelor (1) și (2) în ceea ce privește sistemele de inteligență artificială care sunt componente de siguranță în sensul Regulamentului (UE) 2024/1689, se ține seama de cerințele prevăzute în capitolul III secțiunea 2 din regulamentul respectiv.”"
 ]
 }

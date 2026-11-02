@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ANNEX_III_USES, CLIENT_OBLIGATIONS, DEROGATIONS, PROHIBITED_PRACTICES, TRANSPARENCY_TRIGGERS,
+  AI_CRITERIA, ANNEX_III_USES, CLIENT_OBLIGATIONS, SCOPE_EXCLUSIONS, DEROGATIONS, PROHIBITED_PRACTICES, TRANSPARENCY_TRIGGERS,
   classifyAiSystem, parseLawRefs, type AiSystemAnswers,
 } from "@togato/shared";
 import { loadLaw, lookup, resolveRef } from "./law";
@@ -9,9 +9,9 @@ import { loadLaw, lookup, resolveRef } from "./law";
  *  rezultate din combinații reprezentative de răspunsuri. */
 function allCatalogRefs(): string[] {
   const refs = new Set<string>();
-  for (const list of [PROHIBITED_PRACTICES, ANNEX_III_USES, DEROGATIONS, TRANSPARENCY_TRIGGERS]) for (const o of list) refs.add(o.article);
+  for (const list of [PROHIBITED_PRACTICES, ANNEX_III_USES, DEROGATIONS, TRANSPARENCY_TRIGGERS, AI_CRITERIA, SCOPE_EXCLUSIONS]) for (const o of list) refs.add(o.article);
   for (const o of CLIENT_OBLIGATIONS) refs.add(o.article);
-  const roles: AiSystemAnswers["role"][] = ["implementator", "furnizor", "implementator_modificat"];
+  const roles: AiSystemAnswers["role"][] = ["implementator", "furnizor", "implementator_modificat", "importator", "distribuitor"];
   const variants: Partial<AiSystemAnswers>[] = [
     {}, { prohibited: ["5a_manipulare"] }, { annexI: true },
     { annexIII: ["4a_recrutare"], workplace: true, decisionsOnPersons: true, publicService: true, publicAuthority: true },
@@ -22,6 +22,7 @@ function allCatalogRefs(): string[] {
     { transparency: ["text_interes_public"], editorialReview: true },
     { gpaiProvider: true },
     { annexI: true, decisionsOnPersons: true },
+    { qualification: "nu" }, { scopeExclusions: ["2_8_dezvoltare"] }, { scopeExclusions: ["2_12_sursa_deschisa"] },
     { annexI: true, annexIII: ["2_infrastructura_critica"], publicService: true, decisionsOnPersons: true },
   ];
   for (const role of roles) for (const v of variants) {

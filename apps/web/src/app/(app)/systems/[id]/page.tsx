@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { AiSystem, Obligation, ReviewStatus, RiskLevel } from "@togato/shared";
-import { RISK_LABELS } from "@togato/shared";
+import { LEGAL_ROLE_LABELS, QUALIFICATION_OPTIONS, RISK_LABELS, SCOPE_EXCLUSIONS } from "@togato/shared";
 import { ANNEX_III_USES, PORTAL_QUESTIONS, PROHIBITED_PRACTICES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS, portalFlags } from "@togato/shared";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { formatDate } from "@/lib/format";
@@ -50,7 +50,7 @@ function ReviewPanel({ system, onChange }: { system: SystemDetail; onChange: (s:
   );
 }
 
-const OVERRIDE_LEVELS: RiskLevel[] = ["minim", "transparenta", "risc_ridicat", "interzis"];
+const OVERRIDE_LEVELS: RiskLevel[] = ["neaplicabil", "minim", "transparenta", "risc_ridicat", "interzis"];
 
 function OverridePanel({ system, onChange }: { system: SystemDetail; onChange: (s: SystemDetail) => void }) {
   const [open, setOpen] = useState(false);
@@ -213,6 +213,8 @@ export default function SystemPage() {
   const done = active.filter((o) => o.status === "indeplinit").length;
   const label = (list: { code: string; label: string }[], codes: string[]) => codes.map((code) => list.find((o) => o.code === code)?.label).filter(Boolean) as string[];
   const facts: [string, string[]][] = [
+    ["E sistem de IA (Art. 3 pct. 1)", [QUALIFICATION_OPTIONS.find((q) => q.code === a.qualification)?.label ?? "—"]],
+    ["Excluderi (Art. 2)", label(SCOPE_EXCLUSIONS, a.scopeExclusions)],
     ["Rolul firmei", [ROLE_OPTIONS.find((r) => r.code === a.role)?.label || "—"]],
     ["Practici interzise", label(PROHIBITED_PRACTICES, a.prohibited)],
     ["Domenii Anexa III", label(ANNEX_III_USES, a.annexIII)],
@@ -267,7 +269,7 @@ export default function SystemPage() {
               {system.riskOverride && system.riskOverride !== c.riskLevel && (
                 <div className="mt-2"><Alert kind="info">Încadrarea afișată ({RISK_LABELS[system.riskOverride]}) a fost stabilită manual de avocat. Mai jos este încadrarea calculată: {RISK_LABELS[c.riskLevel]}.</Alert></div>
               )}
-              <p className="mt-1 text-[13px] text-slate-500">Rol: <b className="text-slate-700">{c.role === "furnizor" ? "furnizor" : "implementator"}</b>{c.highRiskBasis && <> · temei: <b className="text-slate-700">{c.highRiskBasis === "anexa_i" ? "Anexa I" : "Anexa III"}</b></>}</p>
+              <p className="mt-1 text-[13px] text-slate-500">Rol: <b className="text-slate-700">{LEGAL_ROLE_LABELS[c.role].toLowerCase()}</b>{c.highRiskBasis && <> · temei: <b className="text-slate-700">{c.highRiskBasis === "anexa_i" ? "Anexa I" : "Anexa III"}</b></>}</p>
               <ul className="mt-3 space-y-2">
                 {c.reasons.map((r, i) => (
                   <li key={i} className="flex gap-3 text-[13px] text-slate-700">

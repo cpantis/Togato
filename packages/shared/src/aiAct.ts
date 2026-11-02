@@ -34,7 +34,7 @@ export interface Option {
   article: string;
 }
 
-export type RoleAnswer = "implementator" | "furnizor" | "implementator_modificat";
+export type RoleAnswer = "implementator" | "furnizor" | "implementator_modificat" | "importator" | "distribuitor";
 
 export const ROLE_OPTIONS: { code: RoleAnswer; label: string; help: string }[] = [
   {
@@ -49,9 +49,47 @@ export const ROLE_OPTIONS: { code: RoleAnswer; label: string; help: string }[] =
   },
   {
     code: "implementator_modificat",
-    label: "Folosește un sistem terț, dar l-a rebranduit, l-a modificat substanțial sau i-a schimbat scopul",
+    label: "Folosește sau revinde un sistem terț, dar l-a rebranduit, l-a modificat substanțial sau i-a schimbat scopul",
     help: "Art. 25: pentru sistemele cu risc ridicat, firma preia obligațiile furnizorului.",
   },
+  {
+    code: "importator",
+    label: "Aduce pe piața UE un sistem AI al unui furnizor din afara UE",
+    help: "Firma e „importator” (Art. 3 pct. 6). Obligațiile proprii sunt în Art. 23.",
+  },
+  {
+    code: "distribuitor",
+    label: "Revinde sau pune la dispoziție un sistem AI, fără să fie furnizorul ori importatorul lui",
+    help: "Firma e „distribuitor” (Art. 3 pct. 7), ex. un integrator sau revânzător. Obligațiile proprii sunt în Art. 24.",
+  },
+];
+
+// ─── Calificare: e sistem de IA? Intră în domeniul de aplicare? ─
+
+export type AiQualification = "da" | "nu" | "neclar";
+
+export const QUALIFICATION_OPTIONS: { code: AiQualification; label: string }[] = [
+  { code: "da", label: "Da, este un sistem de IA" },
+  { code: "nu", label: "Nu, nu este un sistem de IA" },
+  { code: "neclar", label: "Neclar — de verificat" },
+];
+
+/** Elementele definiției din Art. 3 pct. 1 — indicii pentru calificare */
+export const AI_CRITERIA: Option[] = [
+  { code: "masina", article: "Art. 3 pct. 1", label: "Funcționează pe bază de software (un sistem bazat pe o mașină)" },
+  { code: "autonomie", article: "Art. 3 pct. 1", label: "Funcționează cu un anumit grad de autonomie față de intervenția umană" },
+  { code: "deductie", article: "Art. 3 pct. 1", label: "Deduce din datele primite cum să genereze rezultatele (ex. învățare automată), nu doar aplică reguli fixe definite integral de om" },
+  { code: "rezultate", article: "Art. 3 pct. 1", label: "Generează previziuni, conținut, recomandări sau decizii" },
+  { code: "influenta", article: "Art. 3 pct. 1", label: "Rezultatele pot influența medii fizice sau virtuale" },
+];
+
+/** Art. 2 — situații în care regulamentul nu se aplică */
+export const SCOPE_EXCLUSIONS: Option[] = [
+  { code: "2_3_aparare", article: "Art. 2(3)", label: "Folosit exclusiv în scopuri militare, de apărare sau de securitate națională" },
+  { code: "2_6_cercetare", article: "Art. 2(6)", label: "Dezvoltat și pus în funcțiune special și exclusiv pentru cercetare și dezvoltare științifică" },
+  { code: "2_8_dezvoltare", article: "Art. 2(8)", label: "Este încă în cercetare, testare sau dezvoltare, înainte de introducerea pe piață sau punerea în funcțiune (fără testare în condiții reale)" },
+  { code: "2_10_personal", article: "Art. 2(10)", label: "Folosit de o persoană fizică într-o activitate strict personală, fără caracter profesional" },
+  { code: "2_12_sursa_deschisa", article: "Art. 2(12)", label: "Lansat sub licență liberă și cu sursă deschisă (nu se aplică pentru practici interzise, risc ridicat sau Art. 50)" },
 ];
 
 /** Art. 5(1) — practici interzise */
@@ -106,6 +144,12 @@ export const TRANSPARENCY_TRIGGERS: Option[] = [
 ];
 
 export interface AiSystemAnswers {
+  /** instrumentul îndeplinește definiția sistemului de IA (Art. 3 pct. 1) */
+  qualification: AiQualification;
+  /** coduri din AI_CRITERIA — indiciile bifate */
+  aiCriteria: string[];
+  /** coduri din SCOPE_EXCLUSIONS (Art. 2) */
+  scopeExclusions: string[];
   role: RoleAnswer;
   /** coduri din PROHIBITED_PRACTICES */
   prohibited: string[];
@@ -134,6 +178,9 @@ export interface AiSystemAnswers {
 }
 
 export const EMPTY_ANSWERS: AiSystemAnswers = {
+  qualification: "neclar",
+  aiCriteria: [],
+  scopeExclusions: [],
   role: "implementator",
   prohibited: [],
   annexIII: [],
@@ -151,14 +198,22 @@ export const EMPTY_ANSWERS: AiSystemAnswers = {
 
 // ─── Rezultat ────────────────────────────────────────────
 
-export type RiskLevel = "interzis" | "risc_ridicat" | "transparenta" | "minim";
-export type LegalRole = "furnizor" | "implementator";
+export type RiskLevel = "interzis" | "risc_ridicat" | "transparenta" | "minim" | "neaplicabil";
+export type LegalRole = "furnizor" | "implementator" | "importator" | "distribuitor";
+
+export const LEGAL_ROLE_LABELS: Record<LegalRole, string> = {
+  furnizor: "Furnizor",
+  implementator: "Implementator",
+  importator: "Importator",
+  distribuitor: "Distribuitor",
+};
 
 export const RISK_LABELS: Record<RiskLevel | "neclasificat", string> = {
   interzis: "Interzis",
   risc_ridicat: "Risc ridicat",
   transparenta: "Transparență",
   minim: "Risc minim",
+  neaplicabil: "În afara AI Act",
   neclasificat: "Neclasificat",
 };
 
@@ -324,6 +379,29 @@ function highRiskDeployer(appliesFrom: string, a: AiSystemAnswers, annexIIIHigh:
   return list;
 }
 
+function highRiskImporter(appliesFrom: string): ObligationTemplate[] {
+  const o = (code: string, article: string, title: string, description: string): ObligationTemplate => ({ code, article, title, description, appliesFrom, scope: "system" });
+  return [
+    o("art23_1_verificare", "Art. 23(1)", "Verificarea conformității înainte de introducerea pe piață", "Verificați că furnizorul a efectuat evaluarea conformității (Art. 43), a întocmit documentația tehnică (Art. 11, Anexa IV), sistemul poartă marcajul CE și e însoțit de declarația de conformitate (Art. 47) și de instrucțiuni, iar furnizorul și-a desemnat un reprezentant autorizat (Art. 22)."),
+    o("art23_2_neconformitate", "Art. 23(2)", "Neintroducerea pe piață a unui sistem neconform", "Dacă sistemul nu e conform sau documentația e falsificată, nu se introduce pe piață până la aducerea în conformitate; dacă prezintă un risc, se informează furnizorul, reprezentantul autorizat și autoritățile."),
+    o("art23_3_identificare", "Art. 23(3)", "Indicarea numelui și a datelor de contact ale importatorului", "Numele, denumirea comercială sau marca și adresa de contact apar pe ambalaj sau în documentele care însoțesc sistemul."),
+    o("art23_4_depozitare", "Art. 23(4)", "Condiții de depozitare și transport", "Cât timp sistemul e în responsabilitatea importatorului, depozitarea și transportul nu îi periclitează conformitatea."),
+    o("art23_5_pastrare", "Art. 23(5)", "Păstrarea documentelor 10 ani", "Copia certificatului organismului notificat (după caz), a instrucțiunilor de utilizare și a declarației de conformitate UE se păstrează 10 ani."),
+    o("art23_6_cooperare", "Art. 23(6)", "Informarea și cooperarea cu autoritățile", "La cerere motivată, importatorul furnizează autorităților informațiile și documentația care dovedesc conformitatea și cooperează la măsurile luate (Art. 23(6)–(7))."),
+  ];
+}
+
+function highRiskDistributor(appliesFrom: string): ObligationTemplate[] {
+  const o = (code: string, article: string, title: string, description: string): ObligationTemplate => ({ code, article, title, description, appliesFrom, scope: "system" });
+  return [
+    o("art24_1_verificare", "Art. 24(1)", "Verificarea marcajului CE și a documentelor", "Înainte de punerea la dispoziție, verificați marcajul CE, declarația de conformitate UE (Art. 47), instrucțiunile de utilizare și faptul că furnizorul și importatorul și-au respectat obligațiile."),
+    o("art24_2_neconformitate", "Art. 24(2)", "Nepunerea la dispoziție a unui sistem neconform", "Dacă există motive să considerați că sistemul nu e conform, nu îl puneți la dispoziție până la aducerea în conformitate; dacă prezintă un risc, informați furnizorul sau importatorul."),
+    o("art24_3_depozitare", "Art. 24(3)", "Condiții de depozitare și transport", "Cât timp sistemul e în responsabilitatea distribuitorului, depozitarea și transportul nu îi periclitează conformitatea."),
+    o("art24_4_corective", "Art. 24(4)", "Măsuri corective pentru sisteme neconforme", "Pentru un sistem deja pus la dispoziție și neconform: aducerea în conformitate, retragerea sau rechemarea, ori asigurarea că furnizorul sau importatorul le ia; informarea autorităților dacă prezintă un risc."),
+    o("art24_5_cooperare", "Art. 24(5)", "Informarea și cooperarea cu autoritățile", "La cerere motivată, distribuitorul furnizează informațiile și documentația despre acțiunile sale și cooperează la măsurile luate (Art. 24(5)–(6))."),
+  ];
+}
+
 function highRiskProvider(appliesFrom: string): ObligationTemplate[] {
   const o = (code: string, article: string, title: string, description: string): ObligationTemplate => ({ code, article, title, description, appliesFrom, scope: "system" });
   return [
@@ -358,6 +436,9 @@ export function normalizeAnswers(input: Partial<AiSystemAnswers> | null | undefi
     Array.isArray(codes) ? codes.filter((c): c is string => typeof c === "string" && list.some((o) => o.code === c)) : [];
   return {
     ...a,
+    qualification: QUALIFICATION_OPTIONS.some((q) => q.code === a.qualification) ? a.qualification : "neclar",
+    aiCriteria: keep(a.aiCriteria, AI_CRITERIA),
+    scopeExclusions: keep(a.scopeExclusions, SCOPE_EXCLUSIONS),
     role: ROLE_OPTIONS.some((r) => r.code === a.role) ? a.role : "implementator",
     prohibited: keep(a.prohibited, PROHIBITED_PRACTICES),
     annexIII: keep(a.annexIII, ANNEX_III_USES),
@@ -379,6 +460,29 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
   const reasons: Reason[] = [];
   const warnings: string[] = [];
   const obligations: ObligationTemplate[] = [];
+  const baseRole: LegalRole = a.role === "importator" || a.role === "distribuitor" ? a.role : a.role === "furnizor" ? "furnizor" : "implementator";
+  const providerLike = a.role === "furnizor" || a.role === "implementator_modificat";
+
+  // 0. Calificare (Art. 3 pct. 1) și domeniul de aplicare (Art. 2)
+  const outOfScope = (why: Reason[], warn: string[]): ClassificationResult => ({
+    riskLevel: "neaplicabil", role: baseRole, highRiskBasis: null, reasons: why, warnings: warn, obligations: [],
+  });
+  if (a.qualification === "nu") {
+    return outOfScope(
+      [{ text: "Instrumentul nu îndeplinește definiția sistemului de IA", article: "Art. 3 pct. 1" }],
+      ["Documentați motivele calificării (ex. funcționează doar pe reguli fixe definite integral de om). Reevaluați dacă instrumentul se schimbă."],
+    );
+  }
+  const hardExclusions = a.scopeExclusions.filter((c) => c !== "2_12_sursa_deschisa");
+  if (hardExclusions.length) {
+    return outOfScope(
+      hardExclusions.map((c) => { const e = byCode(SCOPE_EXCLUSIONS, c)!; return { text: e.label, article: e.article }; }),
+      ["Excluderea din domeniul de aplicare trebuie documentată. Reevaluați la orice schimbare a utilizării (ex. trecerea din dezvoltare în producție)."],
+    );
+  }
+  if (a.qualification === "neclar") {
+    warnings.push("Calificarea ca sistem de IA (Art. 3 pct. 1) nu a fost confirmată. Încadrarea pornește de la ipoteza că instrumentul este un sistem de IA.");
+  }
 
   // 1. Practici interzise — au prioritate
   if (a.prohibited.length > 0) {
@@ -389,10 +493,10 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
     obligations.push(OBL.art5_incetare);
     return {
       riskLevel: "interzis",
-      role: a.role === "implementator" ? "implementator" : "furnizor",
+      role: providerLike ? "furnizor" : baseRole,
       highRiskBasis: null,
       reasons,
-      warnings: ["Practicile interzise se aplică din 2 februarie 2025. Recomandați clientului oprirea imediată a utilizării."],
+      warnings: [...warnings, "Practicile interzise se aplică din 2 februarie 2025. Recomandați clientului oprirea imediată a utilizării."],
       obligations,
     };
   }
@@ -413,7 +517,7 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
         reasons.push({ text: `Domeniu din Anexa III, dar se aplică derogarea: ${d.label.toLowerCase()}`, article: d.article });
       }
       warnings.push(
-        a.role === "implementator"
+        !providerLike
           ? "Derogarea Art. 6(3) o stabilește furnizorul. Cereți furnizorului evaluarea documentată (Art. 6(4)) și verificați înregistrarea în baza de date a UE."
           : "Derogarea Art. 6(3) trebuie documentată înainte de introducerea pe piață (Art. 6(4)), iar sistemul se înregistrează în baza de date a UE (Art. 49(2)).",
       );
@@ -424,7 +528,7 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
         reasons.push({ text: "Derogările nu se aplică: sistemul face profilarea persoanelor fizice", article: "Art. 6(3) ultimul paragraf" });
       }
     }
-    if (derogated && a.role !== "implementator") {
+    if (derogated && providerLike) {
       obligations.push(
         { code: "art6_4_evaluare", article: "Art. 6(4)", title: "Documentarea evaluării că sistemul nu e cu risc ridicat", description: "Evaluarea se documentează înainte de introducerea pe piață și se pune la dispoziția autorității, la cerere.", appliesFrom: D.highRiskAnnexIII, scope: "system" },
         { code: "art49_2_inregistrare", article: "Art. 49(2)", title: "Înregistrarea în baza de date a UE (sistem derogat)", description: "Și sistemele din Anexa III considerate fără risc ridicat se înregistrează de furnizor.", appliesFrom: D.highRiskAnnexIII, scope: "system" },
@@ -439,7 +543,7 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
   }
 
   // Rolul juridic: Art. 25 — implementatorul care rebranduiește / modifică devine furnizor pentru risc ridicat
-  let role: LegalRole = a.role === "furnizor" ? "furnizor" : "implementator";
+  let role: LegalRole = baseRole;
   if (a.role === "implementator_modificat") {
     if (highRiskBasis) {
       role = "furnizor";
@@ -451,14 +555,25 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
 
   if (highRiskBasis) {
     const appliesFrom = highRiskBasis === "anexa_i" ? D.highRiskAnnexI : D.highRiskAnnexIII;
-    obligations.push(...(role === "furnizor" ? highRiskProvider(appliesFrom) : highRiskDeployer(appliesFrom, a, annexIIIHigh)));
+    obligations.push(...(
+      role === "furnizor" ? highRiskProvider(appliesFrom)
+        : role === "importator" ? highRiskImporter(appliesFrom)
+          : role === "distribuitor" ? highRiskDistributor(appliesFrom)
+            : highRiskDeployer(appliesFrom, a, annexIIIHigh)
+    ));
+    if (role === "importator" || role === "distribuitor") {
+      warnings.push(`Dacă firma folosește ea însăși sistemul, are și obligațiile implementatorului (Art. 26). Dacă îl rebranduiește sau îl modifică substanțial, devine furnizor (Art. 25).`);
+    }
     if (role === "furnizor" && a.decisionsOnPersons) {
       warnings.push("Ca furnizor, firma poate fi și implementator, dacă folosește ea însăși sistemul — verificați și obligațiile din Art. 26.");
     }
   }
 
-  // 3. Transparență — se cumulează cu risc ridicat
-  const tr = new Set(a.transparency);
+  // 3. Transparență — se cumulează cu risc ridicat; privește furnizorii și implementatorii
+  const tr = new Set(role === "importator" || role === "distribuitor" ? [] : a.transparency);
+  if ((role === "importator" || role === "distribuitor") && a.transparency.length) {
+    warnings.push("Obligațiile de transparență (Art. 50) revin furnizorului și implementatorului. Verificați că sistemul pus la dispoziție permite respectarea lor.");
+  }
   if (tr.has("chatbot")) obligations.push(role === "furnizor" ? OBL.art50_1_furnizor : OBL.art50_1_verificare);
   if (tr.has("continut_sintetic") && role === "furnizor") obligations.push(OBL.art50_2_furnizor);
   if (tr.has("emotii_biometric")) obligations.push(OBL.art50_3);
@@ -479,6 +594,14 @@ export function classifyAiSystem(input: Partial<AiSystemAnswers>): Classificatio
   if (a.gpaiProvider) {
     obligations.push({ code: "art53_gpai", article: "Art. 53", title: "Obligațiile furnizorilor de modele AI de uz general", description: "Documentație tehnică a modelului, informații pentru integratori, politică privind drepturile de autor, rezumat public al datelor de antrenare. Cazul cere analiză de specialitate.", appliesFrom: D.gpai, scope: "system" });
     warnings.push("Furnizorii de modele de uz general au un regim separat (Capitolul V). Cazul depășește chestionarul — necesită analiză dedicată.");
+  }
+
+  // Art. 2(12): sursa deschisă e exclusă doar dacă nu e practică interzisă, risc ridicat sau situație din Art. 50
+  if (a.scopeExclusions.includes("2_12_sursa_deschisa")) {
+    if (!highRiskBasis && a.transparency.length === 0) {
+      return outOfScope([{ text: byCode(SCOPE_EXCLUSIONS, "2_12_sursa_deschisa")!.label, article: "Art. 2(12)" }], warnings);
+    }
+    warnings.push("Excepția pentru licențe libere și cu sursă deschisă (Art. 2(12)) nu se aplică: sistemul e cu risc ridicat sau intră sub incidența Art. 50.");
   }
 
   const riskLevel: RiskLevel = highRiskBasis ? "risc_ridicat" : a.transparency.length > 0 ? "transparenta" : "minim";

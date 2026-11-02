@@ -17,7 +17,10 @@ const optionalText = (max: number) => z.string().trim().max(max).nullish().trans
 const codes = z.array(z.string().max(60)).max(30).default([]);
 
 const answersSchema = z.object({
-  role: z.enum(["implementator", "furnizor", "implementator_modificat"]).default("implementator"),
+  qualification: z.enum(["da", "nu", "neclar"]).default("neclar"),
+  aiCriteria: codes,
+  scopeExclusions: codes,
+  role: z.enum(["implementator", "furnizor", "implementator_modificat", "importator", "distribuitor"]).default("implementator"),
   prohibited: codes,
   annexIII: codes,
   annexI: z.boolean().default(false),
@@ -185,7 +188,7 @@ aiSystemRoutes.post("/:id/memo", async (c) => {
   return c.json(await systemResponse(auth.organizationId, s.id));
 });
 
-const RISK_LEVELS = ["minim", "transparenta", "risc_ridicat", "interzis"] as const;
+const RISK_LEVELS = ["neaplicabil", "minim", "transparenta", "risc_ridicat", "interzis"] as const;
 
 /** POST /:id/override { riskLevel | null, reason } — încadrarea stabilită manual de avocat */
 aiSystemRoutes.post("/:id/override", async (c) => {

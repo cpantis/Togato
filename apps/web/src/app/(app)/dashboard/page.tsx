@@ -8,8 +8,8 @@ import { daysUntil, formatDate } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, RiskBadge } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 
-const RISK_ORDER: (RiskLevel | "neclasificat")[] = ["interzis", "risc_ridicat", "transparenta", "minim"];
-const RISK_BAR: Record<string, string> = { interzis: "bg-red-500", risc_ridicat: "bg-orange-500", transparenta: "bg-sky-500", minim: "bg-emerald-500", neclasificat: "bg-slate-300" };
+const RISK_ORDER: (RiskLevel | "neclasificat")[] = ["interzis", "risc_ridicat", "transparenta", "minim", "neaplicabil"];
+const RISK_BAR: Record<string, string> = { interzis: "bg-red-500", risc_ridicat: "bg-orange-500", transparenta: "bg-sky-500", minim: "bg-emerald-500", neaplicabil: "bg-slate-300", neclasificat: "bg-slate-300" };
 
 function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (

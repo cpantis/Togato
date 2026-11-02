@@ -6,6 +6,7 @@ describe("parseLawRefs", () => {
     expect(parseLawRefs("Art. 5(1)(f)")).toEqual([{ kind: "article", article: "5", paragraph: "1", point: "f", label: "Art. 5(1)(f)" }]);
     expect(parseLawRefs("Art. 4")[0]).toMatchObject({ article: "4", paragraph: undefined });
     expect(parseLawRefs("Art. 26 alin. (7)")[0]).toMatchObject({ article: "26", paragraph: "7" });
+    expect(parseLawRefs("Art. 3 pct. 1")[0]).toMatchObject({ article: "3", paragraph: "1" });
   });
   it("anexe", () => {
     expect(parseLawRefs("Anexa III pct. 4(a)")[0]).toMatchObject({ kind: "annex", annex: "III", item: "4", point: "a" });

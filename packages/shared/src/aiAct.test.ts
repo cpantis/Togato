@@ -114,3 +114,56 @@ describe("classifyAiSystem", () => {
     expect(r.riskLevel).toBe("minim");
   });
 });
+
+describe("calificare și domeniu de aplicare", () => {
+  it("un instrument care nu e sistem de IA e în afara AI Act, fără obligații", () => {
+    const r = classifyAiSystem({ qualification: "nu", annexIII: ["4a_recrutare"] });
+    expect(r.riskLevel).toBe("neaplicabil");
+    expect(r.obligations).toEqual([]);
+    expect(r.reasons[0].article).toBe("Art. 3 pct. 1");
+  });
+
+  it("calificarea neconfirmată nu blochează încadrarea, dar e semnalată", () => {
+    const r = classifyAiSystem({ annexIII: ["4a_recrutare"] });
+    expect(r.riskLevel).toBe("risc_ridicat");
+    expect(r.warnings.some((w) => w.includes("Art. 3 pct. 1"))).toBe(true);
+    expect(classifyAiSystem({ qualification: "da", annexIII: ["4a_recrutare"] }).warnings.some((w) => w.includes("Art. 3 pct. 1"))).toBe(false);
+  });
+
+  it("excluderile din Art. 2 scot sistemul din domeniu", () => {
+    const r = classifyAiSystem({ qualification: "da", scopeExclusions: ["2_8_dezvoltare"], annexIII: ["5b_scoring_credit"] });
+    expect(r.riskLevel).toBe("neaplicabil");
+    expect(r.reasons[0].article).toBe("Art. 2(8)");
+  });
+
+  it("sursa deschisă e exclusă doar fără risc ridicat și fără Art. 50", () => {
+    expect(classifyAiSystem({ qualification: "da", scopeExclusions: ["2_12_sursa_deschisa"] }).riskLevel).toBe("neaplicabil");
+    const hr = classifyAiSystem({ qualification: "da", scopeExclusions: ["2_12_sursa_deschisa"], annexIII: ["4a_recrutare"] });
+    expect(hr.riskLevel).toBe("risc_ridicat");
+    expect(hr.warnings.some((w) => w.includes("Art. 2(12)"))).toBe(true);
+    expect(classifyAiSystem({ qualification: "da", scopeExclusions: ["2_12_sursa_deschisa"], transparency: ["chatbot"] }).riskLevel).toBe("transparenta");
+  });
+});
+
+describe("importatori și distribuitori", () => {
+  it("importatorul unui sistem cu risc ridicat are obligațiile din Art. 23", () => {
+    const r = classifyAiSystem({ qualification: "da", role: "importator", annexIII: ["5b_scoring_credit"] });
+    expect(r.role).toBe("importator");
+    expect(codes(r)).toEqual(expect.arrayContaining(["art23_1_verificare", "art23_5_pastrare"]));
+    expect(codes(r)).not.toContain("art26_2_supraveghere");
+    expect(codes(r)).not.toContain("art9_riscuri");
+  });
+
+  it("distribuitorul are obligațiile din Art. 24, fără obligații de transparență proprii", () => {
+    const r = classifyAiSystem({ qualification: "da", role: "distribuitor", annexIII: ["4a_recrutare"], transparency: ["chatbot"] });
+    expect(r.role).toBe("distribuitor");
+    expect(codes(r)).toEqual(expect.arrayContaining(["art24_1_verificare", "art24_4_corective"]));
+    expect(codes(r).some((c) => c.startsWith("art50"))).toBe(false);
+    expect(r.warnings.some((w) => w.includes("Art. 50"))).toBe(true);
+  });
+
+  it("importatorul nu primește obligațiile de furnizor la derogarea Art. 6(3)", () => {
+    const r = classifyAiSystem({ qualification: "da", role: "importator", annexIII: ["4a_recrutare"], derogations: ["6_3a_sarcina_procedurala"] });
+    expect(codes(r)).not.toContain("art6_4_evaluare");
+  });
+});

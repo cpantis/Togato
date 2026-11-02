@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import {
-  ANNEX_III_USES, DEROGATIONS, EMPTY_ANSWERS, PROHIBITED_PRACTICES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS,
+  AI_CRITERIA, ANNEX_III_USES, DEROGATIONS, EMPTY_ANSWERS, LEGAL_ROLE_LABELS, PROHIBITED_PRACTICES, QUALIFICATION_OPTIONS, ROLE_OPTIONS, SCOPE_EXCLUSIONS, TRANSPARENCY_TRIGGERS,
   classifyAiSystem, type AiSystemAnswers, type Option,
 } from "@togato/shared";
 import { Alert, Button, Card, Field, RiskBadge, cn, inputClass, textareaClass } from "@/components/ui";
@@ -129,7 +129,30 @@ export function SystemForm({ initial, onSubmit, onCancel, submitLabel }: {
           </div>
         </Section>
 
-        <Section n={2} title="Rolul firmei" subtitle="Determină dacă firma are obligații de furnizor sau de implementator.">
+        <Section n={2} title="Calificare" subtitle="Întâi: este un sistem de IA în sensul legii și intră în domeniul de aplicare?">
+          <div className="mb-3 text-[13px] text-slate-600">
+            Definiția din <LawRef text="Art. 3 pct. 1" /> are aceste elemente. Instrumentele care doar aplică reguli fixe definite integral de om, de regulă, nu sunt sisteme de IA.
+          </div>
+          <CheckList options={AI_CRITERIA} value={a.aiCriteria} onChange={(x) => setA("aiCriteria", x)} />
+          <div className="mt-4 text-[13px] font-semibold text-slate-700">Concluzie</div>
+          <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
+            {QUALIFICATION_OPTIONS.map((q) => (
+              <label key={q.code} className={cn("flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] transition", a.qualification === q.code ? "border-brand/40 bg-brand-soft font-medium text-slate-800" : "border-slate-200 text-slate-600 hover:border-slate-300")}>
+                <input type="radio" name="qualification" className="h-4 w-4 accent-[#7a1f3a]" checked={a.qualification === q.code} onChange={() => setA("qualification", q.code)} />
+                {q.label}
+              </label>
+            ))}
+          </div>
+          {a.qualification === "da" && a.aiCriteria.length < AI_CRITERIA.length && (
+            <div className="mt-2"><Alert kind="warning">Nu toate elementele definiției sunt bifate. Verificați concluzia, în special elementul „deduce”.</Alert></div>
+          )}
+          <div className="mt-5 text-[13px] font-semibold text-slate-700">Excluderi din domeniul de aplicare (Art. 2)</div>
+          <div className="mt-2"><CheckList options={SCOPE_EXCLUSIONS} value={a.scopeExclusions} onChange={(x) => setA("scopeExclusions", x)} /></div>
+        </Section>
+
+        <div className={cn("space-y-4 transition", preview.riskLevel === "neaplicabil" && "opacity-50")}>
+        {preview.riskLevel === "neaplicabil" && <Alert kind="info">Instrumentul e în afara AI Act, așa că întrebările de mai jos nu schimbă încadrarea. Le puteți completa pentru evidență.</Alert>}
+        <Section n={3} title="Rolul firmei" subtitle="Determină ce obligații are firma: furnizor, implementator, importator sau distribuitor.">
           <div className="space-y-1.5">
             {ROLE_OPTIONS.map((r) => (
               <label key={r.code} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition", a.role === r.code ? "border-brand/40 bg-brand-soft" : "border-slate-200 hover:border-slate-300")}>
@@ -143,11 +166,11 @@ export function SystemForm({ initial, onSubmit, onCancel, submitLabel }: {
           </div>
         </Section>
 
-        <Section n={3} title="Practici interzise" subtitle="Bifează doar dacă sistemul e folosit astfel. Interzise din 2 februarie 2025.">
+        <Section n={4} title="Practici interzise" subtitle="Bifează doar dacă sistemul e folosit astfel. Interzise din 2 februarie 2025.">
           <CheckList options={PROHIBITED_PRACTICES} value={a.prohibited} onChange={(x) => setA("prohibited", x)} tone="danger" />
         </Section>
 
-        <Section n={4} title="Domenii cu risc ridicat" subtitle="Anexa III — bifează domeniile în care e folosit sistemul.">
+        <Section n={5} title="Domenii cu risc ridicat" subtitle="Anexa III — bifează domeniile în care e folosit sistemul.">
           <CheckList options={ANNEX_III_USES} value={a.annexIII} onChange={(x) => setA("annexIII", x)} />
           {a.annexIII.length > 0 && (
             <div className="mt-4 rounded-lg bg-slate-50 p-3">
@@ -161,20 +184,21 @@ export function SystemForm({ initial, onSubmit, onCancel, submitLabel }: {
           </div>
         </Section>
 
-        <Section n={5} title="Transparență" subtitle="Art. 50 — se aplică din 2 august 2026.">
+        <Section n={6} title="Transparență" subtitle="Art. 50 — se aplică din 2 august 2026.">
           <CheckList options={TRANSPARENCY_TRIGGERS} value={a.transparency} onChange={(x) => setA("transparency", x)} />
           {a.transparency.includes("text_interes_public") && (
             <YesNo label="Textele trec printr-o revizuire umană, sub responsabilitate editorială?" value={a.editorialReview} onChange={(x) => setA("editorialReview", x)} />
           )}
         </Section>
 
-        <Section n={6} title="Context" subtitle="Precizează ce obligații suplimentare se aplică.">
+        <Section n={7} title="Context" subtitle="Precizează ce obligații suplimentare se aplică.">
           <YesNo label="Folosit la locul de muncă, privește angajații?" help="Art. 26(7) — informarea angajaților" value={a.workplace} onChange={(x) => setA("workplace", x)} />
           <YesNo label="Ia sau asistă decizii despre persoane fizice?" help="Art. 26(11) și Art. 86 — informare și dreptul la explicație" value={a.decisionsOnPersons} onChange={(x) => setA("decisionsOnPersons", x)} />
           <YesNo label="Clientul e organism de drept public sau entitate privată care prestează servicii publice?" help="Art. 27 — evaluarea impactului asupra drepturilor fundamentale" value={a.publicService} onChange={(x) => setA("publicService", x)} />
           <YesNo label="Clientul este autoritate publică?" help="Art. 26(8) — înregistrarea utilizării în baza de date a UE" value={a.publicAuthority} onChange={(x) => setA("publicAuthority", x)} />
           <YesNo label="Clientul dezvoltă un model AI de uz general?" help="Regim separat, Capitolul V" value={a.gpaiProvider} onChange={(x) => setA("gpaiProvider", x)} />
         </Section>
+        </div>
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
@@ -182,7 +206,7 @@ export function SystemForm({ initial, onSubmit, onCancel, submitLabel }: {
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Încadrare propusă</div>
           <div className="mt-2 flex items-center gap-2">
             <RiskBadge level={preview.riskLevel} className="text-[13px]" />
-            <span className="text-[12px] text-slate-500">{preview.role === "furnizor" ? "Furnizor" : "Implementator"}</span>
+            <span className="text-[12px] text-slate-500">{LEGAL_ROLE_LABELS[preview.role]}</span>
           </div>
           <ul className="mt-3 space-y-1.5">
             {preview.reasons.slice(0, 5).map((r, i) => (

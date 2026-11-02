@@ -63,6 +63,7 @@ const RISK_STYLES: Record<RiskLevel | "neclasificat", string> = {
   transparenta: "bg-sky-50 text-sky-700 border-sky-200",
   minim: "bg-emerald-50 text-emerald-700 border-emerald-200",
   neclasificat: "bg-slate-50 text-slate-500 border-slate-200",
+  neaplicabil: "bg-white text-slate-500 border-dashed border-slate-300",
 };
 
 export function RiskBadge({ level, className }: { level: RiskLevel | "neclasificat"; className?: string }) {

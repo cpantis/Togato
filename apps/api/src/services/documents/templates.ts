@@ -3,7 +3,7 @@
  * (și, unde e cazul, un sistem AI) și întoarce paragrafele documentului.
  */
 import { Paragraph, Table } from "docx";
-import { ANNEX_III_USES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS } from "@togato/shared";
+import { ANNEX_III_USES, LEGAL_ROLE_LABELS, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS } from "@togato/shared";
 import {
   PAGE_WIDTH, REVIEW_LABELS, STATUS_LABELS, bold, bullet, draftNotice, factsTable, fill, formatDateRo, h1, h2, italic, note,
   numbered, para, riskLabel, signatureBlock, spacer, table, titleBlock, type DocContext, type DocSystem,
@@ -11,7 +11,10 @@ import {
 
 type Block = Paragraph | Table;
 const today = () => new Date().toISOString().slice(0, 10);
-const roleText = (s: DocSystem) => (s.classification?.role === "furnizor" ? "furnizor" : "implementator (utilizator)");
+const roleText = (s: DocSystem) => {
+  const r = s.classification?.role;
+  return r === "implementator" || !r ? "implementator (utilizator)" : LEGAL_ROLE_LABELS[r].toLowerCase();
+};
 const labelOf = (list: { code: string; label: string }[], code: string) => list.find((o) => o.code === code)?.label ?? code;
 const active = (list: DocSystem["obligations"]) => list.filter((o) => o.status !== "nu_se_aplica");
 
@@ -78,7 +81,7 @@ export function aiRegister(ctx: DocContext): Block[] {
     para("Registrul ține evidența tuturor sistemelor AI folosite sau dezvoltate de firmă, a încadrării lor potrivit AI Act și a responsabililor. Se actualizează la fiecare sistem nou, la orice schimbare de scop și cel puțin o dată pe an."),
     h1("Sinteză"),
     table([500, 2500, 1700, 1700, 1500, PAGE_WIDTH - 7900], ["Nr.", "Sistem", "Furnizor", "Departament", "Nivel de risc", "Rol"],
-      ctx.systems.map((s, i) => [String(i + 1), s.name, s.vendor || "—", s.department || "—", riskLabel(s.riskLevel), s.classification?.role === "furnizor" ? "Furnizor" : "Implementator"]), { size: 18 }),
+      ctx.systems.map((s, i) => [String(i + 1), s.name, s.vendor || "—", s.department || "—", riskLabel(s.riskLevel), LEGAL_ROLE_LABELS[s.classification?.role ?? "implementator"]]), { size: 18 }),
   ];
   ctx.systems.forEach((s, i) => {
     const act = active(s.obligations);

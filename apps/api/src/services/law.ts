@@ -56,7 +56,8 @@ export function resolveRef(ref: LawRef, law = loadLaw()): ResolvedRef {
       const p = a.paragraphs.find((x) => x.n === ref.paragraph);
       if (!p) return { label: ref.label, found: false, heading, part: `alin. (${ref.paragraph})`, lines: [], focus: null, url, external: false };
       const hasPoint = !ref.point || p.lines.some((l) => l.trim().startsWith(`(${ref.point})`));
-      return { label: ref.label, found: hasPoint, heading, part: `alin. (${ref.paragraph})`, lines: p.lines, focus: ref.point ?? null, url, external: false };
+      const part = /^\d+\.\s/.test(p.lines[0] ?? "") ? `pct. ${ref.paragraph}` : `alin. (${ref.paragraph})`;
+      return { label: ref.label, found: hasPoint, heading, part, lines: p.lines, focus: ref.point ?? null, url, external: false };
     }
     return { label: ref.label, found: true, heading, part: null, lines: a.paragraphs.flatMap((p) => p.lines), focus: null, url, external: false };
   }

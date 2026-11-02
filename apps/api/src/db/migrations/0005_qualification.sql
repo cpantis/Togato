@@ -1,0 +1,1 @@
+ALTER TYPE "public"."risk_level" ADD VALUE 'neaplicabil';

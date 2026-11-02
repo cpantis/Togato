@@ -26,9 +26,9 @@ export function parseLawRefs(text: string | null | undefined): LawRef[] {
       refs.push({ kind: "annex", annex: annex[1].toUpperCase(), item: annex[2], point: annex[3] ?? annex[4], label: seg });
       continue;
     }
-    const art = seg.match(/^Art(?:\.|icolul)?\s*(\d+)(?:\s*(?:\((\d+)\)|alin\.\s*\((\d+)\)))?(?:\s*(?:\(([a-z]{1,2})\)|lit\.\s*\(([a-z]{1,2})\)))?/i);
+    const art = seg.match(/^Art(?:\.|icolul)?\s*(\d+)(?:\s*(?:\((\d+)\)|alin\.\s*\((\d+)\)|pct\.\s*(\d+)))?(?:\s*(?:\(([a-z]{1,2})\)|lit\.\s*\(([a-z]{1,2})\)))?/i);
     if (art) {
-      refs.push({ kind: "article", article: art[1], paragraph: art[2] ?? art[3], point: art[4] ?? art[5], label: seg });
+      refs.push({ kind: "article", article: art[1], paragraph: art[2] ?? art[3] ?? art[4], point: art[5] ?? art[6], label: seg });
     }
   }
   return refs;

@@ -25,6 +25,15 @@ export interface RulesetChange {
 /** Cea mai nouă versiune e prima. */
 export const RULESET_CHANGELOG: RulesetChange[] = [
   {
+    version: "2026.4",
+    date: "2026-11-02",
+    title: "Calificarea ca sistem de IA, domeniul de aplicare, importatori și distribuitori",
+    summary:
+      "Chestionarul începe cu calificarea: îndeplinește instrumentul definiția sistemului de IA (Art. 3 pct. 1) și intră în domeniul de aplicare (excluderile din Art. 2)? Instrumentele care nu sunt sisteme de IA sau sunt excluse primesc nivelul „În afara AI Act”, fără obligații. Sistemele existente au calificarea „neclar” până la confirmarea avocatului (încadrarea rămâne aceeași, cu un avertisment). Rolurile noi de importator (Art. 23) și distribuitor (Art. 24) au obligațiile proprii pentru sistemele cu risc ridicat.",
+    source: "Regulamentul (UE) 2024/1689, Art. 2, Art. 3 pct. 1, 6 și 7, Art. 23, Art. 24, Art. 25 — textul oficial în limba română",
+    articles: ["Art. 3 pct. 1", "Art. 2(3)", "Art. 2(6)", "Art. 2(8)", "Art. 2(10)", "Art. 2(12)", "Art. 23", "Art. 24"],
+  },
+  {
     version: "2026.3",
     date: "2026-11-02",
     title: "Corecturi Art. 26(11), Art. 27 și Art. 86: domeniul de aplicare",

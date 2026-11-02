@@ -121,6 +121,29 @@ def nearest_table(n):
     return p
 
 
+def split_numbered_points(lines):
+    """Articole fără alineate, dar cu puncte numerotate (ex. Art. 3 — definițiile „1.”, „2.” ...):
+    fiecare punct devine o unitate proprie (n = numărul punctului), ca „Art. 3 pct. 1” să fie adresabil.
+    Textul de dinaintea primului punct rămâne o unitate fără număr."""
+    out, intro, current = [], [], None
+    for line in lines:
+        m = re.fullmatch(r"(\d{1,3})\.", line.strip())
+        if m:
+            current = {"n": m.group(1), "lines": []}
+            out.append(current)
+            continue
+        if current is None:
+            intro.append(line)
+        else:
+            if not current["lines"]:
+                current["lines"].append(f'{current["n"]}. {line.strip()}')
+            else:
+                current["lines"].append(line)
+    if len(out) < 2:
+        return [{"n": None, "lines": lines}]
+    return ([{"n": None, "lines": intro}] if intro else []) + out
+
+
 def parse(html):
     tb = TreeBuilder()
     tb.feed(html)
@@ -158,7 +181,7 @@ def parse(html):
             else:
                 loose.extend(block_lines(c) if c.tag != "p" else [clean(c.text())] if clean(c.text()) else [])
         if not paragraphs and loose:
-            paragraphs.append({"n": None, "lines": loose})
+            paragraphs = split_numbered_points(loose)
         articles[num] = {"heading": heading, "title": title, "paragraphs": paragraphs}
 
     annexes = {}

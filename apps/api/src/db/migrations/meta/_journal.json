@@ -36,6 +36,13 @@
       "when": 1793625750515,
       "tag": "0004_memo_citations",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793638825647,
+      "tag": "0005_qualification",
+      "breakpoints": true
     }
   ]
 }

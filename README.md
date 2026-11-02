@@ -9,6 +9,7 @@ Platformă SaaS pentru cabinetele de avocatură și consultanță care gestionea
 - **Clienți**: firme adăugate după CUI (date de la ANAF; opțional ListaFirme pentru angajați / cifră de afaceri), fiecare cu un avocat responsabil și filtrul „Clienții mei”.
 - **Inventar AI** pe client: fiecare instrument AI folosit sau dezvoltat, descris printr-un chestionar.
 - **Portalul clientului**: link personal (90 de zile) prin care firma-client își adaugă singură instrumentele AI, răspunzând la întrebări simple, sub numele, culoarea și logo-ul cabinetului. Răspunsurile devin o încadrare propusă pe care avocatul o verifică.
+- **Calificare**: întâi se stabilește dacă instrumentul e un sistem de IA (Art. 3 pct. 1) și dacă intră în domeniul de aplicare (excluderile din Art. 2); cele care nu sunt primesc nivelul „În afara AI Act”, fără obligații. Roluri: furnizor, implementator, importator (Art. 23), distribuitor (Art. 24), cu Art. 25 pentru rebranduire/modificare.
 - **Încadrare automată**: practici interzise (Art. 5), risc ridicat (Anexa I / Anexa III, cu derogările Art. 6(3) și Art. 25), transparență (Art. 50), GPAI. Rezultatul are motivele și articolele citate și se actualizează live în formular.
 - **Obligații concrete** generate pe sistem și pe client (Art. 4, 26, 27, 50, 86, 9–73 pentru furnizori), cu data de aplicare, stare, notă și termen intern.
 - **Verificarea avocatului**: fiecare încadrare e „propusă” până când un avocat o aprobă sau o respinge; schimbarea răspunsurilor cere o nouă aprobare.

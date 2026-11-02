@@ -5,7 +5,7 @@ import type { AiSystemAnswers, ClassificationResult } from "@togato/shared";
 export const orgStatusEnum = pgEnum("org_status", ["trial", "activ", "suspendat"]);
 export const userRoleEnum = pgEnum("user_role", ["admin", "membru"]);
 export const userStatusEnum = pgEnum("user_status", ["activ", "dezactivat"]);
-export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis"]);
+export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis", "neaplicabil"]);
 export const reviewStatusEnum = pgEnum("review_status", ["propus", "aprobat", "respins"]);
 export const systemSourceEnum = pgEnum("system_source", ["cabinet", "portal"]);
 export const obligationStatusEnum = pgEnum("obligation_status", ["de_facut", "in_lucru", "indeplinit", "nu_se_aplica"]);
