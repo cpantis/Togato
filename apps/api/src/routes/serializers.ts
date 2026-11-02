@@ -21,6 +21,7 @@ export function serializeSystem(s: SystemRow) {
     reviewedByName: s.reviewer?.name ?? null,
     aiMemo: s.aiMemo,
     aiMemoAt: s.aiMemoAt?.toISOString() ?? null,
+    aiMemoCitations: s.aiMemoCitations ?? [],
     computedRiskLevel: s.classification?.riskLevel ?? null,
     riskOverride: s.riskOverride,
     overrideReason: s.overrideReason,

@@ -120,6 +120,8 @@ export const aiSystems = pgTable("ai_systems", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   aiMemo: text("ai_memo"),
   aiMemoAt: timestamp("ai_memo_at", { withTimezone: true }),
+  /** sursele memoriului AI: [{ n, ref: "Art. 26(7)", quote }] */
+  aiMemoCitations: jsonb("ai_memo_citations").$type<{ n: number; ref: string; quote: string }[]>(),
   /** versiunea regulilor AI Act după care a fost calculată încadrarea (vezi RULESET_CHANGELOG) */
   rulesetVersion: text("ruleset_version").notNull().default("2026.1"),
   /** nota de reîncadrare după o modificare legislativă de fond; se șterge la verificarea avocatului */

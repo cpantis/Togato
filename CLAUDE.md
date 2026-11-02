@@ -12,7 +12,7 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Id-urile din URL trec prin `uuidParam()` (altfel Postgres dă 500).
 - Încadrarea e o **propunere**: orice modificare a răspunsurilor resetează `reviewStatus` la `propus`.
 - Obligațiile se sincronizează doar prin `services/obligationsSync.ts` (păstrează starea și notele celor care rămân aplicabile).
-- Analiza AI: `services/memo.ts`, model `claude-opus-5-5`, cu fallback server-side (`fallbacks: "default"`). Nu inventa articole în prompturi.
+- Analiza AI: `services/memo.ts`, model `claude-opus-5-5`, cu fallback server-side (`fallbacks: "default"`). Pasajele relevante din textul oficial (`selectLegalPassages`: articolele obligațiilor și motivelor, plafonate la 60.000 de caractere) se trimit ca documente cu citări activate; răspunsul devine text cu trimiteri `[n]` + `aiMemoCitations` (`parseMemoResponse`). Promptul spune explicit că textul e cel inițial și ce a schimbat Omnibus-ul. Funcțiile pure sunt testate în `memo.test.ts`.
 - Hard delete peste tot (CASCADE pe FK).
 - Roluri: `admin` / `membru`. Rutele de administrare a echipei folosesc `requireAdmin`. Cabinetul trebuie să rămână mereu cu cel puțin un administrator activ; nimeni nu își poate retrage singur rolul de admin sau dezactiva propriul cont.
 - Documente Word: `services/documents/` — `common.ts` (stiluri, antet, `fill()` pentru câmpuri de completat evidențiate galben, `loadDocContext`), `templates.ts` (conținutul celor 5 documente), `index.ts` (registrul: tip, disponibilitate, obligația legată). Documentele se generează la cerere, nu se stochează. Un document nou = o funcție în `templates.ts` + o intrare în `DOCUMENTS` + test în `documents.test.ts`; dacă e legat de o obligație, și în `apps/web/src/lib/documents.ts`.
@@ -45,7 +45,7 @@ Dacă oricare eșuează, nu face commit.
 
 ## De verificat / deschis
 - Textul final al Omnibus-ului (numărul regulamentului, formularea Art. 4, perioada de grație Art. 50(2)) — verificat doar din surse secundare. Textul importat e cel inițial (2024); când apare versiunea consolidată pe EUR-Lex, se reimportă.
-- Memoriul AI nu folosește încă textul oficial (următorul pas: trimiterea articolelor relevante către Claude).
+- Memoriul AI cu citări n-a fost încă rulat contra API-ului real (nu există cheie în mediul de dezvoltare) — de testat la prima configurare a `ANTHROPIC_API_KEY`.
 - Lookup ANAF (`services/companyLookup.ts`, API v9) netestat contra serviciului real.
 - Trimiterea pe email a invitațiilor (acum linkul se copiază manual).
 - Documentele sunt modele deterministe; o variantă viitoare poate folosi Claude pentru a redacta secțiunile „de completat” din descrierea sistemului.

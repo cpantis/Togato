@@ -29,6 +29,13 @@
       "when": 1793623271726,
       "tag": "0003_legislation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793625750515,
+      "tag": "0004_memo_citations",
+      "breakpoints": true
     }
   ]
 }

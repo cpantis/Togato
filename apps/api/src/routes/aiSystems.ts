@@ -175,9 +175,9 @@ aiSystemRoutes.post("/:id/memo", async (c) => {
       answers,
       classification: s.classification ?? classifyAiSystem(answers),
     });
-    await db.update(aiSystems).set({ aiMemo: memo, aiMemoAt: new Date() })
+    await db.update(aiSystems).set({ aiMemo: memo.text, aiMemoCitations: memo.citations, aiMemoAt: new Date() })
       .where(and(eq(aiSystems.id, s.id), eq(aiSystems.organizationId, auth.organizationId)));
-    await audit(auth, "memo", "ai_system", s.id);
+    await audit(auth, "memo", "ai_system", s.id, { citations: memo.citations.length });
   } catch (e) {
     console.error("[memo]", e);
     return c.json({ error: (e as Error).message.startsWith("Analiza") ? (e as Error).message : "Serviciul AI nu răspunde momentan. Reîncearcă peste câteva minute." }, 502);

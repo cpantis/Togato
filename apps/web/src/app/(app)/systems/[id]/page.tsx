@@ -134,7 +134,26 @@ function MemoPanel({ system, onChange }: { system: SystemDetail; onChange: (s: S
       {system.aiMemo ? (
         <div className="mt-3">
           <Markdown text={system.aiMemo} />
-          <p className="mt-3 text-[11px] text-slate-400">Generat {system.aiMemoAt ? formatDate(system.aiMemoAt) : ""}. Verificați citările înainte de a le folosi.</p>
+          {system.aiMemoCitations.length > 0 && (
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Surse din textul oficial</div>
+              <ol className="space-y-2">
+                {system.aiMemoCitations.map((c) => (
+                  <li key={c.n} id={`sursa-${c.n}`} className="scroll-mt-20 text-[12px] text-slate-600">
+                    <span className="mr-1 font-semibold text-brand">[{c.n}]</span>
+                    <LawRef text={c.ref} />
+                    {c.quote && <span className="mt-1 block border-l-2 border-slate-200 pl-2 italic text-slate-500">„{c.quote.length > 280 ? `${c.quote.slice(0, 280)}…` : c.quote}”</span>}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          <p className="mt-3 text-[11px] text-slate-400">
+            Generat {system.aiMemoAt ? formatDate(system.aiMemoAt) : ""}.{" "}
+            {system.aiMemoCitations.length > 0
+              ? "Citatele provin din textul oficial (versiunea inițială din JO, fără Omnibus); verificați concluziile."
+              : "Verificați trimiterile înainte de a le folosi."}
+          </p>
         </div>
       ) : !busy && (
         <p className="mt-2 text-[12px] text-slate-500">Un memoriu scurt: justificarea încadrării, puncte de verificat cu clientul și pașii recomandați.</p>

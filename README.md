@@ -13,7 +13,7 @@ Platformă SaaS pentru cabinetele de avocatură și consultanță care gestionea
 - **Obligații concrete** generate pe sistem și pe client (Art. 4, 26, 27, 50, 86, 9–73 pentru furnizori), cu data de aplicare, stare, notă și termen intern.
 - **Verificarea avocatului**: fiecare încadrare e „propusă” până când un avocat o aprobă sau o respinge; schimbarea răspunsurilor cere o nouă aprobare.
 - **Documente Word** generate din datele clientului: raport de conformitate, registrul sistemelor AI, politica internă de utilizare AI, informarea angajaților (Art. 26(7)), evaluarea impactului asupra drepturilor fundamentale (Art. 27). Câmpurile de completat sunt evidențiate.
-- **Analiză AI** (opțional): memoriu juridic scurt generat cu Claude.
+- **Analiză AI** (opțional): memoriu juridic scurt generat cu Claude, pe baza pasajelor relevante din textul oficial al legii; fiecare afirmație citată are o trimitere [n] la citatul exact.
 - **Textul oficial al legii**: orice articol afișat în aplicație („Art. 26(7)”, „Anexa III pct. 4(a)”) se deschide cu un clic, cu textul oficial în limba română (EUR-Lex), litera relevantă evidențiată și linkul către sursă. Un test verifică automat că fiecare trimitere din reguli există în lege.
 - **Actualizări legislative**: regulile sunt versionate; la o versiune nouă, sistemele se reîncadrează automat — termenele se actualizează direct, schimbările de fond trimit sistemul înapoi la avocat, cu diferențele explicate. Stările și notele obligațiilor se păstrează; încadrarea manuală a avocatului nu se suprascrie. Pagina „Noutăți legislative” ține istoricul.
 - **Panou**: clienți, sisteme pe niveluri de risc, ce necesită atenție, termenele AI Act.

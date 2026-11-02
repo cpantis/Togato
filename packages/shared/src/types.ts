@@ -73,6 +73,7 @@ export interface AiSystem {
   reviewedByName: string | null;
   aiMemo: string | null;
   aiMemoAt: string | null;
+  aiMemoCitations: { n: number; ref: string; quote: string }[];
   computedRiskLevel: RiskLevel | null;
   riskOverride: RiskLevel | null;
   overrideReason: string | null;

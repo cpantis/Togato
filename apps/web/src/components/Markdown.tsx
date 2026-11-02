@@ -2,8 +2,19 @@ import { Fragment } from "react";
 
 /** Randare minimă și sigură (fără HTML brut) pentru memoriile AI: titluri ##, liste, paragrafe, **bold**. */
 function inline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((p, i) => (p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : <Fragment key={i}>{p}</Fragment>));
+  const parts = text.split(/(\*\*[^*]+\*\*|\[\d{1,3}\])/g);
+  return parts.map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**")) return <strong key={i}>{p.slice(2, -2)}</strong>;
+    const cite = p.match(/^\[(\d{1,3})\]$/);
+    if (cite) {
+      return (
+        <a key={i} href={`#sursa-${cite[1]}`} className="ml-0.5 align-super text-[10px] font-semibold text-brand no-underline hover:underline" title={`Sursa ${cite[1]}`}>
+          [{cite[1]}]
+        </a>
+      );
+    }
+    return <Fragment key={i}>{p}</Fragment>;
+  });
 }
 
 export function Markdown({ text }: { text: string }) {

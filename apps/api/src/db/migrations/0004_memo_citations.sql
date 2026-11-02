@@ -1,0 +1,1 @@
+ALTER TABLE "ai_systems" ADD COLUMN "ai_memo_citations" jsonb;
