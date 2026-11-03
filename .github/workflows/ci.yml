@@ -108,7 +108,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -f apps/api/Dockerfile -t togato-api .
       - run: docker build -f apps/web/Dockerfile --build-arg API_INTERNAL_URL=http://127.0.0.1:8080 -t togato-web .
-      - name: Test de fum (migrații, /health/ready, aviz PDF, utilizator non-root)
+      - name: Test de fum (utilizator non-root, migrații, /health/ready, web + proxy /api)
         run: |
           ENV="-e NODE_ENV=production -e DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/togato_smoke -e JWT_SECRET=ci-smoke-secret-0123456789abcdef0123 -e ENCRYPTION_KEY=$(openssl rand -hex 32) -e EMAIL_PROVIDER=resend -e RESEND_API_KEY=re_ci -e FRONTEND_URL=http://127.0.0.1:3000"
           test "$(docker run --rm togato-api id -u)" != "0"
