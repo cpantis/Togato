@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { GdprDashboardCard } from "@/components/gdpr/GdprDashboardCard";
 import Link from "next/link";
 import type { DashboardData, RiskLevel } from "@togato/shared";
 import { RISK_LABELS } from "@togato/shared";
@@ -105,6 +106,8 @@ export default function DashboardPage() {
                   ))}
                 </ul>
               </Card>
+
+              <GdprDashboardCard />
 
               <Card className="p-5">
                 <h2 className="text-[14px] font-semibold text-ink">Termene AI Act</h2>

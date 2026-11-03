@@ -6,7 +6,7 @@
 import { z } from "zod";
 import type {
   AiSystem, AiSystemAnswers, AuthUser, BillingState, ClassificationResult, ClientDetail, ClientSummary, DashboardData,
-  DirectoryCabinet, LegislationData, Obligation, Referral, SelfAssessmentData, Organization, Page, PortalAnswers, PortalData, PortalLinkStatus, SystemDetail, TeamData,
+  Breach, ClientGdpr, DirectoryCabinet, DsarRequest, LegislationData, ProcessingActivity, Obligation, Referral, SelfAssessmentData, Organization, Page, PortalAnswers, PortalData, PortalLinkStatus, SystemDetail, TeamData,
 } from "@togato/shared";
 
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -158,3 +158,34 @@ export const referral = z.object({
   tools: z.array(selfTool.extend({ result: toolResult }).strict()),
 }).strict();
 same<z.infer<typeof referral>, Referral>(true);
+
+export const processingActivity = z.object({
+  id: uuid, clientId: uuid, name: z.string(), purpose: z.string(), role: z.enum(["operator", "operator_asociat", "persoana_imputernicita"]),
+  controllerName: z.string().nullable(), legalBases: z.array(z.string()), legalBasisDetails: z.string().nullable(), specialConditions: z.array(z.string()),
+  dataCategories: z.array(z.string()), subjectCategories: z.array(z.string()), recipients: z.string().nullable(),
+  transferOutsideEea: z.boolean(), transferCountries: z.string().nullable(), transferMechanism: z.string().nullable(), retention: z.string().nullable(),
+  securityMeasures: z.array(z.string()), securityDetails: z.string().nullable(), largeScale: z.boolean(), systematicMonitoring: z.boolean(),
+  automatedDecisions: z.boolean(), aiSystemIds: z.array(uuid), notes: z.string().nullable(), updatedAt: iso,
+  check: z.object({ issues: z.array(z.string()), warnings: z.array(z.string()), dpiaLikely: z.boolean(), dpiaReasons: z.array(z.string()) }).strict(),
+}).strict();
+same<z.infer<typeof processingActivity>, ProcessingActivity>(true);
+
+export const dsarRequest = z.object({
+  id: uuid, clientId: uuid, type: z.enum(["acces", "rectificare", "stergere", "restrictionare", "portabilitate", "opozitie", "decizii_automate"]),
+  requesterName: z.string(), requesterContact: z.string().nullable(), receivedOn: day, dueOn: day, extended: z.boolean(), extensionReason: z.string().nullable(),
+  identityVerified: z.boolean(), status: z.enum(["primita", "in_lucru", "finalizata", "respinsa"]), details: z.string().nullable(), outcome: z.string().nullable(),
+  closedOn: day.nullable(), overdue: z.boolean(), createdAt: iso,
+}).strict();
+same<z.infer<typeof dsarRequest>, DsarRequest>(true);
+
+export const breach = z.object({
+  id: uuid, clientId: uuid, title: z.string(), description: z.string().nullable(), breachTypes: z.array(z.string()), discoveredAt: iso, occurredAt: iso.nullable(),
+  dataCategories: z.array(z.string()), subjectsAffected: z.number().int().nullable(), recordsAffected: z.number().int().nullable(),
+  risk: z.enum(["neevaluat", "fara_risc", "risc", "risc_ridicat"]), riskReasoning: z.string().nullable(), consequences: z.string().nullable(), measures: z.string().nullable(),
+  authorityNotifiedAt: iso.nullable(), authorityReference: z.string().nullable(), delayReason: z.string().nullable(), subjectsNotifiedAt: iso.nullable(), closedAt: iso.nullable(),
+  deadline: iso, duties: z.object({ notifyAuthority: z.boolean(), notifySubjects: z.boolean(), summary: z.string() }).strict(), authorityOverdue: z.boolean(), createdAt: iso,
+}).strict();
+same<z.infer<typeof breach>, Breach>(true);
+
+export const clientGdpr = z.object({ processing: z.array(processingActivity), dsars: z.array(dsarRequest), breaches: z.array(breach) }).strict();
+same<z.infer<typeof clientGdpr>, ClientGdpr>(true);

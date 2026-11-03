@@ -6,7 +6,9 @@ import { zipSync, strToU8 } from "fflate";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { RISK_LABELS, OBLIGATION_STATUS_LABELS, REVIEW_STATUS_LABELS, RULESET_VERSION } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, analysisSnapshots, auditLog, clients, evidence, obligations, users } from "../db/schema";
+import { aiSystems, analysisSnapshots, auditLog, breaches, clients, dsarRequests, evidence, obligations, processingActivities, users } from "../db/schema";
+import { breachDeadline, checkProcessing } from "@togato/shared";
+import { renderGdprDocument, ropaBlocks } from "./documents/gdprTemplates";
 import { storage } from "./storage";
 import { renderSnapshotPdf, verifySnapshot } from "./snapshots";
 import { loadDocContext, slug } from "./documents/common";
@@ -81,8 +83,23 @@ export async function buildDossierZip(organizationId: string, clientId: string, 
     }
   }
 
+  // GDPR: registrul prelucrărilor (Word + CSV), cererile persoanelor vizate, incidentele
+  const acts = await db.select().from(processingActivities).where(and(eq(processingActivities.clientId, clientId), eq(processingActivities.organizationId, organizationId))).orderBy(asc(processingActivities.name));
+  const dsars = await db.select().from(dsarRequests).where(and(eq(dsarRequests.clientId, clientId), eq(dsarRequests.organizationId, organizationId))).orderBy(asc(dsarRequests.receivedOn));
+  const brs = await db.select().from(breaches).where(and(eq(breaches.clientId, clientId), eq(breaches.organizationId, organizationId))).orderBy(asc(breaches.discoveredAt));
+  if (ctx && acts.length) {
+    const doc = await renderGdprDocument(ctx, "Registrul activităților de prelucrare", ropaBlocks(ctx, acts, sysName));
+    files[uniqueName(used, "gdpr", doc.filename)] = new Uint8Array(doc.buffer);
+  }
+  if (acts.length) files["gdpr/registru_prelucrari.csv"] = strToU8(toCsv(["activitate", "scop", "calitate", "temei legal", "categorii de date", "persoane vizate", "destinatari", "transfer in afara SEE", "pastrare", "DPIA probabila"],
+    acts.map((a) => [a.name, a.purpose, a.role, a.legalBases.join(" "), a.dataCategories.join(" "), a.subjectCategories.join(" "), a.recipients, a.transferOutsideEea ? `${a.transferCountries ?? ""} (${a.transferMechanism ?? "fara mecanism"})` : "nu", a.retention, checkProcessing({ ...a, usesAi: a.aiSystemIds.length > 0 }).dpiaLikely ? "da" : "nu"])));
+  if (dsars.length) files["gdpr/cereri_persoane_vizate.csv"] = strToU8(toCsv(["tip", "solicitant", "primita", "termen", "prelungita", "identitate verificata", "stare", "inchisa", "raspuns"],
+    dsars.map((d) => [d.type, d.requesterName, d.receivedOn, d.dueOn, d.extended ? `da: ${d.extensionReason ?? ""}` : "nu", d.identityVerified ? "da" : "nu", d.status, d.closedOn, d.outcome])));
+  if (brs.length) files["gdpr/incidente_securitate.csv"] = strToU8(toCsv(["incident", "descoperit", "termen 72h", "risc", "persoane afectate", "ANSPDCP notificata", "nr. inregistrare", "persoane informate", "inchis", "masuri"],
+    brs.map((b) => [b.title, b.discoveredAt.toISOString(), breachDeadline(b.discoveredAt).toISOString(), b.risk, b.subjectsAffected, b.authorityNotifiedAt?.toISOString() ?? "", b.authorityReference, b.subjectsNotifiedAt?.toISOString() ?? "", b.closedAt?.toISOString() ?? "", b.measures])));
+
   // jurnalul de activitate pentru client și entitățile lui
-  const entityIds = [clientId, ...systems.map((s) => s.id), ...obls.map((o) => o.id), ...snaps.map((s) => s.id), ...ev.map((e) => e.id)];
+  const entityIds = [clientId, ...systems.map((s) => s.id), ...obls.map((o) => o.id), ...snaps.map((s) => s.id), ...ev.map((e) => e.id), ...acts.map((a) => a.id), ...dsars.map((d) => d.id), ...brs.map((b) => b.id)];
   const logRows = await db.select({ at: auditLog.createdAt, action: auditLog.action, entity: auditLog.entity, entityId: auditLog.entityId, details: auditLog.details, user: users.name })
     .from(auditLog).leftJoin(users, eq(users.id, auditLog.userId))
     .where(and(eq(auditLog.organizationId, organizationId), or(inArray(auditLog.entityId, entityIds))))
@@ -114,6 +131,7 @@ export async function buildDossierZip(organizationId: string, clientId: string, 
     "dovezi/             fișierele atașate obligațiilor, pe coduri de obligație",
     "obligatii.csv       obligațiile, starea, termenele și notele",
     "sisteme_ai.csv      inventarul sistemelor AI și încadrarea",
+    "gdpr/               registrul prelucrărilor (Word, CSV), cererile persoanelor vizate, incidentele de securitate",
     "jurnal_activitate.csv  cine a făcut ce și când",
     "dosar.json          toate datele de mai sus, structurat (inclusiv răspunsurile la chestionar)",
     "",

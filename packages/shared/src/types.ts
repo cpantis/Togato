@@ -287,3 +287,89 @@ export interface LegislationData {
   changelog: import("./legislation").RulesetChange[];
   affected: { id: string; name: string; clientId: string; clientName: string; note: string; reclassifiedAt: string | null; riskLevel: RiskLevel | "neclasificat" }[];
 }
+
+// ─── GDPR ────────────────────────────────────────────────
+
+export interface ProcessingActivity {
+  id: string;
+  clientId: string;
+  name: string;
+  purpose: string;
+  role: import("./gdpr").ProcessingRole;
+  controllerName: string | null;
+  legalBases: string[];
+  legalBasisDetails: string | null;
+  specialConditions: string[];
+  dataCategories: string[];
+  subjectCategories: string[];
+  recipients: string | null;
+  transferOutsideEea: boolean;
+  transferCountries: string | null;
+  transferMechanism: string | null;
+  retention: string | null;
+  securityMeasures: string[];
+  securityDetails: string | null;
+  largeScale: boolean;
+  systematicMonitoring: boolean;
+  automatedDecisions: boolean;
+  aiSystemIds: string[];
+  notes: string | null;
+  updatedAt: string;
+  check: import("./gdpr").ProcessingCheck;
+}
+
+export interface DsarRequest {
+  id: string;
+  clientId: string;
+  type: import("./gdpr").DsarType;
+  requesterName: string;
+  requesterContact: string | null;
+  receivedOn: string;
+  dueOn: string;
+  extended: boolean;
+  extensionReason: string | null;
+  identityVerified: boolean;
+  status: import("./gdpr").DsarStatus;
+  details: string | null;
+  outcome: string | null;
+  closedOn: string | null;
+  overdue: boolean;
+  createdAt: string;
+}
+
+export interface Breach {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string | null;
+  breachTypes: string[];
+  discoveredAt: string;
+  occurredAt: string | null;
+  dataCategories: string[];
+  subjectsAffected: number | null;
+  recordsAffected: number | null;
+  risk: import("./gdpr").BreachRisk;
+  riskReasoning: string | null;
+  consequences: string | null;
+  measures: string | null;
+  authorityNotifiedAt: string | null;
+  authorityReference: string | null;
+  delayReason: string | null;
+  subjectsNotifiedAt: string | null;
+  closedAt: string | null;
+  deadline: string;
+  duties: import("./gdpr").BreachDuties;
+  authorityOverdue: boolean;
+  createdAt: string;
+}
+
+export interface ClientGdpr {
+  processing: ProcessingActivity[];
+  dsars: DsarRequest[];
+  breaches: Breach[];
+}
+
+export interface GdprOverview {
+  dsars: (DsarRequest & { clientName: string })[];
+  breaches: (Breach & { clientName: string })[];
+}

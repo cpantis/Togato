@@ -10,6 +10,7 @@ import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, ProgressBar,
 import { ObligationList } from "@/components/ObligationList";
 import { DocumentsCard } from "@/components/DocumentsCard";
 import { PortalCard } from "@/components/PortalCard";
+import { GdprClientCard } from "@/components/gdpr/GdprClientCard";
 
 export default function ClientPage() {
   const { id } = useParams<{ id: string }>();
@@ -161,6 +162,7 @@ export default function ClientPage() {
         </div>
 
         <div className="space-y-5">
+        <GdprClientCard clientId={client.id} />
         <PortalCard clientId={client.id} clientName={client.name} contactEmail={client.contactEmail} />
         <Card className="h-fit p-5">
           <h2 className="text-[14px] font-semibold text-ink">Avocat responsabil</h2>

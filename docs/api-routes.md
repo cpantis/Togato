@@ -117,6 +117,24 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/billing/checkout` | sesiune |
 | `POST` | `/api/billing/portal` | sesiune |
 
+## GDPR: registru, cereri, incidente
+
+| Metodă | Rută | Acces |
+|---|---|---|
+| `GET` | `/api/clients/:clientId/gdpr` | sesiune |
+| `GET` | `/api/gdpr/overview` | sesiune |
+| `POST` | `/api/clients/:clientId/processing` | sesiune |
+| `PUT` | `/api/processing/:id` | sesiune |
+| `DELETE` | `/api/processing/:id` | sesiune |
+| `GET` | `/api/clients/:clientId/gdpr/ropa` | sesiune |
+| `POST` | `/api/clients/:clientId/dsar` | sesiune |
+| `PATCH` | `/api/dsar/:id` | sesiune |
+| `DELETE` | `/api/dsar/:id` | sesiune |
+| `POST` | `/api/clients/:clientId/breaches` | sesiune |
+| `PUT` | `/api/breaches/:id` | sesiune |
+| `DELETE` | `/api/breaches/:id` | sesiune |
+| `GET` | `/api/breaches/:id/notification` | sesiune |
+
 ## Clienți
 
 | Metodă | Rută | Acces |

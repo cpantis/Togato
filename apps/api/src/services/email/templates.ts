@@ -104,6 +104,14 @@ export const templates = {
     ], undefined, { replyTo: p.cabinetEmail ?? undefined });
   },
 
+  breachAlert(p: { to: string; clientName: string; title: string; deadline: Date; reminder: boolean; url: string }) {
+    const when = p.deadline.toLocaleString("ro-RO", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Bucharest" });
+    return build(p.to, `${p.reminder ? "Mai sunt 24 de ore" : "Incident de securitate"}: ${p.clientName} — notificare ANSPDCP până la ${when}`, [
+      `${p.reminder ? "Reamintire: incidentul" : "A fost înregistrat incidentul"} <strong>„${escapeHtml(p.title)}”</strong> la clientul <strong>${escapeHtml(p.clientName)}</strong>.`,
+      `Dacă incidentul prezintă un risc pentru drepturile persoanelor, ANSPDCP trebuie notificată în 72 de ore de la luarea la cunoștință, adică până la <strong>${escapeHtml(when)}</strong> (Art. 33 GDPR). Dacă riscul e evaluat ca neglijabil, documentați motivarea în registru.`,
+    ], { label: "Deschide incidentul", url: p.url });
+  },
+
   deadlineDigest(p: { to: string; name: string; items: { client: string; title: string; dueDate: string; overdue: boolean; url: string }[]; dashboardUrl: string }) {
     const list = p.items.slice(0, 25).map((i) => `• ${i.overdue ? "<strong>DEPĂȘIT</strong> " : ""}${escapeHtml(i.dueDate)} — ${escapeHtml(i.client)}: ${escapeHtml(i.title)}`);
     return build(p.to, `Togato: ${p.items.length} termene în următoarele 7 zile`, [

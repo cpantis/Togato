@@ -11,7 +11,9 @@ const GROUPS: [RegExp, string][] = [
   [/^\/health/, "Operațional"], [/^\/api\/auth\//, "Autentificare (public)"], [/^\/api\/portal\//, "Portalul clientului (public, token în URL)"],
   [/^\/api\/(self-assessment|directory)/, "Autoevaluarea firmelor și directorul cabinetelor (public)"], [/^\/api\/referrals/, "Solicitări primite de cabinet"],
   [/^\/api\/public\//, "Fișiere publice"], [/^\/api\/stripe\//, "Stripe (webhook semnat)"], [/^\/api\/account/, "Contul propriu"],
-  [/^\/api\/organization/, "Cabinet"], [/^\/api\/team/, "Echipă"], [/^\/api\/billing/, "Abonament"], [/^\/api\/clients/, "Clienți"],
+  [/^\/api\/organization/, "Cabinet"], [/^\/api\/team/, "Echipă"], [/^\/api\/billing/, "Abonament"],
+  [/^\/api\/(gdpr|processing|dsar|breaches)|^\/api\/clients\/:clientId\/(gdpr|processing|dsar|breaches)/, "GDPR: registru, cereri, incidente"],
+  [/^\/api\/clients/, "Clienți"],
   [/^\/api\/ai-systems/, "Sisteme AI"], [/^\/api\/(obligations|evidence)/, "Obligații și dovezi"], [/^\/api\/snapshots/, "Avize înghețate"],
   [/^\/api\/(dashboard|legislation|law)/, "Panou, legislație, textul legii"], [/^\/api\/platform/, "Consola platformei (echipa Togato)"],
 ];

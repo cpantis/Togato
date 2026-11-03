@@ -45,6 +45,9 @@ function resolveParams(path: string, a: Seed): string | null {
       if (path.startsWith("/api/evidence/")) return a.evidenceId;
       if (path.startsWith("/api/platform/organizations/")) return a.organizationId;
       if (path.startsWith("/api/referrals/")) return a.referralId;
+      if (path.startsWith("/api/processing/")) return a.processingId;
+      if (path.startsWith("/api/dsar/")) return a.dsarId;
+      if (path.startsWith("/api/breaches/")) return a.breachId;
     }
     unknown = true;
     return "?";

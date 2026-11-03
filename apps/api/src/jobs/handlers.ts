@@ -1,8 +1,8 @@
 /** Tipurile de joburi și handlerele lor. */
 import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
-import { RULESET_VERSION, classifyAiSystem, normalizeAnswers } from "@togato/shared";
+import { DSAR_TYPES, RULESET_VERSION, breachDeadline, breachDuties, classifyAiSystem, normalizeAnswers } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, auditLog, clients, obligations, organizations, users } from "../db/schema";
+import { aiSystems, auditLog, breaches, clients, dsarRequests, obligations, organizations, users } from "../db/schema";
 import { frontendBaseUrl } from "../config";
 import { log } from "../lib/logger";
 import { deliver, sendEmail, templates, type EmailMessage } from "../services/email";
@@ -137,12 +137,53 @@ const remindersDaily: JobHandler = async (p: { date?: string }) => {
       byUser.set(u.id, entry);
     }
   }
+  // cererile GDPR cu termen în următoarele 7 zile sau depășit, incidentele încă nenotificate
+  const dsarRows = await db.select({ organizationId: dsarRequests.organizationId, type: dsarRequests.type, requester: dsarRequests.requesterName, dueOn: dsarRequests.dueOn, clientId: clients.id, clientName: clients.name, responsibleUserId: clients.responsibleUserId })
+    .from(dsarRequests).innerJoin(clients, eq(clients.id, dsarRequests.clientId)).innerJoin(organizations, eq(organizations.id, dsarRequests.organizationId))
+    .where(and(inArray(dsarRequests.status, ["primita", "in_lucru"]), lte(dsarRequests.dueOn, horizon), isNull(clients.archivedAt), ne(organizations.status, "suspendat")));
+  const breachRows = await db.select({ organizationId: breaches.organizationId, title: breaches.title, discoveredAt: breaches.discoveredAt, risk: breaches.risk, clientId: clients.id, clientName: clients.name, responsibleUserId: clients.responsibleUserId })
+    .from(breaches).innerJoin(clients, eq(clients.id, breaches.clientId)).innerJoin(organizations, eq(organizations.id, breaches.organizationId))
+    .where(and(isNull(breaches.closedAt), isNull(breaches.authorityNotifiedAt), isNull(clients.archivedAt), ne(organizations.status, "suspendat")));
+  const extra = [
+    ...dsarRows.map((r) => ({ ...r, title: `Cerere GDPR (${DSAR_TYPES.find((t) => t.code === r.type)?.label ?? r.type}) — ${r.requester}`, dueDate: r.dueOn })),
+    ...breachRows.filter((r) => breachDuties(r.risk).notifyAuthority).map((r) => ({ ...r, title: `Incident de securitate — notificare ANSPDCP: ${r.title}`, dueDate: breachDeadline(r.discoveredAt).toISOString().slice(0, 10) })),
+  ];
+  for (const r of extra) {
+    const key = `${r.organizationId}:${r.responsibleUserId ?? "-"}`;
+    if (!recipientCache.has(key)) recipientCache.set(key, await notificationRecipients(r.organizationId, r.responsibleUserId, "notifyDeadlines"));
+    for (const u of recipientCache.get(key)!) {
+      const entry = byUser.get(u.id) ?? { email: u.email, name: u.name, organizationId: r.organizationId, items: [] };
+      entry.items.push({ client: r.clientName, title: r.title, dueDate: r.dueDate, overdue: r.dueDate < today, url: `${frontendBaseUrl()}/clients/${r.clientId}/gdpr` });
+      byUser.set(u.id, entry);
+    }
+  }
+
   for (const [userId, u] of byUser) {
     u.items.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     await sendEmail(templates.deadlineDigest({ to: u.email, name: u.name, items: u.items, dashboardUrl: `${frontendBaseUrl()}/dashboard` }),
       { organizationId: u.organizationId, dedupeKey: `deadline-digest:${today}:${userId}` });
   }
   log.info("rezumat termene", { date: today, recipients: byUser.size, obligations: rows.length });
+};
+
+// ─── alertele pentru incidentele de securitate (72 de ore) ─
+const breachAlert: JobHandler = async (p: { organizationId: string; breachId: string; kind: "nou" | "reamintire" }) => {
+  const b = await db.query.breaches.findFirst({ where: and(eq(breaches.id, p.breachId), eq(breaches.organizationId, p.organizationId)) });
+  if (!b || b.closedAt || b.authorityNotifiedAt || !breachDuties(b.risk).notifyAuthority) return; // rezolvat între timp
+  const client = await db.query.clients.findFirst({ where: and(eq(clients.id, b.clientId), eq(clients.organizationId, p.organizationId)) });
+  if (!client) return;
+  // incidentele merg la responsabil și la administratori, indiferent de preferințele de rezumat
+  const recipients = new Map<string, string>();
+  if (client.responsibleUserId) {
+    const r = await db.query.users.findFirst({ where: and(eq(users.id, client.responsibleUserId), eq(users.status, "activ")) });
+    if (r) recipients.set(r.id, r.email);
+  }
+  const admins = await db.query.users.findMany({ where: and(eq(users.organizationId, p.organizationId), eq(users.role, "admin"), eq(users.status, "activ")) });
+  for (const a of admins) recipients.set(a.id, a.email);
+  for (const [userId, to] of recipients) {
+    await sendEmail(templates.breachAlert({ to, clientName: client.name, title: b.title, deadline: breachDeadline(b.discoveredAt), reminder: p.kind === "reamintire", url: `${frontendBaseUrl()}/clients/${client.id}/gdpr?tab=incidente` }),
+      { organizationId: p.organizationId, dedupeKey: `breach-alert:${b.id}:${p.kind}:${userId}` });
+  }
 };
 
 // ─── ștergerea fișierelor din stocare (după ștergerea rândurilor) ──
@@ -167,6 +208,7 @@ export const handlers: Record<string, JobHandler> = {
   "reminders.daily": remindersDaily,
   "maintenance.prune": maintenancePrune,
   "storage.delete": storageDelete,
+  "breach.alert": breachAlert,
 };
 
 /** programările zilnice — idempotente prin dedupeKey; apelate periodic de worker */

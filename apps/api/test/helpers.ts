@@ -64,6 +64,11 @@ export async function seedCabinet(name: string) {
   await call("POST", `/api/self-assessments/${self.body.token}/requests`, { body: { organizationId, consent: true } });
   const refs = await call("GET", "/api/referrals", { token });
   const referralId = refs.body.data[0]?.id as string;
+  // GDPR: o activitate în registru, o cerere a unei persoane vizate, un incident
+  const act = await call("POST", `/api/clients/${clientId}/processing`, { token, body: { name: "Salarizare", purpose: "Calculul și plata salariilor", legalBases: ["6_1_c"], dataCategories: ["identificare", "financiare"], subjectCategories: ["angajati"], retention: "50 de ani (Legea 16/1996)", securityMeasures: ["acces"] } });
+  const dsar = await call("POST", `/api/clients/${clientId}/dsar`, { token, body: { type: "acces", requesterName: "Ana Popescu", receivedOn: new Date().toISOString().slice(0, 10) } });
+  const br = await call("POST", `/api/clients/${clientId}/breaches`, { token, body: { title: "Laptop pierdut", discoveredAt: new Date(Date.now() - 3600_000).toISOString(), risk: "risc" } });
+  if (act.status !== 201 || dsar.status !== 201 || br.status !== 201) throw new Error(`gdpr seed: ${JSON.stringify([act.body, dsar.body, br.body])}`);
   const [session] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId)).limit(1);
-  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string, organizationId, referralId, selfToken: self.body.token as string };
+  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string, organizationId, referralId, selfToken: self.body.token as string, processingId: act.body.id as string, dsarId: dsar.body.id as string, breachId: br.body.id as string };
 }

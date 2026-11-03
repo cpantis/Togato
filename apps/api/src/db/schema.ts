@@ -8,6 +8,10 @@ export const userStatusEnum = pgEnum("user_status", ["activ", "dezactivat"]);
 export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis", "neaplicabil"]);
 export const reviewStatusEnum = pgEnum("review_status", ["propus", "aprobat", "respins"]);
 export const systemSourceEnum = pgEnum("system_source", ["cabinet", "portal", "autoevaluare"]);
+export const processingRoleEnum = pgEnum("processing_role", ["operator", "operator_asociat", "persoana_imputernicita"]);
+export const dsarTypeEnum = pgEnum("dsar_type", ["acces", "rectificare", "stergere", "restrictionare", "portabilitate", "opozitie", "decizii_automate"]);
+export const dsarStatusEnum = pgEnum("dsar_status", ["primita", "in_lucru", "finalizata", "respinsa"]);
+export const breachRiskEnum = pgEnum("breach_risk", ["neevaluat", "fara_risc", "risc", "risc_ridicat"]);
 export const referralStatusEnum = pgEnum("referral_status", ["nou", "acceptat", "respins"]);
 export const obligationStatusEnum = pgEnum("obligation_status", ["de_facut", "in_lucru", "indeplinit", "nu_se_aplica"]);
 export const jobStatusEnum = pgEnum("job_status", ["pending", "running", "done", "failed"]);
@@ -263,6 +267,102 @@ export const auditLog = pgTable("audit_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("audit_org_created_idx").on(t.organizationId, t.createdAt),
+]);
+
+// ─── GDPR ────────────────────────────────────────────────
+
+/** O activitate din registrul prelucrărilor clientului (Art. 30 GDPR). */
+export const processingActivities = pgTable("processing_activities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  purpose: text("purpose").notNull(),
+  role: processingRoleEnum("role").notNull().default("operator"),
+  /** pentru persoana împuternicită / operatorul asociat: în numele cui */
+  controllerName: text("controller_name"),
+  legalBases: jsonb("legal_bases").$type<string[]>().notNull().default([]),
+  legalBasisDetails: text("legal_basis_details"),
+  specialConditions: jsonb("special_conditions").$type<string[]>().notNull().default([]),
+  dataCategories: jsonb("data_categories").$type<string[]>().notNull().default([]),
+  subjectCategories: jsonb("subject_categories").$type<string[]>().notNull().default([]),
+  recipients: text("recipients"),
+  transferOutsideEea: boolean("transfer_outside_eea").notNull().default(false),
+  transferCountries: text("transfer_countries"),
+  transferMechanism: text("transfer_mechanism"),
+  retention: text("retention"),
+  securityMeasures: jsonb("security_measures").$type<string[]>().notNull().default([]),
+  securityDetails: text("security_details"),
+  largeScale: boolean("large_scale").notNull().default(false),
+  systematicMonitoring: boolean("systematic_monitoring").notNull().default(false),
+  automatedDecisions: boolean("automated_decisions").notNull().default(false),
+  /** sistemele AI din inventarul clientului folosite în această prelucrare */
+  aiSystemIds: jsonb("ai_system_ids").$type<string[]>().notNull().default([]),
+  notes: text("notes"),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("processing_org_idx").on(t.organizationId),
+  index("processing_client_idx").on(t.clientId),
+]);
+
+/** Cererile persoanelor vizate primite de client (Art. 12–22), cu termenul legal de răspuns. */
+export const dsarRequests = pgTable("dsar_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  type: dsarTypeEnum("type").notNull(),
+  requesterName: text("requester_name").notNull(),
+  requesterContact: text("requester_contact"),
+  receivedOn: date("received_on").notNull(),
+  /** termenul calculat: o lună, sau trei după prelungire (Art. 12(3)) */
+  dueOn: date("due_on").notNull(),
+  extended: boolean("extended").notNull().default(false),
+  extensionReason: text("extension_reason"),
+  identityVerified: boolean("identity_verified").notNull().default(false),
+  status: dsarStatusEnum("status").notNull().default("primita"),
+  details: text("details"),
+  outcome: text("outcome"),
+  closedOn: date("closed_on"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("dsar_org_idx").on(t.organizationId, t.status, t.dueOn),
+  index("dsar_client_idx").on(t.clientId),
+]);
+
+/** Registrul incidentelor de securitate a datelor (Art. 33(5)), cu termenul de 72 de ore. */
+export const breaches = pgTable("breaches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  breachTypes: jsonb("breach_types").$type<string[]>().notNull().default([]),
+  /** momentul luării la cunoștință — de aici curg cele 72 de ore */
+  discoveredAt: timestamp("discovered_at", { withTimezone: true }).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }),
+  dataCategories: jsonb("data_categories").$type<string[]>().notNull().default([]),
+  subjectsAffected: integer("subjects_affected"),
+  recordsAffected: integer("records_affected"),
+  risk: breachRiskEnum("risk").notNull().default("neevaluat"),
+  riskReasoning: text("risk_reasoning"),
+  consequences: text("consequences"),
+  measures: text("measures"),
+  authorityNotifiedAt: timestamp("authority_notified_at", { withTimezone: true }),
+  authorityReference: text("authority_reference"),
+  /** motivele întârzierii, dacă notificarea depășește 72 de ore (Art. 33(1)) */
+  delayReason: text("delay_reason"),
+  subjectsNotifiedAt: timestamp("subjects_notified_at", { withTimezone: true }),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("breaches_org_idx").on(t.organizationId, t.closedAt),
+  index("breaches_client_idx").on(t.clientId),
 ]);
 
 /** Dovezi atașate unei obligații (procese-verbale, politici semnate, capturi): fișierul stă în stocare. */

@@ -148,6 +148,20 @@
       "when": 1793704207043,
       "tag": "0020_self_assessment_verify",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793708540351,
+      "tag": "0021_gdpr",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793708541473,
+      "tag": "0022_gdpr_rls",
+      "breakpoints": true
     }
   ]
 }
