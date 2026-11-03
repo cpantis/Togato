@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import crypto from "crypto";
-import { and, asc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { JUDETE, buildSelfReport, normalizePortalAnswers, type SelfTool } from "@togato/shared";
 import { rootDb as db } from "../db";
 import { organizations, referrals, selfAssessments, users } from "../db/schema";
@@ -25,6 +25,11 @@ const MAX_TOOLS = 30;
 const MAX_REQUESTS = 3;
 const INVALID = { error: "Linkul autoevaluării nu mai este valabil." };
 const optional = (max: number) => z.string().trim().max(max).nullish().transform((v) => (v ? v : null));
+
+/** linkul din email: deschide autoevaluarea și confirmă adresa (parametrul `confirmare`) */
+function verifyUrl(token: string, verifyToken: string) {
+  return `${frontendBaseUrl()}/autoevaluare/${token}?confirmare=${verifyToken}`;
+}
 
 async function load(token: string | undefined) {
   if (!token || token.length < 20 || token.length > 100) return null;
@@ -45,6 +50,7 @@ async function respond(row: typeof selfAssessments.$inferSelect) {
     .where(eq(referrals.selfAssessmentId, row.id)).orderBy(asc(referrals.createdAt));
   return {
     companyName: row.companyName, cui: row.cui, county: row.county, contactName: row.contactName, contactEmail: row.contactEmail,
+    emailVerified: !!row.emailVerifiedAt,
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
     report: buildSelfReport(toolsOf(row)),
     requests: reqs.map((r) => ({
@@ -73,10 +79,11 @@ selfAssessmentRoutes.post("/", async (c) => {
     website: z.string().max(0).optional(),
   }).parse(await c.req.json());
   const { token, hash } = newToken();
+  const verify = newToken();
   const url = `${frontendBaseUrl()}/autoevaluare/${token}`;
   await db.transaction(async (tx) => {
-    await tx.insert(selfAssessments).values({ tokenHash: hash, companyName: body.companyName, cui: body.cui, county: body.county, contactName: body.contactName, contactEmail: body.contactEmail });
-    await sendEmail(templates.selfAssessmentLink({ to: body.contactEmail, name: body.contactName, companyName: body.companyName, url }), { tx });
+    await tx.insert(selfAssessments).values({ tokenHash: hash, verifyTokenHash: verify.hash, companyName: body.companyName, cui: body.cui, county: body.county, contactName: body.contactName, contactEmail: body.contactEmail });
+    await sendEmail(templates.selfAssessmentLink({ to: body.contactEmail, name: body.contactName, companyName: body.companyName, url: verifyUrl(token, verify.token) }), { tx });
   });
   return c.json({ token, url }, 201);
 });
@@ -91,8 +98,42 @@ selfAssessmentRoutes.put("/:token", async (c) => {
   const row = await load(c.req.param("token"));
   if (!row) return c.json(INVALID, 404);
   const body = companySchema.parse(await c.req.json());
-  const [updated] = await db.update(selfAssessments).set({ ...body, updatedAt: new Date() }).where(eq(selfAssessments.id, row.id)).returning();
+  const emailChanged = body.contactEmail !== row.contactEmail;
+  const verify = newToken();
+  const [updated] = await db.transaction(async (tx) => {
+    const res = await tx.update(selfAssessments).set({ ...body, updatedAt: new Date(), ...(emailChanged ? { emailVerifiedAt: null, verifyTokenHash: verify.hash } : {}) })
+      .where(eq(selfAssessments.id, row.id)).returning();
+    // adresa nouă trebuie confirmată din nou
+    if (emailChanged) await sendEmail(templates.selfAssessmentLink({ to: body.contactEmail, name: body.contactName, companyName: body.companyName, url: verifyUrl(c.req.param("token")!, verify.token) }), { tx });
+    return res;
+  });
   return c.json(await respond(updated));
+});
+
+/** POST /:token/verify { code } — confirmă adresa de email (codul vine din linkul trimis pe email) */
+selfAssessmentRoutes.post("/:token/verify", async (c) => {
+  const row = await load(c.req.param("token"));
+  if (!row) return c.json(INVALID, 404);
+  const { code } = z.object({ code: z.string().min(20).max(100) }).parse(await c.req.json());
+  if (!row.emailVerifiedAt) {
+    if (!row.verifyTokenHash || hashToken(code) !== row.verifyTokenHash) return c.json({ error: "Linkul de confirmare nu mai este valabil. Cereți unul nou." }, 400);
+    const [updated] = await db.update(selfAssessments).set({ emailVerifiedAt: new Date(), verifyTokenHash: null }).where(eq(selfAssessments.id, row.id)).returning();
+    return c.json(await respond(updated));
+  }
+  return c.json(await respond(row));
+});
+
+/** POST /:token/resend-confirmation — retrimite emailul de confirmare (linkul vechi de confirmare se invalidează) */
+selfAssessmentRoutes.post("/:token/resend-confirmation", async (c) => {
+  const row = await load(c.req.param("token"));
+  if (!row) return c.json(INVALID, 404);
+  if (row.emailVerifiedAt) return c.json(await respond(row));
+  const verify = newToken();
+  await db.transaction(async (tx) => {
+    await tx.update(selfAssessments).set({ verifyTokenHash: verify.hash }).where(eq(selfAssessments.id, row.id));
+    await sendEmail(templates.selfAssessmentLink({ to: row.contactEmail, name: row.contactName, companyName: row.companyName, url: verifyUrl(c.req.param("token")!, verify.token) }), { tx });
+  });
+  return c.json({ ok: true });
 });
 
 const toolSchema = z.object({
@@ -143,6 +184,7 @@ selfAssessmentRoutes.post("/:token/requests", async (c) => {
     message: optional(2000),
     consent: z.literal(true, { message: "Confirmați că sunteți de acord cu transmiterea datelor către cabinet" }),
   }).parse(await c.req.json());
+  if (!row.emailVerifiedAt) return c.json({ error: `Confirmați întâi adresa de email (${row.contactEmail}) cu linkul primit, ca cabinetul să vă poată contacta.`, code: "email_unverified" }, 403);
   const tools = toolsOf(row);
   if (!tools.length) return c.json({ error: "Adăugați cel puțin un instrument AI înainte de a trimite autoevaluarea." }, 400);
   const org = await db.query.organizations.findFirst({ where: and(eq(organizations.id, body.organizationId), listedWhere()) });
@@ -201,4 +243,29 @@ directoryRoutes.get("/counties", async (c) => {
   const rows = await db.selectDistinct({ county: organizations.directoryCounty }).from(organizations)
     .where(and(listedWhere(), inArray(organizations.directoryCounty, [...JUDETE])));
   return c.json({ data: rows.map((r) => r.county).filter(Boolean).sort((a, b) => a!.localeCompare(b!, "ro")) });
+});
+
+/**
+ * POST /api/self-assessments/recover { email } — retrimite linkurile autoevaluărilor făcute cu adresa dată.
+ * Linkurile se regenerează (cele vechi nu mai funcționează), pentru că păstrăm doar amprenta lor.
+ * Răspunsul e mereu același, ca să nu se poată afla ce adrese au autoevaluări.
+ */
+export const selfAssessmentRecoveryRoutes = new Hono();
+selfAssessmentRecoveryRoutes.post("/", async (c) => {
+  const { email } = z.object({ email: z.string().trim().toLowerCase().email("Email invalid").max(200) }).parse(await c.req.json());
+  const rows = await db.select().from(selfAssessments).where(eq(selfAssessments.contactEmail, email)).orderBy(desc(selfAssessments.updatedAt)).limit(20);
+  if (rows.length) {
+    await db.transaction(async (tx) => {
+      const items = [];
+      for (const r of rows) {
+        const access = newToken();
+        const verify = newToken();
+        // deschiderea linkului dovedește accesul la email → confirmă și adresa
+        await tx.update(selfAssessments).set({ tokenHash: access.hash, ...(r.emailVerifiedAt ? {} : { verifyTokenHash: verify.hash }) }).where(eq(selfAssessments.id, r.id));
+        items.push({ companyName: r.companyName, updatedAt: r.updatedAt, url: r.emailVerifiedAt ? `${frontendBaseUrl()}/autoevaluare/${access.token}` : verifyUrl(access.token, verify.token) });
+      }
+      await sendEmail(templates.selfAssessmentRecovery({ to: email, items }), { tx });
+    });
+  }
+  return c.json({ ok: true, message: "Dacă există autoevaluări făcute cu această adresă, v-am trimis linkurile pe email. Verificați și dosarul Spam." });
 });

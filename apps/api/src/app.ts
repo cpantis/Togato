@@ -22,7 +22,7 @@ import { evidenceRoutes, MAX_EVIDENCE_BYTES } from "./routes/evidence";
 import { publicFileRoutes } from "./routes/publicFiles";
 import { billingRoutes, stripeWebhookRoutes } from "./routes/billing";
 import { platformRoutes } from "./routes/platform";
-import { directoryRoutes, selfAssessmentRoutes } from "./routes/selfAssessment";
+import { directoryRoutes, selfAssessmentRecoveryRoutes, selfAssessmentRoutes } from "./routes/selfAssessment";
 import { referralRoutes } from "./routes/referrals";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
@@ -99,6 +99,9 @@ app.use("/api/directory/*", rateLimit({ windowMs: 60_000, max: 60, key: "directo
 app.use("/api/directory", rateLimit({ windowMs: 60_000, max: 60, key: "directory" }));
 app.use("/api/self-assessments/*", rateLimit({ windowMs: 60_000, max: 60, key: "self" }));
 app.on("POST", "/api/self-assessments", rateLimit({ windowMs: 60 * 60_000, max: 10, key: "self-create" }));
+app.use("/api/self-assessment-recovery", rateLimit({ windowMs: 60 * 60_000, max: 5, key: "self-recover" }));
+app.on("POST", "/api/self-assessments/*/resend-confirmation", rateLimit({ windowMs: 60 * 60_000, max: 5, key: "self-resend" }));
+app.route("/api/self-assessment-recovery", selfAssessmentRecoveryRoutes);
 app.on("POST", "/api/self-assessments/*", rateLimit({ windowMs: 60_000, max: 20, key: "self-write" }));
 app.route("/api/self-assessments", selfAssessmentRoutes);
 app.route("/api/directory", directoryRoutes);

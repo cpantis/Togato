@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JUDETE, SELF_ASSESSMENT_DISCLAIMER } from "@togato/shared";
 import { api } from "@/lib/api";
@@ -73,6 +74,7 @@ export default function SelfAssessmentStart() {
             </label>
             <Button type="submit" className="w-full" loading={busy}>Continuă</Button>
           </form>
+          <p className="mt-4 text-center text-[12px] text-slate-500">Ați început deja o autoevaluare? <Link href="/autoevaluare/recuperare" className="font-semibold text-brand hover:underline">Primiți din nou linkul</Link></p>
         </Card>
       </div>
     </PublicShell>

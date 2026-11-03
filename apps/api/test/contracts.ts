@@ -134,7 +134,7 @@ const toolResult = z.object({ verdict, summary: z.string(), lawyerReason: z.stri
 const referralStatus = z.enum(["nou", "acceptat", "respins"]);
 
 export const selfAssessment = z.object({
-  companyName: z.string(), cui: z.string().nullable(), county: z.string().nullable(), contactName: z.string(), contactEmail: z.string().email(),
+  companyName: z.string(), cui: z.string().nullable(), county: z.string().nullable(), contactName: z.string(), contactEmail: z.string().email(), emailVerified: z.boolean(),
   createdAt: iso, updatedAt: iso,
   report: z.object({
     tools: z.array(selfTool.extend({ result: toolResult }).strict()),

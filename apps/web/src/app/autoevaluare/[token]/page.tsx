@@ -60,11 +60,26 @@ export default function SelfAssessmentPage() {
   const [message, setMessage] = useState("");
   const [consent, setConsent] = useState(false);
 
-  const load = useCallback(() => {
-    api<SelfAssessmentData>(base).then((d) => { setData(d); if (!county && d.county) setCounty(d.county); }).catch((e) => setLoadError(e.message));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base]);
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(async () => {
+    try {
+      // linkul din email are ?confirmare=<cod>: confirmă adresa, apoi scoate codul din bara de adrese
+      const code = new URLSearchParams(window.location.search).get("confirmare");
+      const d = code
+        ? await api<SelfAssessmentData>(`${base}/verify`, { method: "POST", body: JSON.stringify({ code }) }).catch(() => api<SelfAssessmentData>(base))
+        : await api<SelfAssessmentData>(base);
+      if (code) router.replace(`/autoevaluare/${token}`);
+      setData(d);
+      setCounty((c) => c || d.county || "");
+    } catch (e) {
+      setLoadError((e as Error).message);
+    }
+  }, [base, router, token]);
+  useEffect(() => { void load(); }, [load]);
+  const [resent, setResent] = useState(false);
+  async function resend() {
+    setError(null);
+    try { await api(`${base}/resend-confirmation`, { method: "POST" }); setResent(true); } catch (e) { setError((e as Error).message); }
+  }
   useEffect(() => { api<{ data: string[] }>("/api/directory/counties").then((r) => setCounties(r.data)).catch(() => undefined); }, []);
   useEffect(() => {
     const t = setTimeout(() => {
@@ -114,7 +129,7 @@ export default function SelfAssessmentPage() {
   if (!data) return <PublicShell><LoadingBlock /></PublicShell>;
   const r = data.report;
   const sentTo = new Set(data.requests.map((q) => q.organizationId));
-  const canSend = r.tools.length > 0 && data.requests.length < data.maxRequests;
+  const canSend = data.emailVerified && r.tools.length > 0 && data.requests.length < data.maxRequests;
 
   return (
     <PublicShell>
@@ -129,6 +144,14 @@ export default function SelfAssessmentPage() {
         </div>
       </div>
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
+      {!data.emailVerified && (
+        <div className="mb-4 print:hidden">
+          <Alert kind="warning">
+            Confirmați adresa <b>{data.contactEmail}</b> cu linkul primit pe email — după confirmare puteți trimite autoevaluarea unui cabinet. Puteți completa autoevaluarea și înainte.{" "}
+            {resent ? <span className="font-semibold">Am retrimis emailul.</span> : <button type="button" onClick={resend} className="font-semibold underline">Retrimite emailul</button>}
+          </Alert>
+        </div>
+      )}
 
       {/* 1. instrumentele */}
       <Card className="p-5">
@@ -203,6 +226,7 @@ export default function SelfAssessmentPage() {
           </ul>
         )}
         {!r.tools.length && <p className="mt-3 text-[12px] text-slate-500">Adăugați mai întâi cel puțin un instrument.</p>}
+        {r.tools.length > 0 && !data.emailVerified && <p className="mt-3 text-[12px] font-medium text-amber-800">Confirmați adresa de email ca să puteți trimite autoevaluarea.</p>}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <select className={`${inputClass} sm:w-56`} value={county} onChange={(e) => setCounty(e.target.value)} aria-label="Județul cabinetului">
             <option value="">Toate județele</option>

@@ -70,10 +70,19 @@ export const templates = {
   },
 
   selfAssessmentLink(p: { to: string; name: string; companyName: string; url: string }) {
-    return build(p.to, `Autoevaluarea AI Act pentru ${p.companyName}`, [
+    return build(p.to, `Confirmați adresa: autoevaluarea AI Act pentru ${p.companyName}`, [
       `Bună ziua, ${escapeHtml(p.name)}. Autoevaluarea pentru <strong>${escapeHtml(p.companyName)}</strong> a fost salvată.`,
-      "Puteți reveni oricând cu linkul de mai jos ca să adăugați instrumente, să vedeți rezultatul sau să trimiteți dosarul unui cabinet de avocatură. Păstrați linkul: oricine îl are poate vedea autoevaluarea.",
-    ], { label: "Deschide autoevaluarea", url: p.url }, { footer: "Togato — autoevaluare AI Act gratuită. Rezultatul este orientativ și nu constituie consultanță juridică." });
+      "Deschideți linkul de mai jos ca să confirmați adresa de email — după confirmare puteți trimite autoevaluarea unui cabinet de avocatură. Cu același link reveniți oricând la autoevaluare.",
+      "Păstrați linkul: oricine îl are poate vedea autoevaluarea. Dacă nu ați solicitat-o, ignorați acest mesaj.",
+    ], { label: "Confirmă și deschide autoevaluarea", url: p.url }, { footer: "Togato — autoevaluare AI Act gratuită. Rezultatul este orientativ și nu constituie consultanță juridică." });
+  },
+
+  selfAssessmentRecovery(p: { to: string; items: { companyName: string; url: string; updatedAt: Date }[] }) {
+    return build(p.to, "Linkurile autoevaluărilor AI Act", [
+      "Ați cerut din nou linkurile autoevaluărilor făcute cu această adresă de email. Linkurile trimise anterior nu mai funcționează.",
+      p.items.map((i) => `• <a href="${escapeHtml(i.url)}">${escapeHtml(i.companyName)}</a> — actualizată ${i.updatedAt.toLocaleDateString("ro-RO")}`).join("<br>"),
+      "Dacă nu ați cerut dumneavoastră linkurile, ignorați acest mesaj; autoevaluările rămân accesibile doar prin linkurile de mai sus.",
+    ], undefined, { footer: "Togato — autoevaluare AI Act gratuită." });
   },
 
   referralNew(p: { to: string; companyName: string; contactName: string; tools: number; needsLawyer: boolean; url: string; message?: string | null }) {

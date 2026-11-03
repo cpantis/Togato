@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
-import { sessions } from "../src/db/schema";
+import { selfAssessments, sessions } from "../src/db/schema";
+import { hashToken } from "../src/lib/tokens";
 /** Utilitare pentru testele de integrare: cereri către aplicația reală, fără server HTTP. */
 import { app } from "../src/app";
 
@@ -14,6 +15,11 @@ export async function call<T = any>(method: string, path: string, opts: { token?
   const type = res.headers.get("content-type") || "";
   const body = type.includes("json") ? await res.json() : await res.arrayBuffer();
   return { status: res.status, body: body as T, headers: res.headers };
+}
+
+/** confirmă direct emailul unei autoevaluări (în teste, fără a citi emailul) */
+export async function verifySelfAssessment(token: string) {
+  await db.update(selfAssessments).set({ emailVerifiedAt: new Date(), verifyTokenHash: null }).where(eq(selfAssessments.tokenHash, hashToken(token)));
 }
 
 /** încărcare multipart („file”, opțional „note”) */
@@ -53,6 +59,7 @@ export async function seedCabinet(name: string) {
   // autoevaluarea unei firme, trimisă acestui cabinet (cabinetul apare în director)
   await call("PUT", "/api/organization/directory", { token, body: { listed: true, county: "Cluj", city: "Cluj-Napoca" } });
   const self = await call("POST", "/api/self-assessments", { body: { companyName: `Firma ${name} SRL`, contactName: "Ion Pop", contactEmail: `${unique("firma")}@firma.ro`, terms: true } });
+  await verifySelfAssessment(self.body.token);
   await call("POST", `/api/self-assessments/${self.body.token}/tools`, { body: { name: "Chatbot site", answers: { talksToPeople: true } } });
   await call("POST", `/api/self-assessments/${self.body.token}/requests`, { body: { organizationId, consent: true } });
   const refs = await call("GET", "/api/referrals", { token });

@@ -353,11 +353,17 @@ export const selfAssessments = pgTable("self_assessments", {
   county: text("county"),
   contactName: text("contact_name").notNull(),
   contactEmail: text("contact_email").notNull(),
+  /** emailul e confirmat prin clic pe linkul primit (necesar pentru trimiterea către un cabinet) */
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  verifyTokenHash: text("verify_token_hash"),
   /** instrumentele AI: [{ id, name, vendor, purpose, answers }] (răspunsurile simple din portal) */
   tools: jsonb("tools").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [uniqueIndex("self_assessments_token_unique").on(t.tokenHash)]);
+}, (t) => [
+  uniqueIndex("self_assessments_token_unique").on(t.tokenHash),
+  index("self_assessments_email_idx").on(t.contactEmail),
+]);
 
 /**
  * Solicitarea unei firme către un cabinet ales de ea. `payload` = copia datelor pe care firma a

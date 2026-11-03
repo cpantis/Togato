@@ -141,6 +141,13 @@
       "when": 1793702503234,
       "tag": "0019_self_assessment_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793704207043,
+      "tag": "0020_self_assessment_verify",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,19 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import crypto from "crypto";
+import postgres from "postgres";
 import { signup, unique } from "./helpers";
+
+const DB_URL = process.env.E2E_DATABASE_URL || "postgres://postgres@localhost:5433/togato_e2e_test";
+
+/** emailul nu e accesibil din test: punem în DB un cod de confirmare cunoscut, apoi deschidem linkul ca firma */
+async function confirmationLink(email: string, pageUrl: string) {
+  const code = crypto.randomBytes(32).toString("base64url");
+  const sql = postgres(DB_URL, { max: 1 });
+  await sql`update self_assessments set verify_token_hash = ${crypto.createHash("sha256").update(code).digest("hex")} where contact_email = ${email}`;
+  await sql.end();
+  return `${pageUrl}?confirmare=${code}`;
+}
 
 async function axe(page: Page) {
   await page.waitForLoadState("networkidle");
@@ -30,7 +43,8 @@ test("autoevaluare gratuită → alegerea cabinetului după județ și nume → 
   await firm.getByLabel("Denumirea firmei").fill("Transport Rapid SRL");
   await firm.getByLabel("Județul").selectOption("Cluj");
   await firm.getByLabel("Numele dumneavoastră").fill("Maria Ionescu");
-  await firm.getByLabel("Email").fill(`${unique("maria")}@firma.ro`);
+  const firmEmail = `${unique("maria")}@firma.ro`;
+  await firm.getByLabel("Email").fill(firmEmail);
   await firm.getByRole("checkbox").check();
   await firm.getByRole("button", { name: "Continuă" }).click();
   await firm.waitForURL(/\/autoevaluare\/[A-Za-z0-9_-]{20,}$/);
@@ -42,6 +56,15 @@ test("autoevaluare gratuită → alegerea cabinetului după județ și nume → 
   await expect(firm.getByText("Risc ridicat", { exact: true })).toBeVisible();
   await expect(firm.getByText(/Vă recomandăm să alegeți un cabinet/)).toBeVisible();
   expect(await axe(firm)).toEqual([]);
+
+  // înainte de confirmarea emailului nu se poate trimite la un cabinet
+  await expect(firm.getByText(/Confirmați adresa/).first()).toBeVisible();
+  await firm.getByLabel("Caută cabinet după nume").fill(cabinetName.slice(0, 12));
+  await expect(firm.locator("li", { hasText: cabinetName }).getByRole("button", { name: "Trimite autoevaluarea" })).toBeDisabled();
+  // clic pe linkul din email → adresa confirmată, codul dispare din bara de adrese
+  await firm.goto(await confirmationLink(firmEmail, firm.url()));
+  await expect(firm.getByText(/Confirmați adresa/)).toHaveCount(0);
+  await expect(firm).not.toHaveURL(/confirmare=/);
 
   // directorul: județul e preselectat; căutare după nume
   await firm.getByLabel("Caută cabinet după nume").fill(cabinetName.slice(0, 12));

@@ -38,8 +38,11 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | Metodă | Rută | Acces |
 |---|---|---|
 | `POST` | `/api/self-assessments` | public |
+| `POST` | `/api/self-assessment-recovery` | public |
 | `GET` | `/api/self-assessments/:token` | public |
 | `PUT` | `/api/self-assessments/:token` | public |
+| `POST` | `/api/self-assessments/:token/verify` | public |
+| `POST` | `/api/self-assessments/:token/resend-confirmation` | public |
 | `POST` | `/api/self-assessments/:token/tools` | public |
 | `DELETE` | `/api/self-assessments/:token/tools/:toolId` | public |
 | `DELETE` | `/api/self-assessments/:token` | public |

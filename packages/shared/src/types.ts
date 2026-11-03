@@ -64,6 +64,8 @@ export interface SelfAssessmentData {
   county: string | null;
   contactName: string;
   contactEmail: string;
+  /** adresa a fost confirmată (necesar pentru trimiterea către un cabinet) */
+  emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
   report: import("./selfAssessment").SelfReport;

@@ -8,7 +8,7 @@ import { drain } from "../src/jobs/queue";
 import { handlers } from "../src/jobs/handlers";
 import { _clearOutbox, sentEmails } from "../src/services/email";
 import * as C from "./contracts";
-import { call, seedCabinet, unique } from "./helpers";
+import { call, seedCabinet, unique, verifySelfAssessment } from "./helpers";
 
 async function runJobs() {
   await rootDb.execute(sql`update jobs set run_at = now() where status = 'pending'`);
@@ -18,11 +18,13 @@ function check(schema: ZodTypeAny, body: unknown) {
   const r = schema.safeParse(body);
   if (!r.success) throw new Error(r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("\n"));
 }
-async function newAssessment(overrides: Record<string, unknown> = {}) {
+async function newAssessment(overrides: Record<string, unknown> = {}, opts: { verify?: boolean } = { verify: true }) {
   const email = `${unique("firma")}@firma.ro`;
   const r = await call("POST", "/api/self-assessments", { body: { companyName: "Transport Rapid SRL", county: "Cluj", contactName: "Maria Ionescu", contactEmail: email, terms: true, ...overrides } });
+  if (r.status === 201 && opts.verify) await verifySelfAssessment(r.body.token);
   return { ...r, email };
 }
+const linkIn = (text: string) => text.match(/\/autoevaluare\/([A-Za-z0-9_-]+)(?:\?confirmare=([A-Za-z0-9_-]+))?/)!;
 
 beforeEach(async () => { await runJobs(); _clearOutbox(); });
 
@@ -166,5 +168,71 @@ describe("solicitarea către cabinet", () => {
     expect((await call("DELETE", `/api/self-assessments/${body.token}`)).status).toBe(204);
     expect((await call("GET", `/api/self-assessments/${body.token}`)).status).toBe(404);
     expect((await call("GET", `/api/referrals/${ref.id}`, { token: A.token })).status).toBe(200);
+  });
+});
+
+describe("confirmarea emailului și recuperarea linkurilor", () => {
+  it("fără confirmare nu se poate trimite la un cabinet; linkul din email confirmă adresa", async () => {
+    const A = await seedCabinet("Cabinet Confirmare");
+    const { body, email } = await newAssessment({}, { verify: false });
+    const t = body.token;
+    await call("POST", `/api/self-assessments/${t}/tools`, { body: { name: "Chatbot", answers: { talksToPeople: true } } });
+    const blocked = await call("POST", `/api/self-assessments/${t}/requests`, { body: { organizationId: A.organizationId, consent: true } });
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.code).toBe("email_unverified");
+    expect((await call("GET", `/api/self-assessments/${t}`)).body.emailVerified).toBe(false);
+
+    await runJobs();
+    const [, linkToken, code] = linkIn(sentEmails().find((m) => m.to === email)!.text);
+    expect(linkToken).toBe(t);
+    expect((await call("POST", `/api/self-assessments/${t}/verify`, { body: { code: "x".repeat(43) } })).status).toBe(400);
+    const ok = await call("POST", `/api/self-assessments/${t}/verify`, { body: { code } });
+    expect(ok.body.emailVerified).toBe(true);
+    expect((await call("POST", `/api/self-assessments/${t}/requests`, { body: { organizationId: A.organizationId, consent: true } })).status).toBe(201);
+  });
+
+  it("retrimiterea confirmării invalidează linkul vechi; schimbarea emailului cere o nouă confirmare", async () => {
+    const { body, email } = await newAssessment({}, { verify: false });
+    const t = body.token;
+    await runJobs();
+    const [, , oldCode] = linkIn(sentEmails().find((m) => m.to === email)!.text);
+    _clearOutbox();
+    await call("POST", `/api/self-assessments/${t}/resend-confirmation`);
+    await runJobs();
+    const [, , newCode] = linkIn(sentEmails().find((m) => m.to === email)!.text);
+    expect(newCode).not.toBe(oldCode);
+    expect((await call("POST", `/api/self-assessments/${t}/verify`, { body: { code: oldCode } })).status).toBe(400);
+    expect((await call("POST", `/api/self-assessments/${t}/verify`, { body: { code: newCode } })).body.emailVerified).toBe(true);
+
+    const other = `${unique("nou")}@firma.ro`;
+    _clearOutbox();
+    const upd = await call("PUT", `/api/self-assessments/${t}`, { body: { companyName: "Transport Rapid SRL", contactName: "Maria Ionescu", contactEmail: other } });
+    expect(upd.body.emailVerified).toBe(false);
+    await runJobs();
+    expect(sentEmails().some((m) => m.to === other && m.subject.startsWith("Confirmați adresa"))).toBe(true);
+  });
+
+  it("recuperarea: linkuri noi pentru toate autoevaluările adresei; cele vechi nu mai merg; răspuns identic", async () => {
+    const email = `${unique("rec")}@firma.ro`;
+    const a1 = await call("POST", "/api/self-assessments", { body: { companyName: "Alfa SRL", contactName: "Ion", contactEmail: email, terms: true } });
+    const a2 = await call("POST", "/api/self-assessments", { body: { companyName: "Beta SRL", contactName: "Ion", contactEmail: email, terms: true } });
+    await verifySelfAssessment(a2.body.token);
+    const unknown = await call("POST", "/api/self-assessment-recovery", { body: { email: "nimeni@nicaieri.ro" } });
+    await runJobs();
+    _clearOutbox();
+    const known = await call("POST", "/api/self-assessment-recovery", { body: { email: email.toUpperCase() } });
+    expect(known.body).toEqual(unknown.body);
+    await runJobs();
+    const mail = sentEmails().find((m) => m.to === email && m.subject.includes("Linkurile"))!;
+    expect(mail.text).toContain("Alfa SRL");
+    expect(mail.text).toContain("Beta SRL");
+    expect((await call("GET", `/api/self-assessments/${a1.body.token}`)).status).toBe(404);
+    const links = [...mail.html.matchAll(/\/autoevaluare\/([A-Za-z0-9_-]+)(?:\?confirmare=([A-Za-z0-9_-]+))?/g)];
+    expect(links).toHaveLength(2);
+    for (const [, tok, code] of links) {
+      const r = await call("GET", `/api/self-assessments/${tok}`);
+      expect(r.status).toBe(200);
+      if (code) expect((await call("POST", `/api/self-assessments/${tok}/verify`, { body: { code } })).body.emailVerified).toBe(true);
+    }
   });
 });
