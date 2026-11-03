@@ -1,3 +1,4 @@
+import { log } from "../lib/logger";
 /**
  * Datele firmei după CUI.
  *
@@ -105,7 +106,7 @@ async function enrichListaFirme(base: CompanyLookup | null, cui: string): Promis
       source: base ? base.source : "listafirme",
     };
   } catch (e) {
-    console.warn("[listafirme]", (e as Error).message);
+    log.warn("lookup listafirme eșuat", { err: (e as Error).message });
     return base;
   }
 }
@@ -119,7 +120,7 @@ export async function lookupCompany(rawCui: string): Promise<CompanyLookup | nul
   try {
     result = await lookupAnaf(cui);
   } catch (e) {
-    console.warn("[anaf]", (e as Error).message);
+    log.warn("lookup ANAF eșuat", { err: (e as Error).message });
     if (!process.env.LISTAFIRME_API_KEY) throw new Error("Serviciul ANAF nu răspunde momentan. Completează datele manual sau reîncearcă.");
   }
   result = await enrichListaFirme(result, cui);

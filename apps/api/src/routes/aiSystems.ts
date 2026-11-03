@@ -1,3 +1,4 @@
+import { log, serializeError } from "../lib/logger";
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
@@ -191,7 +192,7 @@ aiSystemRoutes.post("/:id/memo", async (c) => {
       .where(and(eq(aiSystems.id, s.id), eq(aiSystems.organizationId, auth.organizationId)));
     await audit(auth, "memo", "ai_system", s.id, { citations: memo.citations.length });
   } catch (e) {
-    console.error("[memo]", e);
+    log.error("memoriul AI a eșuat", { err: serializeError(e) });
     return c.json({ error: (e as Error).message.startsWith("Analiza") ? (e as Error).message : "Serviciul AI nu răspunde momentan. Reîncearcă peste câteva minute." }, 502);
   }
   return c.json(await systemResponse(auth.organizationId, s.id));

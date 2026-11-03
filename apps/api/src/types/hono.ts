@@ -9,5 +9,6 @@ export interface AuthContext {
 export type AppEnv = {
   Variables: {
     auth: AuthContext;
+    requestId: string;
   };
 };

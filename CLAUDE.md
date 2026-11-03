@@ -25,6 +25,11 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Identitatea vizuală a cabinetului (`organizations.brandColor`, `logoUrl`) se setează din `/settings` (doar admin) și se folosește în portal.
 - Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Emailul nu se trimite încă — adminul copiază linkul.
 
+## Operațional
+- Jurnal: `lib/logger.ts` — o linie JSON per eveniment, câmpurile sensibile mascate; fiecare linie poartă `requestId` (antet `X-Request-Id`, `middleware/requestContext.ts`) și, după autentificare, `organizationId`/`userId`. Nu folosiți `console.*` în API.
+- Erorile 500 se raportează la Sentry dacă `SENTRY_DSN` e setat (`lib/errorReporting.ts`, fără SDK, fără corpul cererii) și întorc `requestId`, afișat în web ca „cod pentru suport”.
+- `/health` = procesul e viu; `/health/ready` = baza de date răspunde (503 altfel). Oprirea la SIGTERM e curată.
+
 ## Textul oficial al legii
 - `apps/api/src/legal/ai_act_ro.json` — Regulamentul (UE) 2024/1689 în limba română, structurat pe articole / alineate / anexe / puncte / litere. Generat cu `python3 -I scripts/import_ai_act.py <pagina EUR-Lex .html> apps/api/src/legal/ai_act_ro.json` (nu se editează de mână). Versiunea curentă: textul inițial din JO L 12.7.2024 — **fără** modificările Omnibus.
 - `packages/shared/src/lawRefs.ts` transformă trimiterile din catalog („Art. 26(7)”, „Anexa III pct. 4(a)”, „Art. 26(9) + GDPR Art. 35”) în referințe; `apps/api/src/services/law.ts` le rezolvă la text; `GET /api/law?ref=...`. În web, componenta `LawRef` face orice articol clicabil.

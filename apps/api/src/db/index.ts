@@ -3,7 +3,7 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL nu e setat — operațiile pe baza de date vor eșua.");
+  process.stderr.write(JSON.stringify({ level: "error", msg: "DATABASE_URL nu e setat" }) + "\n");
 }
 
 const client = postgres(process.env.DATABASE_URL || "postgres://togato:togato@localhost:5432/togato", {

@@ -1,7 +1,6 @@
 /** Construcția aplicației Hono — fără efecte la import (folosită de server și de teste). */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { bodyLimit } from "hono/body-limit";
 import { authRoutes } from "./routes/auth";
 import { clientRoutes } from "./routes/clients";
@@ -22,14 +21,32 @@ import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
 import type { AppEnv } from "./types/hono";
 import { config } from "./config";
+import { requestContext } from "./middleware/requestContext";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+import { RULESET_VERSION } from "@togato/shared";
 
 
 export function createApp() {
 const app = new Hono<AppEnv>();
 
-app.get("/health", (c) => c.json({ status: "ok", service: "togato-api" }));
+app.use("*", requestContext);
 
-if (config().NODE_ENV !== "test") app.use("*", logger());
+// viu: procesul răspunde (fără dependențe) — folosit de platformă pentru repornire
+app.get("/health", (c) => c.json({ status: "ok", service: "togato-api" }));
+// pregătit: baza de date răspunde — folosit pentru rutarea traficului
+app.get("/health/ready", async (c) => {
+  const started = performance.now();
+  try {
+    await Promise.race([
+      db.execute(sql`select 1`),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 2000)),
+    ]);
+    return c.json({ status: "ok", db: "ok", dbLatencyMs: Math.round(performance.now() - started), rulesetVersion: RULESET_VERSION, release: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || null });
+  } catch {
+    return c.json({ status: "degraded", db: "unavailable" }, 503);
+  }
+});
 app.use("/api/*", cors({
   origin: config().FRONTEND_URL.split(",").map((s) => s.trim()),
   credentials: true,

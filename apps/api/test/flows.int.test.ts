@@ -6,6 +6,7 @@ import { base32Decode, hotp, timeStep } from "../src/lib/totp";
 import { reclassifyOutdated } from "../src/services/reclassify";
 import { RULESET_VERSION } from "@togato/shared";
 import { call, seedCabinet, unique } from "./helpers";
+import { app } from "../src/app";
 
 const totp = (secret: string, offset = 0) => hotp(base32Decode(secret), timeStep() + offset);
 
@@ -79,5 +80,17 @@ describe("portalul clientului", () => {
     expect(sub.status).toBe(201);
     const sys = await call("GET", `/api/ai-systems/${sub.body.id}`, { token: c.token });
     expect(sys.body).toMatchObject({ source: "portal", riskLevel: "transparenta", reviewStatus: "propus", submittedByName: "Paul" });
+  });
+});
+
+describe("operațional", () => {
+  it("/health/ready verifică baza de date; fiecare răspuns are X-Request-Id", async () => {
+    const r = await call("GET", "/health/ready");
+    expect(r.status).toBe(200);
+    expect((r.body as any).db).toBe("ok");
+    const r2 = await app.request("/api/dashboard", { headers: { "x-request-id": "cerere-test-123" } });
+    expect(r2.headers.get("x-request-id")).toBe("cerere-test-123");
+    const r3 = await app.request("/api/dashboard");
+    expect(r3.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

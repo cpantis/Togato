@@ -1,3 +1,4 @@
+import { log } from "./logger";
 import { db, type Tx } from "../db";
 import { auditLog } from "../db/schema";
 import type { AuthContext } from "../types/hono";
@@ -21,6 +22,6 @@ export async function audit(
     });
   } catch (e) {
     // Jurnalul nu trebuie să blocheze operația principală
-    console.warn("[audit]", action, entity, (e as Error).message);
+    log.warn("jurnalul de audit nu s-a scris", { action, entity, err: (e as Error).message });
   }
 }

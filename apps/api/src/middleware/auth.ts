@@ -1,3 +1,4 @@
+import { log, logContext } from "../lib/logger";
 import type { Context, Next } from "hono";
 import { verify, sign } from "hono/jwt";
 import { eq } from "drizzle-orm";
@@ -64,9 +65,11 @@ export const authMiddleware = async (c: Context, next: Next) => {
   if (now - (lastActive.get(user.id) || 0) > ACTIVITY_THROTTLE_MS) {
     lastActive.set(user.id, now);
     db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, user.id))
-      .catch((e: Error) => console.warn("[auth] lastActiveAt:", e.message));
+      .catch((e: Error) => log.warn("lastActiveAt nu s-a actualizat", { err: e.message }));
   }
 
+  const ctx = logContext.getStore();
+  if (ctx) Object.assign(ctx, { organizationId: user.organizationId, userId: user.id });
   c.set("auth", {
     userId: user.id,
     organizationId: user.organizationId,

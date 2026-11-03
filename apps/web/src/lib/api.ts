@@ -42,7 +42,8 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
       window.location.assign("/login");
     }
     const details = Array.isArray(body?.details) ? body.details.map((d: any) => d.message).join(" · ") : "";
-    throw new ApiError(details || body?.error || `Eroare ${res.status}`, res.status, body);
+    const ref = res.status >= 500 && body?.requestId ? ` (cod pentru suport: ${String(body.requestId).slice(0, 8)})` : "";
+    throw new ApiError((details || body?.error || `Eroare ${res.status}`) + ref, res.status, body);
   }
   return body as T;
 }

@@ -1,3 +1,4 @@
+import { log } from "./logger";
 /**
  * Criptare AES-256-GCM pentru secrete păstrate în baza de date (ex. secretul TOTP).
  * Cheia: ENCRYPTION_KEY (64 de caractere hex). Dacă lipsește, se derivă din JWT_SECRET (HKDF),
@@ -16,7 +17,7 @@ function key(): Buffer {
     cachedKey = k;
   } else {
     if (!process.env.JWT_SECRET) throw new Error("Lipsesc ENCRYPTION_KEY și JWT_SECRET");
-    console.warn("[crypto] ENCRYPTION_KEY nu e setat — cheia se derivă din JWT_SECRET");
+    log.warn("ENCRYPTION_KEY nu e setat — cheia se derivă din JWT_SECRET");
     cachedKey = Buffer.from(crypto.hkdfSync("sha256", process.env.JWT_SECRET, "togato", "togato-encryption-v1", 32));
   }
   return cachedKey;
