@@ -25,6 +25,11 @@ const NAV_SECTIONS = [
   },
 ];
 
+const PLATFORM_SECTION = {
+  title: "Togato",
+  items: [{ href: "/platform", label: "Platformă", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" }],
+};
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, organization, loading, error, logout, refresh } = useAuth();
   const router = useRouter();
@@ -80,7 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="truncate text-[11px] text-slate-400">{organization?.name}</div>
         </div>
       </div>
-      {NAV_SECTIONS.map((section) => (
+      {[...NAV_SECTIONS, ...(user.platformAdmin ? [PLATFORM_SECTION] : [])].map((section) => (
       <div key={section.title} className="mb-4 px-3">
         <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{section.title}</div>
         {section.items.map((item) => {

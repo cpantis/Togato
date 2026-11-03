@@ -22,7 +22,7 @@ const riskCounts = z.record(risk, z.number().int()).transform((v) => v as Partia
 const billingState = z.enum(["proba", "activ", "restant", "expirat", "suspendat"]);
 
 export const authUser = z.object({
-  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(),
+  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(),
 }).strict();
 same<z.infer<typeof authUser>, AuthUser>(true);
 
@@ -30,7 +30,7 @@ export const organization = z.object({
   id: uuid, name: z.string(), plan: z.string(), status: z.enum(["trial", "activ", "suspendat"]), trialEndsAt: iso.nullable(),
   brandColor: z.string().nullable(), logoUrl: z.string().nullable(), logoSrc: z.string().nullable().optional(),
   billingState: billingState.optional() as z.ZodOptional<z.ZodType<BillingState>>, logoUploaded: z.boolean().optional(),
-  aiEnabled: z.boolean(), aiEnabledAt: iso.nullable().optional(), require2fa: z.boolean(),
+  aiEnabled: z.boolean(), aiEnabledAt: iso.nullable().optional(), require2fa: z.boolean(), supportAccessUntil: iso.nullable().optional(),
 }).strict();
 same<z.infer<typeof organization>, Organization>(true);
 

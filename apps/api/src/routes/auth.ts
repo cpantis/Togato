@@ -16,6 +16,7 @@ import { clientIp } from "../lib/clientIp";
 import { log } from "../lib/logger";
 import { logoSrc } from "../lib/logo";
 import { stateOf } from "../services/billing";
+import { isPlatformAdmin } from "../services/platform";
 
 export const authRoutes = new Hono();
 
@@ -54,7 +55,7 @@ async function sessionResponse(c: Context, user: typeof users.$inferSelect, org:
 const DUMMY_HASH = bcrypt.hashSync("togato-dummy-password", 12);
 
 function publicUser(u: typeof users.$inferSelect) {
-  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled };
+  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled, platformAdmin: isPlatformAdmin(u.email) };
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {

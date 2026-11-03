@@ -20,6 +20,7 @@ function serialize(o: typeof organizations.$inferSelect) {
     id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl,
     logoSrc: logoSrc(o), logoUploaded: !!o.logoKey,
     aiEnabled: o.aiEnabled, aiEnabledAt: o.aiEnabledAt?.toISOString() ?? null, require2fa: o.require2fa,
+    supportAccessUntil: o.supportAccessUntil && o.supportAccessUntil > new Date() ? o.supportAccessUntil.toISOString() : null,
   };
 }
 
@@ -81,5 +82,25 @@ organizationRoutes.delete("/logo", requireAdmin, async (c) => {
   const [org] = await db.update(organizations).set({ logoKey: null, logoContentType: null }).where(eq(organizations.id, auth.organizationId)).returning();
   if (current.logoKey) await enqueue("storage.delete", { keys: [current.logoKey] }, { organizationId: auth.organizationId });
   await audit(auth, "logo_delete", "organization", auth.organizationId);
+  return c.json(serialize(org));
+});
+
+/**
+ * POST /support-access { hours } — permite echipei Togato să vadă (doar în citire) datele cabinetului,
+ * pentru rezolvarea unei probleme. Expiră automat; se poate retrage oricând.
+ */
+organizationRoutes.post("/support-access", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const { hours } = z.object({ hours: z.union([z.literal(24), z.literal(72), z.literal(168)]) }).parse(await c.req.json());
+  const until = new Date(Date.now() + hours * 3600_000);
+  const [org] = await db.update(organizations).set({ supportAccessUntil: until, supportAccessGrantedBy: auth.userId }).where(eq(organizations.id, auth.organizationId)).returning();
+  await audit(auth, "support_access_grant", "organization", auth.organizationId, { hours, until: until.toISOString() });
+  return c.json(serialize(org));
+});
+
+organizationRoutes.delete("/support-access", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const [org] = await db.update(organizations).set({ supportAccessUntil: null, supportAccessGrantedBy: null }).where(eq(organizations.id, auth.organizationId)).returning();
+  await audit(auth, "support_access_revoke", "organization", auth.organizationId);
   return c.json(serialize(org));
 });

@@ -37,6 +37,10 @@ export const organizations = pgTable("organizations", {
   subscriptionStatus: text("subscription_status"),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  /** acces de suport acordat de un administrator al cabinetului (doar citire, până la această dată) */
+  supportAccessUntil: timestamp("support_access_until", { withTimezone: true }),
+  supportAccessGrantedBy: uuid("support_access_granted_by"),
+  suspendedReason: text("suspended_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -328,6 +332,21 @@ export const passwordResets = pgTable("password_resets", {
   uniqueIndex("password_resets_token_unique").on(t.tokenHash),
   index("password_resets_user_idx").on(t.userId),
 ]);
+
+/**
+ * Jurnalul acțiunilor echipei Togato (administratorii platformei). Separat de jurnalul cabinetelor;
+ * acțiunile care privesc un cabinet apar și în jurnalul acelui cabinet.
+ */
+export const platformAuditLog = pgTable("platform_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorUserId: uuid("actor_user_id"),
+  actorEmail: text("actor_email").notNull(),
+  action: text("action").notNull(),
+  targetOrganizationId: uuid("target_organization_id"),
+  details: jsonb("details"),
+  ip: text("ip"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("platform_audit_created_idx").on(t.createdAt)]);
 
 /** Evenimentele Stripe deja procesate (webhook-urile pot sosi de mai multe ori). */
 export const stripeEvents = pgTable("stripe_events", {

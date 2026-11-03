@@ -10,6 +10,8 @@ export interface AuthUser {
   role: UserRole;
   organizationId: string;
   totpEnabled: boolean;
+  /** membru al echipei Togato (PLATFORM_ADMIN_EMAILS) — vede consola platformei */
+  platformAdmin: boolean;
 }
 
 export interface Organization {
@@ -28,6 +30,8 @@ export interface Organization {
   aiEnabled: boolean;
   aiEnabledAt?: string | null;
   require2fa: boolean;
+  /** acces de suport acordat echipei Togato, până la această dată */
+  supportAccessUntil?: string | null;
 }
 
 export interface ClientSummary {

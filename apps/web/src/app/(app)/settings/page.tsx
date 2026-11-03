@@ -10,6 +10,7 @@ import { TwoFactorCard } from "@/components/TwoFactorCard";
 import { NotificationsCard } from "@/components/NotificationsCard";
 import { AccountSecurityCard } from "@/components/AccountSecurityCard";
 import { BillingCard } from "@/components/BillingCard";
+import { SupportAccessCard } from "@/components/SupportAccessCard";
 
 const PRESETS = ["#7a1f3a", "#1e3a8a", "#0f766e", "#334155", "#9a3412", "#4c1d95"];
 
@@ -150,6 +151,7 @@ export default function SettingsPage() {
         <TwoFactorCard />
         <AccountSecurityCard />
         <NotificationsCard />
+        <SupportAccessCard org={org} isAdmin={isAdmin} onChange={setOrg} />
       </div>
     </div>
   );

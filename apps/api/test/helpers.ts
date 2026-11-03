@@ -35,6 +35,7 @@ export async function seedCabinet(name: string) {
   if (signup.status !== 201) throw new Error(`signup: ${JSON.stringify(signup.body)}`);
   const token = signup.body.token as string;
   const userId = signup.body.user.id as string;
+  const organizationId = signup.body.organization.id as string;
   const client = await call("POST", "/api/clients", { token, body: { name: `Client ${name} SRL` } });
   const clientId = client.body.id as string;
   const sys = await call("POST", `/api/clients/${clientId}/ai-systems`, {
@@ -50,5 +51,5 @@ export async function seedCabinet(name: string) {
   const ev = await upload(`/api/obligations/${obligationId}/evidence`, token, "proces-verbal.pdf", Buffer.from("%PDF-1.4\n%dovadă de test\n"));
   if (ev.status !== 201) throw new Error(`evidence: ${JSON.stringify(ev.body)}`);
   const [session] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId)).limit(1);
-  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string };
+  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string, organizationId };
 }

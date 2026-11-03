@@ -20,6 +20,7 @@ import { accountRoutes } from "./routes/account";
 import { evidenceRoutes, MAX_EVIDENCE_BYTES } from "./routes/evidence";
 import { publicFileRoutes } from "./routes/publicFiles";
 import { billingRoutes, stripeWebhookRoutes } from "./routes/billing";
+import { platformRoutes } from "./routes/platform";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -110,6 +111,7 @@ app.use("/api/account/2fa/*", rateLimit({ windowMs: 60_000, max: 15, key: "2fa" 
 app.use("/api/account/password", rateLimit({ windowMs: 15 * 60_000, max: 10, key: "password" }));
 app.route("/api/account", accountRoutes);
 app.route("/api/billing", billingRoutes);
+app.route("/api/platform", platformRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

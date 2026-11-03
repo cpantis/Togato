@@ -33,7 +33,7 @@ export async function userFromMfaToken(token: string) {
 /** Rute permise unui utilizator care trebuie întâi să-și activeze autentificarea în doi pași. */
 const MFA_SETUP_ALLOWED = /^\/api\/account\//;
 /** rute permise indiferent de starea abonamentului: contul propriu și facturarea */
-const BILLING_ALWAYS = /^\/api\/(account|billing)(\/|$)/;
+const BILLING_ALWAYS = /^\/api\/(account|billing|platform)(\/|$)/;
 
 /**
  * Protecție CSRF pentru sesiunile din cookie: cererile care modifică date trebuie să trimită
