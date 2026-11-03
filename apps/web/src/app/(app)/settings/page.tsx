@@ -9,6 +9,7 @@ import { PoliciesCard } from "@/components/PoliciesCard";
 import { TwoFactorCard } from "@/components/TwoFactorCard";
 import { NotificationsCard } from "@/components/NotificationsCard";
 import { AccountSecurityCard } from "@/components/AccountSecurityCard";
+import { BillingCard } from "@/components/BillingCard";
 
 const PRESETS = ["#7a1f3a", "#1e3a8a", "#0f766e", "#334155", "#9a3412", "#4c1d95"];
 
@@ -139,6 +140,9 @@ export default function SettingsPage() {
           {form.logoUrl && !logoOk && <p className="mt-2 text-[12px] text-red-600">Imaginea logo-ului nu se poate încărca de la această adresă.</p>}
         </div>
       </div>
+
+      <h2 id="abonament" className="mb-3 mt-8 text-[15px] font-semibold text-ink">Abonament</h2>
+      <BillingCard />
 
       <h2 id="securitate" className="mb-3 mt-8 text-[15px] font-semibold text-ink">Securitate</h2>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

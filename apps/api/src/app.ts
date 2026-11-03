@@ -19,6 +19,7 @@ import { snapshotRoutes } from "./routes/snapshots";
 import { accountRoutes } from "./routes/account";
 import { evidenceRoutes, MAX_EVIDENCE_BYTES } from "./routes/evidence";
 import { publicFileRoutes } from "./routes/publicFiles";
+import { billingRoutes, stripeWebhookRoutes } from "./routes/billing";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -85,6 +86,7 @@ app.use("/api/portal/*", rateLimit({ windowMs: 60_000, max: 60, key: "portal" })
 app.on("POST", "/api/portal/*", rateLimit({ windowMs: 60_000, max: 10, key: "portal-write" }));
 app.route("/api/portal", portalRoutes);
 app.route("/api/public", publicFileRoutes);
+app.route("/api/stripe", stripeWebhookRoutes);
 
 app.use("/api/*", authMiddleware);
 app.use("/api/clients/lookup", rateLimit({ windowMs: 60_000, max: 20, key: "lookup" }));
@@ -107,6 +109,7 @@ app.route("/api/snapshots", snapshotRoutes);
 app.use("/api/account/2fa/*", rateLimit({ windowMs: 60_000, max: 15, key: "2fa" }));
 app.use("/api/account/password", rateLimit({ windowMs: 15 * 60_000, max: 10, key: "password" }));
 app.route("/api/account", accountRoutes);
+app.route("/api/billing", billingRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

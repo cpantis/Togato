@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Button, LoadingBlock, Logo, cn } from "@/components/ui";
+import { Alert, Button, LoadingBlock, Logo, cn } from "@/components/ui";
 import { daysUntil, initials } from "@/lib/format";
 import { TwoFactorCard } from "@/components/TwoFactorCard";
 
@@ -63,7 +63,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const trialDays = organization?.status === "trial" && organization.trialEndsAt ? daysUntil(organization.trialEndsAt.slice(0, 10)) : null;
+  const billing = organization?.billingState;
+  const trialDays = billing === "proba" && organization?.trialEndsAt ? daysUntil(organization.trialEndsAt.slice(0, 10)) : null;
+  const banner = billing === "expirat"
+    ? { kind: "warning" as const, text: "Perioada de probă sau abonamentul a expirat. Datele rămân disponibile pentru consultare și export; pentru modificări alegeți un abonament." }
+    : billing === "restant"
+      ? { kind: "warning" as const, text: "Plata abonamentului nu a reușit. Actualizați cardul ca să evitați întreruperea accesului." }
+      : null;
 
   const sidebar = (
     <nav className="flex h-full flex-col">
@@ -91,7 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="mt-auto border-t border-slate-100 p-3">
         {trialDays !== null && (
           <div className="mb-3 rounded-lg bg-brand-soft px-3 py-2 text-[12px] text-brand">
-            {trialDays > 0 ? <>Perioadă de probă: <b>{trialDays} zile</b> rămase</> : <>Perioada de probă s-a încheiat</>}
+            <Link href="/settings#abonament" className="hover:underline">{trialDays > 0 ? <>Perioadă de probă: <b>{trialDays} zile</b> rămase</> : <>Perioada de probă se încheie azi</>}</Link>
           </div>
         )}
         <div className="flex items-center gap-2.5 px-1">
@@ -125,7 +131,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Logo size={26} />
           <span className="font-bold tracking-tight">Togato</span>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-8 sm:py-8">
+          {banner && (
+            <div className="mb-5" role="status">
+              <Alert kind={banner.kind}>
+                {banner.text}{" "}
+                <Link href="/settings#abonament" className="font-semibold underline">{user.role === "admin" ? "Alegeți abonamentul" : "Detalii"}</Link>
+              </Alert>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

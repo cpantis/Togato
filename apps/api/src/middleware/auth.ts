@@ -8,6 +8,7 @@ import { RollbackSignal, db, withTenant } from "../db";
 import { organizations, users } from "../db/schema";
 import type { AuthContext } from "../types/hono";
 import { CSRF_COOKIE, resolveSession, sessionTokenFrom } from "../services/sessions";
+import { stateOf } from "../services/billing";
 
 const ACTIVITY_THROTTLE_MS = 5 * 60 * 1000;
 const lastActive = new Map<string, number>();
@@ -31,6 +32,8 @@ export async function userFromMfaToken(token: string) {
 
 /** Rute permise unui utilizator care trebuie întâi să-și activeze autentificarea în doi pași. */
 const MFA_SETUP_ALLOWED = /^\/api\/account\//;
+/** rute permise indiferent de starea abonamentului: contul propriu și facturarea */
+const BILLING_ALWAYS = /^\/api\/(account|billing)(\/|$)/;
 
 /**
  * Protecție CSRF pentru sesiunile din cookie: cererile care modifică date trebuie să trimită
@@ -59,9 +62,18 @@ export const authMiddleware = async (c: Context, next: Next) => {
   if (!csrfOk(c, s.via)) return c.json({ error: "Cerere respinsă (token CSRF lipsă sau invalid). Reîncărcați pagina.", code: "csrf" }, 403);
   const user = s.user;
 
+  // starea abonamentului: suspendat = blocat; expirat = doar citire (și export), facturarea rămâne accesibilă
+  const state = stateOf(s.org);
+  if (!BILLING_ALWAYS.test(c.req.path)) {
+    if (state === "suspendat") return c.json({ error: "Contul cabinetului este suspendat. Contactați echipa Togato.", code: "suspended" }, 403);
+    if (state === "expirat" && !SAFE_METHODS.has(c.req.method)) {
+      return c.json({ error: "Perioada de probă sau abonamentul a expirat. Datele rămân disponibile pentru consultare și export; pentru modificări, alegeți un abonament din Setări.", code: "subscription_required" }, 402);
+    }
+  }
+
   // politica cabinetului: autentificarea în doi pași obligatorie
   if (!user.totpEnabled && !MFA_SETUP_ALLOWED.test(c.req.path)) {
-    const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId), columns: { require2fa: true } });
+    const org = s.org;
     if (org?.require2fa) {
       return c.json({ error: "Cabinetul cere autentificarea în doi pași. Activeaz-o din Setări → Securitate.", code: "2fa_required" }, 403);
     }

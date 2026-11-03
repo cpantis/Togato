@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { TRIAL_DAYS } from "@togato/shared";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import type { Context } from "hono";
@@ -14,6 +15,7 @@ import { frontendBaseUrl } from "../config";
 import { clientIp } from "../lib/clientIp";
 import { log } from "../lib/logger";
 import { logoSrc } from "../lib/logo";
+import { stateOf } from "../services/billing";
 
 export const authRoutes = new Hono();
 
@@ -47,7 +49,7 @@ async function sessionResponse(c: Context, user: typeof users.$inferSelect, org:
   return c.json({ token, user: publicUser(user), organization: org ? publicOrg(org) : null, ...extra }, status);
 }
 
-const TRIAL_DAYS = 14;
+
 // Hash real, folosit când emailul nu există — timpul de răspuns nu dezvăluie dacă un cont există
 const DUMMY_HASH = bcrypt.hashSync("togato-dummy-password", 12);
 
@@ -56,7 +58,7 @@ function publicUser(u: typeof users.$inferSelect) {
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {
-  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa };
+  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa, billingState: stateOf(o) };
 }
 
 const signupSchema = z.object({

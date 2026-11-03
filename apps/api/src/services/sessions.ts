@@ -4,7 +4,7 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { and, eq, gt, ne, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { db, type Tx } from "../db";
-import { sessions, users } from "../db/schema";
+import { organizations, sessions, users } from "../db/schema";
 import { config } from "../config";
 import { hashToken, newToken } from "../lib/tokens";
 import { clientIp } from "../lib/clientIp";
@@ -54,8 +54,9 @@ export function sessionTokenFrom(c: Context): { token: string; via: "cookie" | "
 export async function resolveSession(token: string) {
   if (token.length > 200) return null;
   const now = new Date();
-  const [row] = await db.select({ session: sessions, user: users }).from(sessions)
+  const [row] = await db.select({ session: sessions, user: users, org: organizations }).from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
+    .innerJoin(organizations, eq(organizations.id, users.organizationId))
     .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, now)))
     .limit(1);
   if (!row || row.user.status !== "activ") return null;

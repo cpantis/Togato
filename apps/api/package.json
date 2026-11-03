@@ -30,6 +30,7 @@
     "pdfkit": "^0.17.2",
     "postgres": "^3.4.0",
     "qrcode": "^1.5.4",
+    "stripe": "^17.7.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {

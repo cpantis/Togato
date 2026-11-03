@@ -4,12 +4,14 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { log, serializeError } from "../lib/logger";
 import { reportError } from "../lib/errorReporting";
+import { PlanLimitError } from "../services/billing";
 
 export const errorHandler = (err: Error, c: Context<AppEnv>) => {
   if (err instanceof HTTPException) return err.getResponse();
   if (err instanceof ZodError) {
     return c.json({ error: "Date invalide", details: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })) }, 400);
   }
+  if (err instanceof PlanLimitError) return c.json({ error: err.message, code: err.code }, 402);
   if (err instanceof SyntaxError && /JSON/.test(err.message)) {
     return c.json({ error: "Corpul cererii nu e JSON valid" }, 400);
   }

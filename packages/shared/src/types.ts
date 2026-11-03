@@ -22,6 +22,8 @@ export interface Organization {
   logoUrl: string | null;
   /** logo-ul afișat (încărcat sau extern) */
   logoSrc?: string | null;
+  /** starea abonamentului (vezi plans.ts) */
+  billingState?: import("./plans").BillingState;
   logoUploaded?: boolean;
   aiEnabled: boolean;
   aiEnabledAt?: string | null;

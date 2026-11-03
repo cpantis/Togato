@@ -31,6 +31,12 @@ export const organizations = pgTable("organizations", {
   aiEnabledAt: timestamp("ai_enabled_at", { withTimezone: true }),
   /** autentificarea în doi pași e obligatorie pentru toți membrii */
   require2fa: boolean("require_2fa").notNull().default(false),
+  /** abonamentul Stripe (actualizat doar din webhook-uri verificate) */
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: text("subscription_status"),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -318,6 +324,13 @@ export const passwordResets = pgTable("password_resets", {
   uniqueIndex("password_resets_token_unique").on(t.tokenHash),
   index("password_resets_user_idx").on(t.userId),
 ]);
+
+/** Evenimentele Stripe deja procesate (webhook-urile pot sosi de mai multe ori). */
+export const stripeEvents = pgTable("stripe_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /** Contoare pentru limitarea cererilor, comune tuturor instanțelor API. */
 export const rateLimits = pgTable("rate_limits", {

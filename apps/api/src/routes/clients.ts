@@ -5,6 +5,7 @@ import type { ClientSummary } from "@togato/shared";
 import { db } from "../db";
 import { aiSystems, clients, evidence, obligations, portalLinks, users } from "../db/schema";
 import { enqueue } from "../jobs/queue";
+import { assertCanAdd } from "../services/billing";
 import { buildDossierZip } from "../services/dossierExport";
 import { contentDisposition } from "../services/storage/files";
 import { requireAdmin } from "../middleware/requireAdmin";
@@ -105,6 +106,7 @@ clientRoutes.post("/", async (c) => {
   const auth = c.get("auth");
   const body = clientSchema.parse(await c.req.json());
   if (body.cui && !isValidCui(body.cui)) badRequest("CUI invalid — verifică cifrele.");
+  await assertCanAdd(auth.organizationId, "client");
   await checkResponsible(auth.organizationId, body.responsibleUserId);
   if (body.cui) {
     const dup = await db.query.clients.findFirst({ where: and(eq(clients.organizationId, auth.organizationId), eq(clients.cui, body.cui)) });
@@ -202,6 +204,7 @@ clientRoutes.post("/:id/archive", async (c) => {
 clientRoutes.post("/:id/unarchive", async (c) => {
   const auth = c.get("auth");
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  if (row.archivedAt) await assertCanAdd(auth.organizationId, "client");
   await db.update(clients).set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
     .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
   await audit(auth, "unarchive", "client", row.id, { name: row.name });

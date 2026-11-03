@@ -11,6 +11,7 @@ import { requireAdmin } from "../middleware/requireAdmin";
 import { frontendBaseUrl } from "../config";
 import { sendEmail, templates } from "../services/email";
 import { revokeUserSessions } from "../services/sessions";
+import { assertCanAdd } from "../services/billing";
 
 export const teamRoutes = new Hono<AppEnv>();
 
@@ -63,7 +64,9 @@ teamRoutes.post("/invitations", requireAdmin, async (c) => {
   if (existing) {
     return c.json({ error: existing.organizationId === auth.organizationId ? "Această persoană e deja membră a cabinetului" : "Există deja un cont Togato cu acest email" }, 409);
   }
-  // O invitație nouă o înlocuiește pe cea veche pentru același email
+  // O invitație nouă o înlocuiește pe cea veche pentru același email (nu consumă un loc în plus)
+  const replacing = await db.query.invitations.findFirst({ where: and(eq(invitations.organizationId, auth.organizationId), eq(invitations.email, body.email), isNull(invitations.acceptedAt), gt(invitations.expiresAt, new Date())) });
+  if (!replacing) await assertCanAdd(auth.organizationId, "user");
   await db.delete(invitations).where(and(eq(invitations.organizationId, auth.organizationId), eq(invitations.email, body.email), isNull(invitations.acceptedAt)));
   const { token, hash } = newToken();
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId), columns: { name: true } });
@@ -116,6 +119,7 @@ teamRoutes.patch("/members/:id", requireAdmin, async (c) => {
     if (n === 0) badRequest("Cabinetul trebuie să aibă cel puțin un administrator activ.");
   }
   if (body.status === "dezactivat" && id === auth.userId) badRequest("Nu îți poți dezactiva propriul cont.");
+  if (body.status === "activ" && member.status === "dezactivat") await assertCanAdd(auth.organizationId, "user");
 
   await db.transaction(async (tx) => {
     await tx.update(users).set({ ...(body.role ? { role: body.role } : {}), ...(body.status ? { status: body.status } : {}) })
