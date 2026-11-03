@@ -5,7 +5,8 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const bool = z.enum(["on", "off", "true", "false", "1", "0"]).transform((v) => v === "on" || v === "true" || v === "1");
+/** comutator din variabilă de mediu (on/off, true/false, 1/0), cu valoare implicită */
+const bool = { default: (d: "on" | "off") => z.enum(["on", "off", "true", "false", "1", "0"]).default(d).transform((v) => v === "on" || v === "true" || v === "1") };
 const hex64 = z.string().regex(/^[0-9a-fA-F]{64}$/, "trebuie să aibă 64 de caractere hex (openssl rand -hex 32)");
 
 const schema = z.object({

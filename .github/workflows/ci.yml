@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # vulnerabilități cunoscute în dependențele de producție (ridicate sau critice) opresc build-ul
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run build -w @togato/shared
       - run: npm test -w @togato/shared
       - run: npx tsc --noEmit
@@ -88,3 +90,35 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  docker:
+    name: Imagini Docker (build + test de fum)
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: togato_smoke
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/api/Dockerfile -t togato-api .
+      - run: docker build -f apps/web/Dockerfile --build-arg API_INTERNAL_URL=http://127.0.0.1:8080 -t togato-web .
+      - name: Test de fum (migrații, /health/ready, aviz PDF, utilizator non-root)
+        run: |
+          ENV="-e NODE_ENV=production -e DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/togato_smoke -e JWT_SECRET=ci-smoke-secret-0123456789abcdef0123 -e ENCRYPTION_KEY=$(openssl rand -hex 32) -e EMAIL_PROVIDER=resend -e RESEND_API_KEY=re_ci -e FRONTEND_URL=http://127.0.0.1:3000"
+          test "$(docker run --rm togato-api id -u)" != "0"
+          docker run --rm --network host $ENV togato-api node dist/db/migrate.js
+          docker run -d --name api --network host $ENV togato-api
+          docker run -d --name web --network host togato-web
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8080/health/ready && break; sleep 1; done
+          curl -sf http://127.0.0.1:8080/health/ready
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:3000/login && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:3000/login
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me)" = "401"
+      - if: failure()
+        run: docker logs api; docker logs web

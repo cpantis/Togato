@@ -1,0 +1,54 @@
+# Publicarea pe Railway
+
+Togato rulează ca trei servicii din același repository, plus Postgres:
+
+| Serviciu | Config (Settings → Config-as-code) | Ce face |
+|---|---|---|
+| `api` | `deploy/railway/api.json` | API-ul (Hono). Rulează migrațiile înainte de fiecare lansare (`preDeployCommand`). Healthcheck `/health/ready`. |
+| `worker` | `deploy/railway/worker.json` | Joburile (emailuri, memorii AI, reîncadrări, mementouri, ștergeri din stocare). Aceeași imagine ca API-ul. |
+| `web` | `deploy/railway/web.json` | Interfața Next.js; trimite `/api/*` către `api` prin rețeaua privată. |
+| `postgres` | plugin Railway (Postgres 16) | Baza de date, cu backup-uri (vezi `backup-dr.md`). |
+
+> Fișierele `deploy/railway/*.json` folosesc câmpurile de bază ale schemei Railway (`build.dockerfilePath`, `deploy.preDeployCommand`, `healthcheckPath`, `restartPolicy*`). Verificați-le în interfața Railway la prima configurare.
+
+## Variabile de mediu
+
+**api** și **worker** (aceleași valori; validate la pornire de `apps/api/src/config.ts` — procesul se oprește cu mesaj clar dacă lipsește ceva):
+
+| Variabilă | Valoare |
+|---|---|
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `JWT_SECRET` | minimum 32 de caractere aleatoare (`openssl rand -base64 48`) |
+| `ENCRYPTION_KEY` | `openssl rand -hex 32` — **păstrați o copie în managerul de parole al firmei**; fără ea secretele 2FA nu mai pot fi citite |
+| `FRONTEND_URL` | `https://app.togato.ro` (domeniul serviciului web) |
+| `TRUST_PROXY_HOPS` | `2` (marginea Railway + Next.js) |
+| `EMAIL_PROVIDER` / `RESEND_API_KEY` / `EMAIL_FROM` | `resend`, cheia Resend, `Togato <noreply@togato.ro>` (domeniu verificat: SPF, DKIM, DMARC) |
+| `STORAGE_DRIVER` + `S3_*` | `s3`; pentru Cloudflare R2: `S3_ENDPOINT=https://<cont>.r2.cloudflarestorage.com`, `S3_REGION=auto`, bucket privat |
+| `ANTHROPIC_API_KEY` | opțional (memoriul AI; fiecare cabinet îl activează separat) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_START`, `STRIPE_PRICE_CABINET` | opțional (plata online); webhook Stripe → `https://api.../api/stripe/webhook`, evenimentele `checkout.session.completed`, `customer.subscription.*` |
+| `SENTRY_DSN` | opțional |
+| `PLATFORM_ADMIN_EMAILS` | adresele echipei Togato (consola `/platform`, cu 2FA) |
+| `RUN_WORKER_IN_API` | `off` pe `api` (rulează serviciul `worker`); `on` doar dacă nu există worker |
+| `WORKER_CONCURRENCY` | pe `worker`, implicit 4 |
+
+**web** (variabilele sunt și argumente de build):
+
+| Variabilă | Valoare |
+|---|---|
+| `API_INTERNAL_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:8080` |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | adresa de contact pentru abonamente |
+| `PORT` | `3000` |
+
+## Medii
+
+- **staging**: un mediu Railway separat (Environments → New), cu propria bază de date, chei Stripe de test, `EMAIL_PROVIDER=resend` cu un domeniu de test și `PLATFORM_ADMIN_EMAILS` al echipei. Ramura `main` se publică automat în staging.
+- **production**: publicare la cerere (sau din ramura `release`), după ce CI-ul e verde și staging a fost verificat.
+- Migrațiile rulează automat înainte de lansare (`preDeployCommand`); dacă eșuează, versiunea veche rămâne activă. Migrațiile trebuie să fie compatibile înapoi (adăugați coloane nullable / cu valoare implicită; ștergerile de coloane într-o lansare ulterioară).
+
+## Verificări după prima publicare
+
+1. `GET https://api.../health/ready` → `{"status":"ok","db":"ok"}`.
+2. Creați un cont, activați 2FA, încărcați o dovadă (stocarea), invitați un coleg (emailul).
+3. Stripe: o plată de test → starea „Abonament activ” apare în Setări în câteva secunde (webhook).
+4. Jurnalele: linii JSON cu `requestId`; erorile 500 apar în Sentry.

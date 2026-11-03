@@ -1,5 +1,6 @@
 /** Construcția aplicației Hono — fără efecte la import (folosită de server și de teste). */
 import { Hono, type Context } from "hono";
+import { z } from "zod";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
@@ -33,6 +34,8 @@ import { RULESET_VERSION } from "@togato/shared";
 
 
 export function createApp() {
+// mesajele implicite de validare (câmp lipsă, tip greșit) în limba română
+z.config(z.locales.ro());
 const app = new Hono<AppEnv>();
 
 app.use("*", requestContext);

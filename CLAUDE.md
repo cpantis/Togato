@@ -45,6 +45,12 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Memoriul AI e asincron: `POST /memo` → 202 cu `aiMemoStatus = in_lucru`; workerul îl scrie (`gata`) sau salvează eroarea (`esuat`); interfața verifică la 3 s.
 - `/health` = procesul e viu; `/health/ready` = baza de date răspunde (503 altfel). Oprirea la SIGTERM e curată.
 
+## Publicare și operare
+- Imagini: `apps/api/Dockerfile` (API și worker — `node dist/index.js` / `node dist/worker.js`; migrațiile separat: `node dist/db/migrate.js`), `apps/web/Dockerfile`. Rulează ca utilizatorul `node`, doar cu dependențele de producție, cu `HEALTHCHECK`. Resursele citite la rulare (`src/legal`, `src/assets`, `src/db/migrations`) sunt copiate explicit — o resursă nouă trebuie adăugată în Dockerfile.
+- Railway: `deploy/railway/{api,worker,web}.json` + `docs/operations/deploy-railway.md`. Backup / restaurare: `docs/operations/backup-dr.md`. Rotirea cheilor (`ENCRYPTION_KEY_PREVIOUS` + `npm run reencrypt`): `docs/operations/key-rotation.md`.
+- `docs/api-routes.md` e generat (`npm run docs:routes -w @togato/api`); `test/docs.int.test.ts` pică dacă o rută nouă nu e în document. Deciziile de arhitectură: `docs/adr/`.
+- Dependențe: Dependabot (`.github/dependabot.yml`); CI oprește la vulnerabilități ridicate în dependențele de producție (`npm audit --omit=dev --audit-level=high`). `postcss` e forțat la o versiune reparată prin `overrides` în `package.json`. zod e la v4 (`z.record(cheie, valoare)`, `z.partialRecord` pentru chei opționale).
+
 ## Textul oficial al legii
 - `apps/api/src/legal/ai_act_ro.json` — Regulamentul (UE) 2024/1689 în limba română, structurat pe articole / alineate / anexe / puncte / litere. Generat cu `python3 -I scripts/import_ai_act.py <pagina EUR-Lex .html> apps/api/src/legal/ai_act_ro.json` (nu se editează de mână). Versiunea curentă: textul inițial din JO L 12.7.2024 — **fără** modificările Omnibus.
 - `packages/shared/src/lawRefs.ts` transformă trimiterile din catalog („Art. 26(7)”, „Anexa III pct. 4(a)”, „Art. 26(9) + GDPR Art. 35”) în referințe; `apps/api/src/services/law.ts` le rezolvă la text; `GET /api/law?ref=...`. În web, componenta `LawRef` face orice articol clicabil.

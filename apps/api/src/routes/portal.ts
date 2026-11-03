@@ -61,7 +61,7 @@ const submitSchema = z.object({
   description: optionalText(5000),
   contactName: z.string().trim().min(2, "Spuneți-ne cine completează").max(200),
   contactEmail: z.string().trim().email("Email invalid").max(200).nullish().or(z.literal("")).transform((v) => (v ? v : null)),
-  answers: z.record(z.unknown()).default({}),
+  answers: z.record(z.string(), z.unknown()).default({}),
 });
 
 portalRoutes.post("/:token/systems", async (c) => {

@@ -18,7 +18,7 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const uuid = z.string().uuid();
 const risk = z.enum(["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis", "neaplicabil"]);
 const riskNoUnclassified = z.enum(["minim", "transparenta", "risc_ridicat", "interzis", "neaplicabil"]);
-const riskCounts = z.record(risk, z.number().int()).transform((v) => v as Partial<Record<z.infer<typeof risk>, number>>);
+const riskCounts = z.partialRecord(risk, z.number().int());
 const billingState = z.enum(["proba", "activ", "restant", "expirat", "suspendat"]);
 
 export const authUser = z.object({
@@ -54,9 +54,9 @@ export const obligation = z.object({
 }).strict();
 same<z.infer<typeof obligation>, Obligation>(true);
 
-const answers = z.record(z.unknown()) as unknown as z.ZodType<AiSystemAnswers>;
+const answers = z.record(z.string(), z.unknown()) as unknown as z.ZodType<AiSystemAnswers>;
 const classification = z.object({ riskLevel: risk }).passthrough() as unknown as z.ZodType<ClassificationResult>;
-const portalAnswers = z.record(z.unknown()) as unknown as z.ZodType<PortalAnswers>;
+const portalAnswers = z.record(z.string(), z.unknown()) as unknown as z.ZodType<PortalAnswers>;
 
 export const aiSystem = z.object({
   id: uuid, clientId: uuid, name: z.string(), vendor: z.string().nullable(), description: z.string().nullable(), purpose: z.string().nullable(),

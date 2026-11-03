@@ -25,20 +25,23 @@ Platformă SaaS pentru cabinetele de avocatură și consultanță care gestionea
 ## Structură
 
 ```
-apps/api       Hono + Drizzle + PostgreSQL
-apps/web       Next.js 15 (App Router) + Tailwind 4
-packages/shared  Catalogul AI Act + clasificatorul (funcție pură, folosită în API și în browser) + tipuri
+apps/api         Hono + Drizzle + PostgreSQL (API + worker de joburi, aceeași imagine)
+apps/web         Next.js 15 (App Router) + Tailwind 4
+packages/shared  Regulile AI Act (funcție pură, în API și în browser), planuri, tipuri
+e2e/             teste de browser (Playwright + axe)
+deploy/railway/  configurația serviciilor api / worker / web
+docs/            api-routes.md (generat), adr/ (decizii), operations/ (publicare, backup, chei)
 ```
 
 ## Pornire locală
 
 ```bash
 docker compose up -d            # PostgreSQL pe 5432
-cp .env.example apps/api/.env   # completează JWT_SECRET
+cp .env.example apps/api/.env   # completează JWT_SECRET (și ENCRYPTION_KEY: openssl rand -hex 32)
 npm install
 npm run build -w @togato/shared
 npm run db:migrate -w @togato/api
-npm run dev:api                 # http://localhost:8080
+npm run dev:api                 # http://localhost:8080 (rulează și joburile; emailurile apar în jurnal)
 npm run dev:web                 # http://localhost:3000
 ```
 
@@ -46,18 +49,17 @@ npm run dev:web                 # http://localhost:3000
 
 ```bash
 npm run build -w @togato/shared && npm test -w @togato/shared
-cd apps/api && npx tsc --noEmit && npm test
-cd apps/web && npx next build
+cd apps/api && npx tsc --noEmit && npx tsc -p tsconfig.test.json && npm test
+TEST_DATABASE_URL=postgres://.../togato_test npm run test:int -w @togato/api   # integrare, pe Postgres real
+cd apps/web && npx next build && cd ../.. && E2E_DATABASE_URL=postgres://.../togato_e2e_test npm run e2e
 ```
 
-## Variabile de mediu
+CI (`.github/workflows/ci.yml`) rulează toate acestea, `npm audit` pe dependențele de producție și construiește imaginile Docker cu un test de fum.
 
-| Variabilă | Unde | Rol |
-|---|---|---|
-| `DATABASE_URL` | api | PostgreSQL |
-| `JWT_SECRET` | api | semnarea sesiunilor |
-| `ENCRYPTION_KEY` | api | criptarea secretelor 2FA (64 hex; dacă lipsește, se derivă din `JWT_SECRET`) |
-| `FRONTEND_URL` | api | originea permisă CORS |
-| `ANTHROPIC_API_KEY` | api | opțional — analiza AI |
-| `LISTAFIRME_API_KEY` | api | opțional — date extinse despre firme |
-| `API_INTERNAL_URL` | web (la build) | adresa API-ului pentru rewrite-ul `/api/*` |
+## Publicare și operare
+
+- Variabilele de mediu: `.env.example` (comentat) și `apps/api/src/config.ts` (validate la pornire).
+- Railway: [`docs/operations/deploy-railway.md`](docs/operations/deploy-railway.md)
+- Backup și recuperare: [`docs/operations/backup-dr.md`](docs/operations/backup-dr.md)
+- Rotirea cheilor: [`docs/operations/key-rotation.md`](docs/operations/key-rotation.md)
+- Rutele API: [`docs/api-routes.md`](docs/api-routes.md) · Deciziile de arhitectură: [`docs/adr/`](docs/adr/README.md)
