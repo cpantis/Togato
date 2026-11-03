@@ -122,7 +122,7 @@ export default function ClientPage() {
         </div>
 
         <div className="space-y-5">
-        <PortalCard clientId={client.id} clientName={client.name} />
+        <PortalCard clientId={client.id} clientName={client.name} contactEmail={client.contactEmail} />
         <Card className="h-fit p-5">
           <h2 className="text-[14px] font-semibold text-ink">Avocat responsabil</h2>
           <select

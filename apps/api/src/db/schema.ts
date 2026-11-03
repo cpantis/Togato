@@ -9,6 +9,8 @@ export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "tra
 export const reviewStatusEnum = pgEnum("review_status", ["propus", "aprobat", "respins"]);
 export const systemSourceEnum = pgEnum("system_source", ["cabinet", "portal"]);
 export const obligationStatusEnum = pgEnum("obligation_status", ["de_facut", "in_lucru", "indeplinit", "nu_se_aplica"]);
+export const jobStatusEnum = pgEnum("job_status", ["pending", "running", "done", "failed"]);
+export const memoStatusEnum = pgEnum("memo_status", ["in_lucru", "gata", "esuat"]);
 
 /** Cabinetul de avocatură / consultanță — chiriașul (tenant) aplicației */
 export const organizations = pgTable("organizations", {
@@ -45,6 +47,10 @@ export const users = pgTable("users", {
   totpLastStep: integer("totp_last_step"),
   recoveryCodes: jsonb("recovery_codes").$type<string[]>(),
   totpEnabledAt: timestamp("totp_enabled_at", { withTimezone: true }),
+  /** rezumatul zilnic pe email cu termenele apropiate ale clienților de care răspunde */
+  notifyDeadlines: boolean("notify_deadlines").notNull().default(true),
+  /** notificare pe email când un client trimite un instrument prin portal */
+  notifyPortal: boolean("notify_portal").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex("users_email_unique").on(t.email),
@@ -135,6 +141,10 @@ export const aiSystems = pgTable("ai_systems", {
   aiMemoAt: timestamp("ai_memo_at", { withTimezone: true }),
   /** sursele memoriului AI: [{ n, ref: "Art. 26(7)", quote }] */
   aiMemoCitations: jsonb("ai_memo_citations").$type<{ n: number; ref: string; quote: string }[]>(),
+  /** starea generării asincrone a memoriului (null = niciodată cerut) */
+  aiMemoStatus: memoStatusEnum("ai_memo_status"),
+  aiMemoError: text("ai_memo_error"),
+  aiMemoRequestedAt: timestamp("ai_memo_requested_at", { withTimezone: true }),
   /** versiunea regulilor AI Act după care a fost calculată încadrarea (vezi RULESET_CHANGELOG) */
   rulesetVersion: text("ruleset_version").notNull().default("2026.1"),
   /** nota de reîncadrare după o modificare legislativă de fond; se șterge la verificarea avocatului */
@@ -221,6 +231,29 @@ export const auditLog = pgTable("audit_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("audit_org_created_idx").on(t.organizationId, t.createdAt),
+]);
+
+/**
+ * Coada de joburi (Postgres, FOR UPDATE SKIP LOCKED): emailuri, memorii AI, reîncadrări, mementouri.
+ * `dedupeKey` unic împiedică dublarea joburilor programate (ex. mementoul zilnic).
+ */
+export const jobs = pgTable("jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: text("type").notNull(),
+  payload: jsonb("payload").notNull().default({}),
+  status: jobStatusEnum("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(5),
+  runAt: timestamp("run_at", { withTimezone: true }).notNull().defaultNow(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  dedupeKey: text("dedupe_key"),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+}, (t) => [
+  index("jobs_pending_idx").on(t.status, t.runAt),
+  uniqueIndex("jobs_dedupe_unique").on(t.dedupeKey),
 ]);
 
 // ─── Relații ─────────────────────────────────────────────

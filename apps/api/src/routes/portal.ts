@@ -10,6 +10,7 @@ import { db } from "../db";
 import { aiSystems, auditLog, portalLinks } from "../db/schema";
 import { resolvePortalToken } from "../lib/portalToken";
 import { syncClientObligations, syncSystemObligations } from "../services/obligationsSync";
+import { enqueue } from "../jobs/queue";
 
 export const portalRoutes = new Hono();
 
@@ -96,6 +97,8 @@ portalRoutes.post("/:token/systems", async (c) => {
     }).returning({ id: aiSystems.id });
     await syncSystemObligations(tx, { organizationId: org.id, clientId: client.id, aiSystemId: row.id, templates: classification.obligations });
     await syncClientObligations(tx, org.id, client.id);
+    // anunță cabinetul (cu 2 minute întârziere: dacă clientul retrage imediat instrumentul, nu se trimite nimic)
+    await enqueue("portal.notify", { organizationId: org.id, aiSystemId: row.id }, { tx, organizationId: org.id, runAt: new Date(Date.now() + 120_000) });
     return row.id;
   });
   await touch(link.id);

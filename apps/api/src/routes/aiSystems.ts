@@ -1,4 +1,3 @@
-import { log, serializeError } from "../lib/logger";
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
@@ -9,7 +8,8 @@ import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { notFound, uuidParam } from "../lib/http";
 import { syncClientObligations, syncSystemObligations } from "../services/obligationsSync";
-import { generateMemo, memoAvailable } from "../services/memo";
+import { memoAvailable } from "../services/memo";
+import { enqueue } from "../jobs/queue";
 import { createSnapshot, listSnapshots } from "../services/snapshots";
 import { serializeObligation, serializeSystem } from "./serializers";
 
@@ -171,31 +171,26 @@ aiSystemRoutes.post("/:id/review", async (c) => {
   return c.json(await systemResponse(auth.organizationId, existing.id));
 });
 
-/** POST /:id/memo — memoriu juridic generat cu AI */
+/**
+ * POST /:id/memo — cere un memoriu juridic generat cu AI. Generarea rulează în worker (poate dura
+ * un minut); răspunsul vine imediat cu `aiMemoStatus = "in_lucru"`, iar interfața verifică periodic.
+ */
 aiSystemRoutes.post("/:id/memo", async (c) => {
   const auth = c.get("auth");
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId), columns: { aiEnabled: true } });
   if (!org?.aiEnabled) return c.json({ error: "Analiza AI este dezactivată pentru cabinet. Un administrator o poate activa din Setări.", code: "ai_disabled" }, 403);
   if (!memoAvailable()) return c.json({ error: "Analiza AI nu e configurată (lipsește ANTHROPIC_API_KEY pe server)." }, 503);
   const s = await loadSystem(auth.organizationId, uuidParam(c.req.param("id")));
-  const answers = normalizeAnswers(s.answers);
-  try {
-    const memo = await generateMemo({
-      clientName: s.client.name,
-      caen: s.client.caen,
-      caenDescription: s.client.caenDescription,
-      system: { name: s.name, vendor: s.vendor, description: s.description, purpose: s.purpose, department: s.department },
-      answers,
-      classification: s.classification ?? classifyAiSystem(answers),
+  // o singură cerere în lucru per sistem (după 15 minute se consideră abandonată)
+  const inFlight = s.aiMemoStatus === "in_lucru" && s.aiMemoRequestedAt && Date.now() - s.aiMemoRequestedAt.getTime() < 15 * 60_000;
+  if (!inFlight) {
+    await db.transaction(async (tx) => {
+      await tx.update(aiSystems).set({ aiMemoStatus: "in_lucru", aiMemoError: null, aiMemoRequestedAt: new Date() })
+        .where(and(eq(aiSystems.id, s.id), eq(aiSystems.organizationId, auth.organizationId)));
+      await enqueue("memo.generate", { organizationId: auth.organizationId, aiSystemId: s.id, userId: auth.userId }, { tx, organizationId: auth.organizationId, maxAttempts: 3 });
     });
-    await db.update(aiSystems).set({ aiMemo: memo.text, aiMemoCitations: memo.citations, aiMemoAt: new Date() })
-      .where(and(eq(aiSystems.id, s.id), eq(aiSystems.organizationId, auth.organizationId)));
-    await audit(auth, "memo", "ai_system", s.id, { citations: memo.citations.length });
-  } catch (e) {
-    log.error("memoriul AI a eșuat", { err: serializeError(e) });
-    return c.json({ error: (e as Error).message.startsWith("Analiza") ? (e as Error).message : "Serviciul AI nu răspunde momentan. Reîncearcă peste câteva minute." }, 502);
   }
-  return c.json(await systemResponse(auth.organizationId, s.id));
+  return c.json(await systemResponse(auth.organizationId, s.id), 202);
 });
 
 const RISK_LEVELS = ["neaplicabil", "minim", "transparenta", "risc_ridicat", "interzis"] as const;

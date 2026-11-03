@@ -112,17 +112,32 @@ function OverridePanel({ system, onChange }: { system: SystemDetail; onChange: (
 
 function MemoPanel({ system, onChange }: { system: SystemDetail; onChange: (s: SystemDetail) => void }) {
   const { organization, user } = useAuth();
-  const [busy, setBusy] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pending = system.aiMemoStatus === "in_lucru";
+  const busy = requesting || pending;
+
+  // generarea rulează pe server; verificăm periodic până e gata
+  useEffect(() => {
+    if (!pending) return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const fresh = await apiGet<SystemDetail>(`/api/ai-systems/${system.id}`);
+        if (!cancelled && fresh.aiMemoStatus !== "in_lucru") onChange(fresh);
+      } catch { /* reîncearcă la următorul pas */ }
+    }, 3000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [pending, system.id, onChange]);
 
   async function generate() {
-    setBusy(true); setError(null);
+    setRequesting(true); setError(null);
     try {
       onChange(await apiPost<SystemDetail>(`/api/ai-systems/${system.id}/memo`));
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusy(false);
+      setRequesting(false);
     }
   }
 
@@ -138,8 +153,9 @@ function MemoPanel({ system, onChange }: { system: SystemDetail; onChange: (s: S
           {user?.role === "admin" ? <Link href="/settings#securitate" className="font-semibold text-brand hover:underline">Activați-o din Setări</Link> : "Un administrator o poate activa din Setări."}
         </p>
       )}
-      {busy && <p className="mt-3 flex items-center gap-2 text-[12px] text-slate-500"><Spinner className="h-3.5 w-3.5" /> Se analizează dosarul (poate dura până la un minut)...</p>}
+      {busy && <p className="mt-3 flex items-center gap-2 text-[12px] text-slate-500" role="status"><Spinner className="h-3.5 w-3.5" /> Se analizează dosarul (poate dura până la un minut). Puteți părăsi pagina — memoriul se salvează automat.</p>}
       {error && <div className="mt-3"><Alert>{error}</Alert></div>}
+      {!busy && system.aiMemoStatus === "esuat" && system.aiMemoError && <div className="mt-3"><Alert>{system.aiMemoError}</Alert></div>}
       {system.aiMemo ? (
         <div className="mt-3">
           <Markdown text={system.aiMemo} />

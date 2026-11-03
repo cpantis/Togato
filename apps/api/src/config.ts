@@ -43,8 +43,8 @@ const schema = z.object({
   STRIPE_PRICE_CABINET: z.string().optional(),
   // platformă
   PLATFORM_ADMIN_EMAILS: z.string().default(""),
-  /** rulează joburile în procesul API (dezvoltare); în producție rulează un worker separat */
-  RUN_WORKER_IN_API: bool.default("off"),
+  /** rulează joburile și în procesul API; dezactivați când rulează un worker separat (`npm run worker`) */
+  RUN_WORKER_IN_API: bool.default("on"),
 }).superRefine((c, ctx) => {
   if (c.NODE_ENV === "production") {
     if (c.JWT_SECRET.length < 32) ctx.addIssue({ code: "custom", path: ["JWT_SECRET"], message: "în producție, minimum 32 de caractere" });

@@ -2,20 +2,21 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { and, asc, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import { db } from "../db";
-import { clients, invitations, users } from "../db/schema";
+import { clients, invitations, organizations, users } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { badRequest, notFound, uuidParam } from "../lib/http";
 import { newToken } from "../lib/tokens";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { frontendBaseUrl } from "../config";
+import { sendEmail, templates } from "../services/email";
 
 export const teamRoutes = new Hono<AppEnv>();
 
 const INVITE_DAYS = 7;
 
 function inviteUrl(token: string) {
-  const base = (process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0].trim().replace(/\/$/, "");
-  return `${base}/invite/${token}`;
+  return `${frontendBaseUrl()}/invite/${token}`;
 }
 
 /** GET / — membrii cabinetului + invitațiile în așteptare (vizibil tuturor membrilor) */
@@ -48,6 +49,8 @@ const inviteSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email invalid"),
   name: z.string().trim().max(120).nullish().transform((v) => (v ? v : null)),
   role: z.enum(["admin", "membru"]).default("membru"),
+  /** trimite linkul și pe email (implicit da); linkul se întoarce oricum, pentru copiere */
+  sendEmail: z.boolean().default(true),
 });
 
 /** POST /invitations — creează o invitație și întoarce linkul (o singură dată) */
@@ -61,17 +64,24 @@ teamRoutes.post("/invitations", requireAdmin, async (c) => {
   // O invitație nouă o înlocuiește pe cea veche pentru același email
   await db.delete(invitations).where(and(eq(invitations.organizationId, auth.organizationId), eq(invitations.email, body.email), isNull(invitations.acceptedAt)));
   const { token, hash } = newToken();
-  const [inv] = await db.insert(invitations).values({
-    organizationId: auth.organizationId,
-    email: body.email,
-    name: body.name,
-    role: body.role,
-    tokenHash: hash,
-    invitedBy: auth.userId,
-    expiresAt: new Date(Date.now() + INVITE_DAYS * 86400_000),
-  }).returning();
-  await audit(auth, "invite", "invitation", inv.id, { email: body.email, role: body.role });
-  return c.json({ id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expiresAt.toISOString(), url: inviteUrl(token) }, 201);
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId), columns: { name: true } });
+  const inv = await db.transaction(async (tx) => {
+    const [row] = await tx.insert(invitations).values({
+      organizationId: auth.organizationId,
+      email: body.email,
+      name: body.name,
+      role: body.role,
+      tokenHash: hash,
+      invitedBy: auth.userId,
+      expiresAt: new Date(Date.now() + INVITE_DAYS * 86400_000),
+    }).returning();
+    if (body.sendEmail) {
+      await sendEmail(templates.invitation({ to: body.email, orgName: org?.name ?? "Togato", inviterName: auth.name, url: inviteUrl(token), expiresDays: INVITE_DAYS }), { tx, organizationId: auth.organizationId });
+    }
+    await audit(auth, "invite", "invitation", row.id, { email: body.email, role: body.role, emailed: body.sendEmail }, tx);
+    return row;
+  });
+  return c.json({ id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expiresAt.toISOString(), url: inviteUrl(token), emailed: body.sendEmail }, 201);
 });
 
 teamRoutes.delete("/invitations/:id", requireAdmin, async (c) => {

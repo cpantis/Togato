@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import QRCode from "qrcode";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { organizations, users } from "../db/schema";
 import type { AppEnv } from "../types/hono";
@@ -28,6 +28,20 @@ accountRoutes.get("/security", async (c) => {
     recoveryCodesLeft: u.recoveryCodes?.length ?? 0,
     orgRequires2fa: !!org?.require2fa,
   });
+});
+
+/** GET/PUT /notifications — ce emailuri primește utilizatorul */
+accountRoutes.get("/notifications", async (c) => {
+  const u = await me(c.get("auth").userId);
+  return c.json({ notifyDeadlines: u.notifyDeadlines, notifyPortal: u.notifyPortal });
+});
+
+accountRoutes.put("/notifications", async (c) => {
+  const auth = c.get("auth");
+  const body = z.object({ notifyDeadlines: z.boolean().optional(), notifyPortal: z.boolean().optional() }).parse(await c.req.json());
+  await db.update(users).set(body).where(and(eq(users.id, auth.userId), eq(users.organizationId, auth.organizationId)));
+  const u = await me(auth.userId);
+  return c.json({ notifyDeadlines: u.notifyDeadlines, notifyPortal: u.notifyPortal });
 });
 
 /** POST /2fa/setup — generează un secret nou (încă inactiv) și codul QR */

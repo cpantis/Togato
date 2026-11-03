@@ -18,13 +18,13 @@ process.on("unhandledRejection", (reason) => {
 });
 
 // importurile care ating baza de date vin după validarea configurării
-Promise.all([import("./app"), import("./services/reclassify"), import("./db")]).then(([{ app }, { reclassifyOutdated }, { closeDb }]) => {
+Promise.all([import("./app"), import("./jobs/handlers"), import("./jobs/worker"), import("./db")]).then(([{ app }, { scheduleReclassification }, { startWorker }, { closeDb }]) => {
+  let stopWorker: (() => Promise<void>) | null = null;
   const server = serve({ fetch: app.fetch, port: cfg!.PORT }, () => {
-    log.info("Togato API pornit", { port: cfg!.PORT, env: cfg!.NODE_ENV });
-    // Reîncadrează sistemele salvate pe o versiune mai veche a regulilor AI Act
-    reclassifyOutdated()
-      .then((r) => { if (r.processed) log.info("reîncadrare după schimbarea regulilor", { ...r }); })
-      .catch((e) => { log.error("reîncadrarea a eșuat", { err: serializeError(e) }); reportError(e, { kind: "reclassify" }); });
+    log.info("Togato API pornit", { port: cfg!.PORT, env: cfg!.NODE_ENV, worker: cfg!.RUN_WORKER_IN_API });
+    // Reîncadrează (o dată per versiune) sistemele salvate pe o versiune mai veche a regulilor AI Act
+    scheduleReclassification().catch((e) => { log.error("programarea reîncadrării a eșuat", { err: serializeError(e) }); reportError(e, { kind: "reclassify" }); });
+    if (cfg!.RUN_WORKER_IN_API) stopWorker = startWorker();
   });
 
   // oprire curată: nu mai acceptă cereri noi, le termină pe cele în curs, închide baza de date
@@ -35,7 +35,7 @@ Promise.all([import("./app"), import("./services/reclassify"), import("./db")]).
     log.info("oprire", { signal });
     const force = setTimeout(() => process.exit(1), 10_000);
     force.unref();
-    server.close(() => closeDb().finally(() => process.exit(0)));
+    server.close(() => Promise.resolve(stopWorker?.()).then(() => closeDb()).finally(() => process.exit(0)));
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));

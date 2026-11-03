@@ -26,7 +26,7 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      const res = await apiPost<{ url: string }>("/api/team/invitations", { email, name: name || null, role });
+      const res = await apiPost<{ url: string }>("/api/team/invitations", { email, name: name || null, role, sendEmail: true });
       setLink(res.url);
       onDone();
     } catch (err) {
@@ -50,7 +50,7 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
     <Modal open={open} onClose={close} title="Invită un coleg">
       {link ? (
         <div className="space-y-4">
-          <Alert kind="info">Invitația pentru <b>{email}</b> a fost creată. Trimite-i colegului linkul de mai jos. E valabil 7 zile și poate fi folosit o singură dată.</Alert>
+          <Alert kind="info">Am trimis invitația pe email la <b>{email}</b>. Linkul de mai jos e același — îl puteți trimite și pe alt canal. E valabil 7 zile și poate fi folosit o singură dată.</Alert>
           <div className="flex gap-2">
             <input className={cn(inputClass, "font-mono text-[12px]")} readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Link invitație" />
             <Button type="button" variant="secondary" onClick={copy}>{copied ? "Copiat" : "Copiază"}</Button>

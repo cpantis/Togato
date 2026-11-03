@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, Card, Field, LoadingBlock, PageHeader, inputClass } from "@/components/ui";
 import { PoliciesCard } from "@/components/PoliciesCard";
 import { TwoFactorCard } from "@/components/TwoFactorCard";
+import { NotificationsCard } from "@/components/NotificationsCard";
 
 const PRESETS = ["#7a1f3a", "#1e3a8a", "#0f766e", "#334155", "#9a3412", "#4c1d95"];
 
@@ -107,6 +108,7 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <PoliciesCard org={org} onChange={setOrg} />
         <TwoFactorCard />
+        <NotificationsCard />
       </div>
     </div>
   );

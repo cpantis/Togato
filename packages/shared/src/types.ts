@@ -78,6 +78,9 @@ export interface AiSystem {
   aiMemo: string | null;
   aiMemoAt: string | null;
   aiMemoCitations: { n: number; ref: string; quote: string }[];
+  /** generarea asincronă: in_lucru → gata / esuat; null = niciodată cerut */
+  aiMemoStatus: "in_lucru" | "gata" | "esuat" | null;
+  aiMemoError: string | null;
   computedRiskLevel: RiskLevel | null;
   riskOverride: RiskLevel | null;
   overrideReason: string | null;

@@ -57,6 +57,13 @@
       "when": 1793654782748,
       "tag": "0007_security",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793692756947,
+      "tag": "0008_jobs_email",
+      "breakpoints": true
     }
   ]
 }

@@ -23,11 +23,14 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - Autentificare în doi pași: TOTP propriu în `lib/totp.ts` (RFC 6238, testat cu vectorii oficiali), secretul criptat AES-256-GCM (`lib/crypto.ts`, cheia `ENCRYPTION_KEY`), coduri de recuperare păstrate ca hash. Login: parola → `{ mfaRequired, mfaToken }` (JWT de 5 min cu `purpose: "mfa"`, respins ca sesiune) → `POST /auth/login/mfa`. Protecție la reluare prin `totpLastStep` (actualizare condiționată). Politica `organizations.require2fa` e aplicată în `authMiddleware` (403 `2fa_required`, cu excepția `/api/account/*`).
 - Analiza AI cere consimțământul cabinetului: `organizations.aiEnabled` (implicit `false`, activat doar de admin, cu `aiEnabledBy/At`); altfel `/memo` → 403 `ai_disabled`.
 - Identitatea vizuală a cabinetului (`organizations.brandColor`, `logoUrl`) se setează din `/settings` (doar admin) și se folosește în portal.
-- Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Emailul nu se trimite încă — adminul copiază linkul.
+- Invitațiile: tokenul (32 octeți aleatori) se arată o singură dată, în DB se păstrează doar hash-ul SHA-256; acceptarea marchează invitația condiționat (fără conturi duble la cereri simultane). Linkul se trimite pe email (implicit) și se întoarce și pentru copiere.
 
 ## Operațional
 - Jurnal: `lib/logger.ts` — o linie JSON per eveniment, câmpurile sensibile mascate; fiecare linie poartă `requestId` (antet `X-Request-Id`, `middleware/requestContext.ts`) și, după autentificare, `organizationId`/`userId`. Nu folosiți `console.*` în API.
 - Erorile 500 se raportează la Sentry dacă `SENTRY_DSN` e setat (`lib/errorReporting.ts`, fără SDK, fără corpul cererii) și întorc `requestId`, afișat în web ca „cod pentru suport”.
+- Joburi: coadă proprie pe Postgres (`jobs/queue.ts`, tabelul `jobs`, `FOR UPDATE SKIP LOCKED`, reîncercări exponențiale, `PermanentJobError` = fără reîncercare, `dedupeKey` unic). Handlerele în `jobs/handlers.ts`: `email.send`, `memo.generate`, `ruleset.reclassify` (o dată per versiune), `portal.notify`, `reminders.daily` (rezumatul termenelor, 05:00 UTC), `maintenance.prune`. Rulează în API (`RUN_WORKER_IN_API=on`, implicit) și/sau în procesul separat `npm run worker -w @togato/api`. Puneți joburile în coadă **în aceeași tranzacție** cu operația (`enqueue(..., { tx })`).
+- Emailuri: doar prin `sendEmail()` (`services/email/`) — adaptor `log` (dezvoltare/teste; `sentEmails()` în teste) sau `resend`. Șabloanele în `templates.ts` escapează orice valoare introdusă de utilizatori. Preferințe per utilizator: `users.notifyDeadlines` / `notifyPortal`.
+- Memoriul AI e asincron: `POST /memo` → 202 cu `aiMemoStatus = in_lucru`; workerul îl scrie (`gata`) sau salvează eroarea (`esuat`); interfața verifică la 3 s.
 - `/health` = procesul e viu; `/health/ready` = baza de date răspunde (503 altfel). Oprirea la SIGTERM e curată.
 
 ## Textul oficial al legii
@@ -62,7 +65,7 @@ Dacă oricare eșuează, nu face commit.
 - Textul final al Omnibus-ului (numărul regulamentului, formularea Art. 4, perioada de grație Art. 50(2)) — verificat doar din surse secundare. Textul importat e cel inițial (2024); când apare versiunea consolidată pe EUR-Lex, se reimportă.
 - Memoriul AI cu citări n-a fost încă rulat contra API-ului real (nu există cheie în mediul de dezvoltare) — de testat la prima configurare a `ANTHROPIC_API_KEY`.
 - Lookup ANAF (`services/companyLookup.ts`, API v9) netestat contra serviciului real.
-- Trimiterea pe email a invitațiilor (acum linkul se copiază manual).
+- Trimiterea reală a emailurilor (Resend) netestată contra serviciului — necesită `RESEND_API_KEY` și domeniu verificat (SPF/DKIM).
 - Documentele sunt modele deterministe; o variantă viitoare poate folosi Claude pentru a redacta secțiunile „de completat” din descrierea sistemului.
 - Logo-ul cabinetului e doar un URL extern; încărcarea fișierului cere stocare (S3/R2).
-- Următorii pași: trimiterea emailurilor (invitații, link portal, notificare la trimiteri din portal), publicarea pe Railway, modulul GDPR.
+- Următorii pași: publicarea pe Railway, modulul GDPR.
