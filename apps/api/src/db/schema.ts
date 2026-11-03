@@ -51,6 +51,10 @@ export const users = pgTable("users", {
   notifyDeadlines: boolean("notify_deadlines").notNull().default(true),
   /** notificare pe email când un client trimite un instrument prin portal */
   notifyPortal: boolean("notify_portal").notNull().default(true),
+  /** protecție la ghicirea parolei: încercări eșuate consecutive și blocarea temporară */
+  failedLogins: integer("failed_logins").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex("users_email_unique").on(t.email),
@@ -255,6 +259,46 @@ export const jobs = pgTable("jobs", {
   index("jobs_pending_idx").on(t.status, t.runAt),
   uniqueIndex("jobs_dedupe_unique").on(t.dedupeKey),
 ]);
+
+/**
+ * Sesiunile de autentificare (server-side): tokenul aleator stă în cookie httpOnly, în DB doar hash-ul.
+ * Ștergerea rândului = deconectare imediată (ieșire, schimbarea parolei, dezactivarea contului).
+ */
+export const sessions = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  /** expirare glisantă (prelungită la activitate), plafonată la ABSOLUTE_TTL de la creare */
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+}, (t) => [
+  uniqueIndex("sessions_token_unique").on(t.tokenHash),
+  index("sessions_user_idx").on(t.userId),
+]);
+
+/** Cereri de resetare a parolei: tokenul (o singură folosire, 60 de minute) e păstrat ca hash. */
+export const passwordResets = pgTable("password_resets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("password_resets_token_unique").on(t.tokenHash),
+  index("password_resets_user_idx").on(t.userId),
+]);
+
+/** Contoare pentru limitarea cererilor, comune tuturor instanțelor API. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+}, (t) => [index("rate_limits_reset_idx").on(t.resetAt)]);
 
 // ─── Relații ─────────────────────────────────────────────
 

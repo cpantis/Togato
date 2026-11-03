@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { db } from "../src/db";
+import { sessions } from "../src/db/schema";
 /** Utilitare pentru testele de integrare: cereri către aplicația reală, fără server HTTP. */
 import { app } from "../src/app";
 
@@ -35,5 +38,6 @@ export async function seedCabinet(name: string) {
   const snapshotId = snaps.body.data[0].id as string;
   const inv = await call("POST", "/api/team/invitations", { token, body: { email: `${unique("coleg")}@x.ro` } });
   const portal = await call("POST", `/api/clients/${clientId}/portal`, { token });
-  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string };
+  const [session] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId)).limit(1);
+  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id };
 }

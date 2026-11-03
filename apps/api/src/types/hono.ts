@@ -4,6 +4,8 @@ export interface AuthContext {
   role: "admin" | "membru";
   email: string;
   name: string;
+  /** sesiunea curentă (pentru „deconectează celelalte sesiuni”) */
+  sessionId: string;
 }
 
 export type AppEnv = {

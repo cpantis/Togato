@@ -79,6 +79,7 @@ export default function LoginPage() {
         <Field label="Parolă">
           <input className={inputClass} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
+        <div className="-mt-2 text-right"><Link href="/forgot" className="text-[12px] font-medium text-brand hover:underline">Ați uitat parola?</Link></div>
         <Button type="submit" className="w-full" loading={busy}>Intră în cont</Button>
       </form>
     </AuthLayout>

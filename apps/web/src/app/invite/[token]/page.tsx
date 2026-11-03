@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { api, setToken } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Alert, Button, Field, LoadingBlock, inputClass } from "@/components/ui";
@@ -30,8 +30,7 @@ export default function InvitePage() {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      const res = await api<{ token: string }>("/api/auth/accept-invitation", { method: "POST", body: JSON.stringify({ token, name, password }) });
-      setToken(res.token);
+      await api("/api/auth/accept-invitation", { method: "POST", body: JSON.stringify({ token, name, password }) });
       await refresh();
       router.replace("/dashboard");
     } catch (err) {

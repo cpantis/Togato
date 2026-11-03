@@ -41,6 +41,7 @@ function resolveParams(path: string, a: Seed): string | null {
       if (path.startsWith("/api/snapshots/")) return a.snapshotId;
       if (path.startsWith("/api/team/invitations/")) return a.invitationId;
       if (path.startsWith("/api/team/members/")) return a.userId;
+      if (path.startsWith("/api/account/sessions/")) return a.sessionId;
     }
     unknown = true;
     return "?";

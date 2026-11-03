@@ -1,14 +1,50 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import type { Context } from "hono";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import { invitations, organizations, users } from "../db/schema";
-import { hashToken } from "../lib/tokens";
-import { signMfaToken, signToken, userFromMfaToken, userFromRequest } from "../middleware/auth";
+import { invitations, organizations, passwordResets, users } from "../db/schema";
+import { hashToken, newToken } from "../lib/tokens";
+import { csrfOk, sessionFromRequest, signMfaToken, userFromMfaToken } from "../middleware/auth";
 import { checkSecondFactor } from "../services/mfa";
+import { clearSessionCookies, createSession, revokeSession, revokeUserSessions } from "../services/sessions";
+import { sendEmail, templates } from "../services/email";
+import { frontendBaseUrl } from "../config";
+import { clientIp } from "../lib/clientIp";
+import { log } from "../lib/logger";
 
 export const authRoutes = new Hono();
+
+/** după MAX_FAILED încercări eșuate consecutive (parolă sau cod), contul se blochează LOCK_MINUTES */
+export const MAX_FAILED = 10;
+export const LOCK_MINUTES = 15;
+const RESET_MINUTES = 60;
+const LOCKED = (until: Date) => ({ error: `Prea multe încercări eșuate. Contul e blocat temporar până la ${until.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Bucharest" })}. Puteți reseta parola.`, code: "locked" });
+
+function isLocked(u: { lockedUntil: Date | null }) {
+  return !!u.lockedUntil && u.lockedUntil > new Date();
+}
+
+/** crește contorul atomic; la prag, blochează contul */
+async function registerFailure(userId: string) {
+  const [row] = await db.update(users).set({
+    failedLogins: sql`${users.failedLogins} + 1`,
+    lockedUntil: sql`case when ${users.failedLogins} + 1 >= ${MAX_FAILED} then now() + (${LOCK_MINUTES} * interval '1 minute') else ${users.lockedUntil} end`,
+  }).where(eq(users.id, userId)).returning({ failedLogins: users.failedLogins, lockedUntil: users.lockedUntil });
+  if (row?.failedLogins === MAX_FAILED) log.warn("cont blocat temporar", { userId });
+  return row;
+}
+
+async function registerSuccess(userId: string) {
+  await db.update(users).set({ failedLogins: 0, lockedUntil: null, lastActiveAt: new Date() }).where(eq(users.id, userId));
+}
+
+/** răspunsul cu sesiune nouă: cookie httpOnly + tokenul în corp (pentru clienți API) */
+async function sessionResponse(c: Context, user: typeof users.$inferSelect, org: typeof organizations.$inferSelect | null | undefined, status: 200 | 201 = 200, extra: Record<string, unknown> = {}) {
+  const token = await createSession(c, user);
+  return c.json({ token, user: publicUser(user), organization: org ? publicOrg(org) : null, ...extra }, status);
+}
 
 const TRIAL_DAYS = 14;
 // Hash real, folosit când emailul nu există — timpul de răspuns nu dezvăluie dacă un cont există
@@ -51,7 +87,7 @@ authRoutes.post("/signup", async (c) => {
     return { user, org };
   });
 
-  return c.json({ token: await signToken(user.id), user: publicUser(user), organization: publicOrg(org) }, 201);
+  return sessionResponse(c, user, org, 201);
 });
 
 const loginSchema = z.object({
@@ -63,7 +99,15 @@ authRoutes.post("/login", async (c) => {
   const body = loginSchema.parse(await c.req.json());
   const user = await db.query.users.findFirst({ where: eq(users.email, body.email) });
   const ok = await bcrypt.compare(body.password, user?.passwordHash ?? DUMMY_HASH);
-  if (!user || !ok) return c.json({ error: "Email sau parolă incorectă" }, 401);
+  // contul blocat nu acceptă nici parola corectă (altfel blocarea n-ar opri ghicirea)
+  if (user && isLocked(user)) return c.json(LOCKED(user.lockedUntil!), 429);
+  if (!user || !ok) {
+    if (user) {
+      const r = await registerFailure(user.id);
+      if (r?.lockedUntil && r.lockedUntil > new Date()) return c.json(LOCKED(r.lockedUntil), 429);
+    }
+    return c.json({ error: "Email sau parolă incorectă" }, 401);
+  }
   if (user.status !== "activ") return c.json({ error: "Contul este dezactivat" }, 403);
 
   // pasul al doilea: sesiunea se emite abia după codul din aplicația de autentificare
@@ -71,9 +115,9 @@ authRoutes.post("/login", async (c) => {
     return c.json({ mfaRequired: true, mfaToken: await signMfaToken(user.id) });
   }
 
-  await db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, user.id));
+  await registerSuccess(user.id);
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId) });
-  return c.json({ token: await signToken(user.id), user: publicUser(user), organization: org ? publicOrg(org) : null });
+  return sessionResponse(c, user, org);
 });
 
 /** POST /login/mfa { mfaToken, code } — al doilea pas: cod TOTP sau cod de recuperare */
@@ -81,20 +125,23 @@ authRoutes.post("/login/mfa", async (c) => {
   const body = z.object({ mfaToken: z.string().min(10).max(2000), code: z.string().trim().min(6).max(20) }).parse(await c.req.json());
   const user = await userFromMfaToken(body.mfaToken);
   if (!user) return c.json({ error: "Sesiunea de autentificare a expirat. Introduceți din nou parola." }, 401);
+  if (isLocked(user)) return c.json(LOCKED(user.lockedUntil!), 429);
   const result = await checkSecondFactor(user, body.code);
-  if (!result.ok) return c.json({ error: "Cod incorect sau deja folosit" }, 401);
+  if (!result.ok) {
+    const r = await registerFailure(user.id);
+    if (r?.lockedUntil && r.lockedUntil > new Date()) return c.json(LOCKED(r.lockedUntil), 429);
+    return c.json({ error: "Cod incorect sau deja folosit" }, 401);
+  }
 
-  await db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, user.id));
+  await registerSuccess(user.id);
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId) });
-  return c.json({
-    token: await signToken(user.id), user: publicUser(user), organization: org ? publicOrg(org) : null,
-    ...(result.usedRecovery ? { recoveryCodesLeft: result.recoveryLeft } : {}),
-  });
+  return sessionResponse(c, user, org, 200, result.usedRecovery ? { recoveryCodesLeft: result.recoveryLeft } : {});
 });
 
 authRoutes.get("/me", async (c) => {
-  const user = await userFromRequest(c);
-  if (!user) return c.json({ error: "Neautentificat" }, 401);
+  const s = await sessionFromRequest(c);
+  if (!s) return c.json({ error: "Neautentificat" }, 401);
+  const user = s.user;
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId) });
   return c.json({ user: publicUser(user), organization: org ? publicOrg(org) : null });
 });
@@ -143,5 +190,62 @@ authRoutes.post("/accept-invitation", async (c) => {
     return u;
   });
   if (!user) return c.json({ error: "Invitația a fost deja folosită." }, 409);
-  return c.json({ token: await signToken(user.id), user: publicUser(user), organization: publicOrg(org) }, 201);
+  return sessionResponse(c, user, org, 201);
+});
+
+/** POST /logout — închide sesiunea curentă */
+authRoutes.post("/logout", async (c) => {
+  const s = await sessionFromRequest(c);
+  if (s && !csrfOk(c, s.via)) return c.json({ error: "Cerere respinsă (token CSRF)", code: "csrf" }, 403);
+  if (s) await revokeSession(s.token);
+  clearSessionCookies(c);
+  return c.body(null, 204);
+});
+
+/**
+ * POST /password/forgot { email } — trimite un link de resetare. Răspunsul e mereu același,
+ * ca să nu se poată afla ce adrese au cont.
+ */
+authRoutes.post("/password/forgot", async (c) => {
+  const body = z.object({ email: z.string().trim().toLowerCase().email("Email invalid") }).parse(await c.req.json());
+  const user = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+  if (user && user.status === "activ") {
+    const { token, hash } = newToken();
+    await db.transaction(async (tx) => {
+      // un singur link valabil per utilizator
+      await tx.delete(passwordResets).where(eq(passwordResets.userId, user.id));
+      await tx.insert(passwordResets).values({ userId: user.id, tokenHash: hash, expiresAt: new Date(Date.now() + RESET_MINUTES * 60_000) });
+      await sendEmail(templates.passwordReset({ to: user.email, name: user.name, url: `${frontendBaseUrl()}/reset/${token}`, expiresMinutes: RESET_MINUTES }), { tx, organizationId: user.organizationId });
+    });
+    log.info("cerere de resetare a parolei", { userId: user.id, ip: clientIp(c) });
+  }
+  return c.json({ ok: true, message: "Dacă există un cont cu această adresă, am trimis un link de resetare. Verificați emailul (și dosarul Spam)." });
+});
+
+const resetSchema = z.object({
+  token: z.string().min(10).max(100),
+  password: z.string().min(8, "Parola trebuie să aibă cel puțin 8 caractere").max(200),
+});
+
+/** POST /password/reset { token, password } — parola nouă; toate sesiunile existente se închid */
+authRoutes.post("/password/reset", async (c) => {
+  const body = resetSchema.parse(await c.req.json());
+  const passwordHash = await bcrypt.hash(body.password, 12);
+  const user = await db.transaction(async (tx) => {
+    // folosire unică, condiționată — două cereri simultane nu pot folosi același link
+    const [reset] = await tx.update(passwordResets).set({ usedAt: new Date() })
+      .where(and(eq(passwordResets.tokenHash, hashToken(body.token)), isNull(passwordResets.usedAt), gt(passwordResets.expiresAt, new Date())))
+      .returning();
+    if (!reset) return null;
+    const [u] = await tx.update(users).set({ passwordHash, passwordChangedAt: new Date(), failedLogins: 0, lockedUntil: null })
+      .where(and(eq(users.id, reset.userId), eq(users.status, "activ"))).returning();
+    if (!u) return null;
+    await revokeUserSessions(u.id, undefined, tx);
+    await sendEmail(templates.passwordChanged({ to: u.email, name: u.name }), { tx, organizationId: u.organizationId });
+    return u;
+  });
+  if (!user) return c.json({ error: "Linkul de resetare nu mai este valabil. Cereți unul nou." }, 400);
+  log.info("parolă resetată", { userId: user.id, ip: clientIp(c) });
+  // după resetare, utilizatorul se autentifică normal (inclusiv cu al doilea pas, dacă îl are)
+  return c.json({ ok: true, mfaRequired: user.totpEnabled });
 });

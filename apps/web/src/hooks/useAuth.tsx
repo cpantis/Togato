@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { AuthUser, Organization } from "@togato/shared";
-import { ApiError, api, clearToken, getToken, setToken } from "@/lib/api";
+import { ApiError, api, clearLegacyToken } from "@/lib/api";
 
 interface AuthState {
   user: AuthUser | null;
@@ -15,7 +15,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<{ mfaToken: string } | null>;
   completeMfa: (mfaToken: string, code: string) => Promise<{ recoveryCodesLeft?: number }>;
   signup: (data: { name: string; email: string; password: string; cabinetName: string }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -31,16 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, organization: null, loading: true, error: null });
 
   const refresh = useCallback(async () => {
-    if (!getToken()) {
-      setState({ user: null, organization: null, loading: false, error: null });
-      return;
-    }
+    clearLegacyToken();
     try {
       const data = await api<{ user: AuthUser; organization: Organization }>("/api/auth/me");
       setState({ user: data.user, organization: data.organization, loading: false, error: null });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
-        clearToken();
         setState({ user: null, organization: null, loading: false, error: null });
       } else {
         // Serverul nu răspunde: păstrăm sesiunea și arătăm eroarea
@@ -56,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST", body: JSON.stringify({ email, password }),
     });
     if (data.mfaRequired && data.mfaToken) return { mfaToken: data.mfaToken };
-    setToken(data.token!);
     setState({ user: data.user!, organization: data.organization ?? null, loading: false, error: null });
     return null;
   }, []);
@@ -65,7 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await api<{ token: string; user: AuthUser; organization: Organization; recoveryCodesLeft?: number }>("/api/auth/login/mfa", {
       method: "POST", body: JSON.stringify({ mfaToken, code }),
     });
-    setToken(data.token);
     setState({ user: data.user, organization: data.organization, loading: false, error: null });
     return { recoveryCodesLeft: data.recoveryCodesLeft };
   }, []);
@@ -74,12 +68,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await api<{ token: string; user: AuthUser; organization: Organization }>("/api/auth/signup", {
       method: "POST", body: JSON.stringify(payload),
     });
-    setToken(data.token);
     setState({ user: data.user, organization: data.organization, loading: false, error: null });
   }, []);
 
-  const logout = useCallback(() => {
-    clearToken();
+  const logout = useCallback(async () => {
+    // închide sesiunea pe server (cookie-ul httpOnly nu poate fi șters din JavaScript)
+    await api("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     setState({ user: null, organization: null, loading: false, error: null });
   }, []);
 

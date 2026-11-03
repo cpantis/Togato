@@ -1,18 +1,17 @@
 import { log, logContext } from "../lib/logger";
 import type { Context, Next } from "hono";
 import { verify, sign } from "hono/jwt";
+import { getCookie } from "hono/cookie";
 import { eq } from "drizzle-orm";
+import crypto from "crypto";
 import { db } from "../db";
 import { organizations, users } from "../db/schema";
 import type { AuthContext } from "../types/hono";
+import { CSRF_COOKIE, resolveSession, sessionTokenFrom } from "../services/sessions";
 
-const TOKEN_TTL_S = 7 * 86400;
 const ACTIVITY_THROTTLE_MS = 5 * 60 * 1000;
 const lastActive = new Map<string, number>();
-
-export function signToken(userId: string) {
-  return sign({ sub: userId, exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_S }, process.env.JWT_SECRET!, "HS256");
-}
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Token de scurtă durată emis după parolă, valabil doar pentru pasul al doilea al autentificării. */
 export function signMfaToken(userId: string) {
@@ -33,25 +32,32 @@ export async function userFromMfaToken(token: string) {
 /** Rute permise unui utilizator care trebuie întâi să-și activeze autentificarea în doi pași. */
 const MFA_SETUP_ALLOWED = /^\/api\/account\//;
 
-/** Citește utilizatorul din token; null dacă tokenul lipsește / e invalid / contul e dezactivat. */
-export async function userFromRequest(c: Context) {
-  const token = c.req.header("Authorization")?.replace(/^Bearer /, "");
-  if (!token) return null;
-  try {
-    const payload = await verify(token, process.env.JWT_SECRET!, "HS256");
-    // tokenurile cu scop special (ex. pasul 2 al autentificării) nu sunt sesiuni
-    if (payload.purpose) return null;
-    const user = await db.query.users.findFirst({ where: eq(users.id, payload.sub as string) });
-    if (!user || user.status !== "activ") return null;
-    return user;
-  } catch {
-    return null;
-  }
+/**
+ * Protecție CSRF pentru sesiunile din cookie: cererile care modifică date trebuie să trimită
+ * antetul X-CSRF-Token egal cu cookie-ul togato_csrf (un alt site nu poate citi cookie-ul).
+ * Cererile cu Authorization: Bearer nu au nevoie — browserul nu le trimite automat.
+ */
+export function csrfOk(c: Context, via: "cookie" | "bearer"): boolean {
+  if (via === "bearer" || SAFE_METHODS.has(c.req.method)) return true;
+  const cookie = getCookie(c, CSRF_COOKIE);
+  const header = c.req.header("x-csrf-token");
+  if (!cookie || !header || cookie.length !== header.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(cookie), Buffer.from(header));
+}
+
+/** Citește sesiunea și utilizatorul; null dacă lipsesc / au expirat / contul e dezactivat. */
+export async function sessionFromRequest(c: Context) {
+  const found = sessionTokenFrom(c);
+  if (!found) return null;
+  const row = await resolveSession(found.token);
+  return row ? { ...row, via: found.via, token: found.token } : null;
 }
 
 export const authMiddleware = async (c: Context, next: Next) => {
-  const user = await userFromRequest(c);
-  if (!user) return c.json({ error: "Sesiune expirată. Autentifică-te din nou." }, 401);
+  const s = await sessionFromRequest(c);
+  if (!s) return c.json({ error: "Sesiune expirată. Autentifică-te din nou." }, 401);
+  if (!csrfOk(c, s.via)) return c.json({ error: "Cerere respinsă (token CSRF lipsă sau invalid). Reîncărcați pagina.", code: "csrf" }, 403);
+  const user = s.user;
 
   // politica cabinetului: autentificarea în doi pași obligatorie
   if (!user.totpEnabled && !MFA_SETUP_ALLOWED.test(c.req.path)) {
@@ -76,6 +82,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     role: user.role,
     email: user.email,
     name: user.name,
+    sessionId: s.session.id,
   } satisfies AuthContext);
   await next();
 };

@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
 import { authRoutes } from "./routes/auth";
 import { clientRoutes } from "./routes/clients";
 import { aiSystemRoutes, createSystemHandler } from "./routes/aiSystems";
@@ -31,6 +32,14 @@ export function createApp() {
 const app = new Hono<AppEnv>();
 
 app.use("*", requestContext);
+// API-ul întoarce doar JSON / fișiere: nimic nu are voie să ruleze sau să fie încadrat
+app.use("*", secureHeaders({
+  contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+  strictTransportSecurity: "max-age=63072000; includeSubDomains",
+  referrerPolicy: "no-referrer",
+  crossOriginResourcePolicy: "same-origin",
+  xFrameOptions: "DENY",
+}));
 
 // viu: procesul răspunde (fără dependențe) — folosit de platformă pentru repornire
 app.get("/health", (c) => c.json({ status: "ok", service: "togato-api" }));
@@ -50,6 +59,8 @@ app.get("/health/ready", async (c) => {
 app.use("/api/*", cors({
   origin: config().FRONTEND_URL.split(",").map((s) => s.trim()),
   credentials: true,
+  allowHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Request-Id"],
+  exposeHeaders: ["X-Request-Id", "Content-Disposition", "X-Togato-Integrity", "Retry-After"],
 }));
 app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "Cererea e prea mare" }, 413) }));
 
@@ -58,6 +69,8 @@ app.use("/api/auth/login", rateLimit({ windowMs: 60_000, max: 10, key: "login" }
 app.use("/api/auth/login/mfa", rateLimit({ windowMs: 60_000, max: 10, key: "login-mfa" }));
 app.use("/api/auth/invitation/*", rateLimit({ windowMs: 60_000, max: 20, key: "invitation" }));
 app.use("/api/auth/accept-invitation", rateLimit({ windowMs: 60_000, max: 5, key: "accept" }));
+app.use("/api/auth/password/forgot", rateLimit({ windowMs: 15 * 60_000, max: 5, key: "forgot" }));
+app.use("/api/auth/password/reset", rateLimit({ windowMs: 15 * 60_000, max: 10, key: "reset" }));
 app.route("/api/auth", authRoutes);
 
 // Portalul public al clientului (fără cont, autentificat prin tokenul din link)
@@ -83,6 +96,7 @@ app.route("/api/legislation", legislationRoutes);
 app.route("/api/law", lawRoutes);
 app.route("/api/snapshots", snapshotRoutes);
 app.use("/api/account/2fa/*", rateLimit({ windowMs: 60_000, max: 15, key: "2fa" }));
+app.use("/api/account/password", rateLimit({ windowMs: 15 * 60_000, max: 10, key: "password" }));
 app.route("/api/account", accountRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));

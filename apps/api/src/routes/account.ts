@@ -8,9 +8,14 @@ import { db } from "../db";
 import { organizations, users } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
+import { notFound, uuidParam } from "../lib/http";
 import { decrypt, encrypt } from "../lib/crypto";
 import { generateRecoveryCodes, generateSecret, hashRecoveryCode, otpauthUri, verifyTotp } from "../lib/totp";
 import { checkSecondFactor } from "../services/mfa";
+import { sessions } from "../db/schema";
+import { desc } from "drizzle-orm";
+import { revokeUserSessions } from "../services/sessions";
+import { sendEmail, templates } from "../services/email";
 
 export const accountRoutes = new Hono<AppEnv>();
 
@@ -28,6 +33,59 @@ accountRoutes.get("/security", async (c) => {
     recoveryCodesLeft: u.recoveryCodes?.length ?? 0,
     orgRequires2fa: !!org?.require2fa,
   });
+});
+
+/** POST /password { currentPassword, newPassword } — schimbă parola și închide celelalte sesiuni */
+accountRoutes.post("/password", async (c) => {
+  const auth = c.get("auth");
+  const body = z.object({
+    currentPassword: z.string().min(1).max(200),
+    newPassword: z.string().min(8, "Parola nouă trebuie să aibă cel puțin 8 caractere").max(200),
+  }).refine((b) => b.currentPassword !== b.newPassword, { message: "Parola nouă trebuie să fie diferită de cea actuală", path: ["newPassword"] })
+    .parse(await c.req.json());
+  const u = await me(auth.userId);
+  if (!(await bcrypt.compare(body.currentPassword, u.passwordHash))) return c.json({ error: "Parola actuală e incorectă" }, 400);
+  const passwordHash = await bcrypt.hash(body.newPassword, 12);
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({ passwordHash, passwordChangedAt: new Date() }).where(and(eq(users.id, auth.userId), eq(users.organizationId, auth.organizationId)));
+    await revokeUserSessions(auth.userId, auth.sessionId, tx);
+    await sendEmail(templates.passwordChanged({ to: u.email, name: u.name }), { tx, organizationId: auth.organizationId });
+    await audit(auth, "password_change", "user", auth.userId, undefined, tx);
+  });
+  return c.json({ ok: true });
+});
+
+/** GET /sessions — sesiunile active ale utilizatorului (dispozitive) */
+accountRoutes.get("/sessions", async (c) => {
+  const auth = c.get("auth");
+  const rows = await db.select().from(sessions)
+    .where(and(eq(sessions.userId, auth.userId), eq(sessions.organizationId, auth.organizationId)))
+    .orderBy(desc(sessions.lastSeenAt));
+  return c.json({
+    data: rows.filter((r) => r.expiresAt > new Date()).map((r) => ({
+      id: r.id, current: r.id === auth.sessionId, ip: r.ip, userAgent: r.userAgent,
+      createdAt: r.createdAt.toISOString(), lastSeenAt: r.lastSeenAt.toISOString(),
+    })),
+  });
+});
+
+/** DELETE /sessions/:id — închide o sesiune (alt dispozitiv) */
+accountRoutes.delete("/sessions/:id", async (c) => {
+  const auth = c.get("auth");
+  const id = uuidParam(c.req.param("id"));
+  const deleted = await db.delete(sessions)
+    .where(and(eq(sessions.id, id), eq(sessions.userId, auth.userId), eq(sessions.organizationId, auth.organizationId)))
+    .returning({ id: sessions.id });
+  if (!deleted.length) notFound("Sesiunea nu a fost găsită");
+  return c.body(null, 204);
+});
+
+/** POST /sessions/revoke-others — „deconectează-mă de pe celelalte dispozitive” */
+accountRoutes.post("/sessions/revoke-others", async (c) => {
+  const auth = c.get("auth");
+  await revokeUserSessions(auth.userId, auth.sessionId);
+  await audit(auth, "revoke_sessions", "user", auth.userId);
+  return c.json({ ok: true });
 });
 
 /** GET/PUT /notifications — ce emailuri primește utilizatorul */

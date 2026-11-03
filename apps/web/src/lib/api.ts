@@ -1,14 +1,33 @@
-const TOKEN_KEY = "togato-token";
+/**
+ * Sesiunea stă într-un cookie httpOnly (inaccesibil scripturilor). Pentru cererile care modifică
+ * date, trimitem tokenul CSRF din cookie-ul `togato_csrf` în antetul X-CSRF-Token.
+ */
+const LEGACY_TOKEN_KEY = "togato-token";
+const PUBLIC_PATHS = /^\/(login|signup|invite|portal|reset|forgot)(\/|$)/;
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+function csrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(/(?:^|;\s*)togato_csrf=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
 }
-export function setToken(token: string) {
-  try { localStorage.setItem(TOKEN_KEY, token); } catch { /* mod privat */ }
+
+/** curăță tokenul din versiunile vechi (păstrat în localStorage) */
+export function clearLegacyToken() {
+  try { localStorage.removeItem(LEGACY_TOKEN_KEY); } catch { /* mod privat */ }
 }
-export function clearToken() {
-  try { localStorage.removeItem(TOKEN_KEY); } catch { /* mod privat */ }
+
+function onUnauthorized(path: string) {
+  if (typeof window === "undefined" || path.startsWith("/api/auth/")) return;
+  if (!PUBLIC_PATHS.test(window.location.pathname)) window.location.assign("/login");
+}
+
+function authHeaders(method: string): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (method !== "GET" && method !== "HEAD") {
+    const t = csrfToken();
+    if (t) h["X-CSRF-Token"] = t;
+  }
+  return h;
 }
 
 export class ApiError extends Error {
@@ -18,16 +37,14 @@ export class ApiError extends Error {
 }
 
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
+  const headers: Record<string, string> = { ...authHeaders((init.method || "GET").toUpperCase()), ...(init.headers as Record<string, string>) };
   if (init.body && !(init.body instanceof FormData)) headers["Content-Type"] = "application/json";
-  if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60_000);
   let res: Response;
   try {
-    res = await fetch(path, { ...init, headers, signal: controller.signal });
+    res = await fetch(path, { credentials: "same-origin", ...init, headers, signal: controller.signal });
   } catch {
     throw new ApiError("Serverul nu răspunde. Verifică conexiunea și reîncearcă.", 0);
   } finally {
@@ -37,10 +54,7 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    if (res.status === 401 && token && !path.startsWith("/api/auth/")) {
-      clearToken();
-      window.location.assign("/login");
-    }
+    if (res.status === 401) onUnauthorized(path);
     const details = Array.isArray(body?.details) ? body.details.map((d: any) => d.message).join(" · ") : "";
     const ref = res.status >= 500 && body?.requestId ? ` (cod pentru suport: ${String(body.requestId).slice(0, 8)})` : "";
     throw new ApiError((details || body?.error || `Eroare ${res.status}`) + ref, res.status, body);
@@ -54,21 +68,17 @@ export const apiPut = <T = any>(path: string, data: unknown) => api<T>(path, { m
 export const apiPatch = <T = any>(path: string, data: unknown) => api<T>(path, { method: "PATCH", body: JSON.stringify(data) });
 export const apiDelete = (path: string) => api<void>(path, { method: "DELETE" });
 
-/** Descarcă un fișier de la o rută autentificată (un simplu <a href> nu poate trimite tokenul). */
+/** Descarcă un fișier de la o rută autentificată și îl salvează cu numele trimis de server. */
 export async function apiDownload(path: string, fallbackName = "document.docx"): Promise<void> {
-  const token = getToken();
   let res: Response;
   try {
-    res = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    res = await fetch(path, { credentials: "same-origin" });
   } catch {
     throw new ApiError("Serverul nu răspunde. Verifică conexiunea și reîncearcă.", 0);
   }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    if (res.status === 401 && token) {
-      clearToken();
-      window.location.assign("/login");
-    }
+    if (res.status === 401) onUnauthorized(path);
     throw new ApiError(body?.error || `Eroare ${res.status}`, res.status, body);
   }
   const disposition = res.headers.get("Content-Disposition") || "";

@@ -9,6 +9,8 @@ import { deliver, sendEmail, templates, type EmailMessage } from "../services/em
 import { generateMemo, memoAvailable } from "../services/memo";
 import { reclassifyOutdated } from "../services/reclassify";
 import { PermanentJobError, enqueue, pruneFinished, type JobHandler } from "./queue";
+import { pruneExpiredSessions } from "../services/sessions";
+import { pruneRateLimits } from "../middleware/rateLimit";
 
 // ─── email ───────────────────────────────────────────────
 const emailSend: JobHandler = async (payload: EmailMessage) => {
@@ -143,6 +145,9 @@ const remindersDaily: JobHandler = async (p: { date?: string }) => {
 
 const maintenancePrune: JobHandler = async () => {
   await pruneFinished();
+  await pruneExpiredSessions();
+  await pruneRateLimits();
+  await db.execute(sql`delete from password_resets where expires_at < now() - interval '1 day'`);
 };
 
 export const handlers: Record<string, JobHandler> = {

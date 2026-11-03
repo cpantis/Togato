@@ -10,6 +10,7 @@ import { newToken } from "../lib/tokens";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { frontendBaseUrl } from "../config";
 import { sendEmail, templates } from "../services/email";
+import { revokeUserSessions } from "../services/sessions";
 
 export const teamRoutes = new Hono<AppEnv>();
 
@@ -115,9 +116,13 @@ teamRoutes.patch("/members/:id", requireAdmin, async (c) => {
   }
   if (body.status === "dezactivat" && id === auth.userId) badRequest("Nu îți poți dezactiva propriul cont.");
 
-  await db.update(users).set({ ...(body.role ? { role: body.role } : {}), ...(body.status ? { status: body.status } : {}) })
-    .where(and(eq(users.id, id), eq(users.organizationId, auth.organizationId)));
-  await audit(auth, "update", "user", id, body);
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({ ...(body.role ? { role: body.role } : {}), ...(body.status ? { status: body.status } : {}) })
+      .where(and(eq(users.id, id), eq(users.organizationId, auth.organizationId)));
+    // contul dezactivat e deconectat imediat de pe toate dispozitivele
+    if (body.status === "dezactivat") await revokeUserSessions(id, undefined, tx);
+    await audit(auth, "update", "user", id, body, tx);
+  });
   return c.json({ ok: true });
 });
 
@@ -130,6 +135,8 @@ teamRoutes.post("/members/:id/reset-2fa", requireAdmin, async (c) => {
   if (!member) notFound("Membrul nu a fost găsit");
   await db.update(users).set({ totpEnabled: false, totpSecret: null, totpPendingSecret: null, totpLastStep: null, recoveryCodes: null, totpEnabledAt: null })
     .where(and(eq(users.id, id), eq(users.organizationId, auth.organizationId)));
+  // sesiunile existente au fost deschise cu vechiul al doilea factor
+  await revokeUserSessions(id);
   await audit(auth, "2fa_reset", "user", id, { member: member.email });
   return c.json({ ok: true });
 });

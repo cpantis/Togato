@@ -57,7 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <h1 className="text-[22px] font-bold tracking-tight text-ink">Activați autentificarea în doi pași</h1>
           <p className="text-[13px] text-slate-600">{organization.name} cere autentificarea în doi pași pentru toți membrii, pentru protecția datelor clienților. Durează un minut.</p>
           <TwoFactorCard onEnabled={() => refresh()} />
-          <button onClick={() => { logout(); router.replace("/login"); }} className="text-[13px] font-medium text-slate-500 hover:text-slate-700">Ieșire</button>
+          <button onClick={async () => { await logout(); router.replace("/login"); }} className="text-[13px] font-medium text-slate-500 hover:text-slate-700">Ieșire</button>
         </div>
       </div>
     );
@@ -100,7 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="truncate text-[13px] font-semibold text-ink">{user.name}</div>
             <div className="truncate text-[11px] text-slate-400">{user.role === "admin" ? "Administrator" : "Membru"}</div>
           </div>
-          <button onClick={() => { logout(); router.replace("/login"); }} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600" title="Ieșire" aria-label="Ieșire">
+          <button onClick={async () => { await logout(); router.replace("/login"); }} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600" title="Ieșire" aria-label="Ieșire">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
           </button>
         </div>
