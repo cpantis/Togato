@@ -7,6 +7,9 @@
   --color-brand-dark: #5e162c;
   --color-brand-soft: #f8edf0;
   --color-ink: #0f172a;
+  /* textul secundar: contrast ≥ 4,5:1 pe alb și pe fundalurile deschise (WCAG 2.1 AA) */
+  --color-slate-400: #5f6d82;
+  --color-slate-500: #556274;
 }
 
 :root {
@@ -37,6 +40,10 @@ input:focus, select:focus, textarea:focus {
   to { opacity: 1; transform: translateY(0); }
 }
 .fade-up { animation: fadeUp 0.2s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
 
 .memo h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #475569; margin: 16px 0 6px; }
 .memo h2:first-child { margin-top: 0; }

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { AiSystem, Obligation, ReviewStatus, RiskLevel } from "@togato/shared";
+import type { AiSystem, Obligation, ReviewStatus, RiskLevel, SystemDetail } from "@togato/shared";
 import { LEGAL_ROLE_LABELS, QUALIFICATION_OPTIONS, RISK_LABELS, SCOPE_EXCLUSIONS } from "@togato/shared";
 import { ANNEX_III_USES, PORTAL_QUESTIONS, PROHIBITED_PRACTICES, ROLE_OPTIONS, TRANSPARENCY_TRIGGERS, portalFlags } from "@togato/shared";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
@@ -15,7 +15,6 @@ import { LawRef } from "@/components/LawRef";
 import { useAuth } from "@/hooks/useAuth";
 import { SnapshotsCard } from "@/components/SnapshotsCard";
 
-type SystemDetail = AiSystem & { client: { id: string; name: string; cui: string | null }; obligations: Obligation[] };
 
 function ReviewPanel({ system, onChange }: { system: SystemDetail; onChange: (s: SystemDetail) => void }) {
   const [note, setNote] = useState(system.reviewNote || "");

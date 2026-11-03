@@ -40,6 +40,7 @@ export interface ClientSummary {
   caenDescription: string | null;
   employees: number | null;
   createdAt: string;
+  archivedAt: string | null;
   responsibleUserId: string | null;
   responsibleName: string | null;
   systemsCount: number;
@@ -47,6 +48,14 @@ export interface ClientSummary {
   pendingReview: number;
   obligationsTotal: number;
   obligationsDone: number;
+}
+
+/** răspuns paginat: `data` + numărul total de rezultate pentru filtrul curent */
+export interface Page<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface Obligation {
@@ -102,6 +111,12 @@ export interface AiSystem {
   updatedAt: string;
   obligationsTotal?: number;
   obligationsDone?: number;
+}
+
+/** detaliul unui sistem (GET /api/ai-systems/:id): sistemul + clientul + obligațiile lui */
+export interface SystemDetail extends AiSystem {
+  client: { id: string; name: string; cui: string | null };
+  obligations: Obligation[];
 }
 
 export interface ClientDetail {

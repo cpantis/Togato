@@ -70,9 +70,15 @@ clientRoutes.get("/", async (c) => {
     mine ? eq(clients.responsibleUserId, auth.userId) : undefined,
     search ? or(ilike(clients.name, `%${search}%`), ilike(clients.cui, `%${search.replace(/\D/g, "") || search}%`)) : undefined,
   );
+  // paginare: ?limit (implicit 50, maximum 200) și ?offset
+  const { limit, offset } = z.object({
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+    offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
+  }).parse({ limit: c.req.query("limit"), offset: c.req.query("offset") });
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(clients).where(where);
   const rows = await db.select({ client: clients, responsibleName: users.name }).from(clients)
     .leftJoin(users, eq(users.id, clients.responsibleUserId))
-    .where(where).orderBy(asc(clients.name)).limit(500)
+    .where(where).orderBy(asc(clients.name), asc(clients.id)).limit(limit).offset(offset)
     .then((list) => list.map((r) => ({ ...r.client, responsibleName: r.responsibleName })));
   const ids = rows.map((r) => r.id);
 
@@ -99,7 +105,7 @@ clientRoutes.get("/", async (c) => {
       obligationsDone: o?.done ?? 0,
     };
   });
-  return c.json({ data });
+  return c.json({ data, total, limit, offset });
 });
 
 clientRoutes.post("/", async (c) => {

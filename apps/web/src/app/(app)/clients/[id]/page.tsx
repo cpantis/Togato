@@ -177,8 +177,8 @@ export default function ClientPage() {
             ))}
           </select>
           <h2 className="mt-5 text-[14px] font-semibold text-ink">Date firmă</h2>
+          {info.length === 0 && <p className="mt-3 text-[13px] text-slate-400">Fără date suplimentare.</p>}
           <dl className="mt-3 space-y-2.5">
-            {info.length === 0 && <div className="text-[13px] text-slate-400">Fără date suplimentare.</div>}
             {info.map(([k, v]) => (
               <div key={k}>
                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{k}</dt>

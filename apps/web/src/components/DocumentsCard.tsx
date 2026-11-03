@@ -56,7 +56,7 @@ export function DocumentsCard({ clientId, refreshKey }: { clientId: string; refr
       ) : (
         <ul className="divide-y divide-slate-100">
           {docs.map((d) => (
-            <li key={d.type} className={`flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center ${d.available ? "" : "opacity-55"}`}>
+            <li key={d.type} className={`flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center ${d.available ? "" : "bg-slate-50/60"}`}>
               <div className="flex min-w-0 flex-1 items-start gap-3">
                 <DocIcon />
                 <div className="min-w-0">

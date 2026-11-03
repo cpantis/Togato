@@ -17,7 +17,7 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
             <li>• Decizia finală rămâne la avocat</li>
           </ul>
         </div>
-        <div className="text-[12px] text-white/50">Regulamentul (UE) 2024/1689, cu modificările Omnibus 2026</div>
+        <div className="text-[12px] text-white/80">Regulamentul (UE) 2024/1689, cu modificările Omnibus 2026</div>
       </div>
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-sm">

@@ -1,0 +1,2 @@
+CREATE INDEX "clients_org_name_idx" ON "clients" USING btree ("organization_id","name");--> statement-breakpoint
+CREATE INDEX "obligations_due_idx" ON "obligations" USING btree ("due_date") WHERE "obligations"."due_date" is not null;

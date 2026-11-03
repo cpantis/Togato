@@ -51,8 +51,8 @@ export class RollbackSignal extends Error {}
  */
 export async function withTenant<T>(organizationId: string, fn: () => Promise<T>): Promise<T> {
   return rootDb.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('app.org_id', ${organizationId}, true)`);
-    await tx.execute(sql.raw(`set local role ${TENANT_ROLE}`));
+    // un singur drum la server: set_config('role', …, true) = SET LOCAL ROLE
+    await tx.execute(sql`select set_config('app.org_id', ${organizationId}, true), set_config('role', ${TENANT_ROLE}, true)`);
     return tenantStore.run({ tx, organizationId }, fn);
   });
 }

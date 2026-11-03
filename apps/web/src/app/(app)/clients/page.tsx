@@ -2,12 +2,13 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ClientSummary, RiskLevel } from "@togato/shared";
+import type { ClientSummary, Page, RiskLevel } from "@togato/shared";
 import { apiGet } from "@/lib/api";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, ProgressBar, RiskBadge, inputClass } from "@/components/ui";
 import { AddClientModal } from "./AddClientModal";
 
 const ORDER: RiskLevel[] = ["interzis", "risc_ridicat", "transparenta", "minim"];
+const PAGE = 50;
 
 function ClientsInner() {
   const router = useRouter();
@@ -17,16 +18,19 @@ function ClientsInner() {
   const [search, setSearch] = useState("");
   const [mine, setMine] = useState(false);
   const [archived, setArchived] = useState(params.get("archived") === "1");
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [modal, setModal] = useState(params.get("nou") === "1");
 
-  const load = useCallback(async (q: string, onlyMine: boolean, onlyArchived: boolean) => {
+  const load = useCallback(async (q: string, onlyMine: boolean, onlyArchived: boolean, offset = 0) => {
     try {
-      const qs = new URLSearchParams();
+      const qs = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
       if (q) qs.set("search", q);
       if (onlyMine) qs.set("mine", "1");
       if (onlyArchived) qs.set("archived", "1");
-      const res = await apiGet<{ data: ClientSummary[] }>(`/api/clients${qs.toString() ? `?${qs.toString()}` : ""}`);
-      setRows(res.data);
+      const res = await apiGet<Page<ClientSummary>>(`/api/clients?${qs.toString()}`);
+      setRows((prev) => (offset > 0 && prev ? [...prev, ...res.data] : res.data));
+      setTotal(res.total);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -93,6 +97,12 @@ function ClientsInner() {
               );
             })}
           </ul>
+          {rows.length < total && (
+            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-[12px] text-slate-500">
+              <span>{rows.length} din {total}</span>
+              <Button size="sm" variant="secondary" loading={loadingMore} onClick={async () => { setLoadingMore(true); await load(search.trim(), mine, archived, rows.length); setLoadingMore(false); }}>Încarcă încă {Math.min(PAGE, total - rows.length)}</Button>
+            </div>
+          )}
         </Card>
       )}
       <AddClientModal open={modal} onClose={() => { setModal(false); if (params.get("nou")) router.replace("/clients"); }} onCreated={(id) => router.push(`/clients/${id}`)} />

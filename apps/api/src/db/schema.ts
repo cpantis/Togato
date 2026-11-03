@@ -1,5 +1,5 @@
 import { pgTable, pgEnum, uuid, text, timestamp, integer, boolean, jsonb, date, bigint, index, uniqueIndex } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import type { AiSystemAnswers, ClassificationResult } from "@togato/shared";
 
 export const orgStatusEnum = pgEnum("org_status", ["trial", "activ", "suspendat"]);
@@ -132,6 +132,8 @@ export const clients = pgTable("clients", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("clients_org_idx").on(t.organizationId),
+  // lista paginată, ordonată după nume
+  index("clients_org_name_idx").on(t.organizationId, t.name),
   index("clients_responsible_idx").on(t.responsibleUserId),
   uniqueIndex("clients_org_cui_unique").on(t.organizationId, t.cui),
 ]);
@@ -209,6 +211,8 @@ export const obligations = pgTable("obligations", {
   index("obligations_org_idx").on(t.organizationId),
   index("obligations_client_idx").on(t.clientId),
   index("obligations_system_idx").on(t.aiSystemId),
+  // rezumatul zilnic al termenelor
+  index("obligations_due_idx").on(t.dueDate).where(sql`${t.dueDate} is not null`),
 ]);
 
 /**

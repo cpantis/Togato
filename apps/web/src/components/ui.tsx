@@ -58,10 +58,10 @@ export function PageHeader({ title, subtitle, actions }: { title: React.ReactNod
 }
 
 const RISK_STYLES: Record<RiskLevel | "neclasificat", string> = {
-  interzis: "bg-red-50 text-red-700 border-red-200",
-  risc_ridicat: "bg-orange-50 text-orange-700 border-orange-200",
-  transparenta: "bg-sky-50 text-sky-700 border-sky-200",
-  minim: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  interzis: "bg-red-50 text-red-800 border-red-200",
+  risc_ridicat: "bg-orange-50 text-orange-800 border-orange-200",
+  transparenta: "bg-sky-50 text-sky-800 border-sky-200",
+  minim: "bg-emerald-50 text-emerald-800 border-emerald-200",
   neclasificat: "bg-slate-50 text-slate-500 border-slate-200",
   neaplicabil: "bg-white text-slate-500 border-dashed border-slate-300",
 };
@@ -75,9 +75,9 @@ export function RiskBadge({ level, className }: { level: RiskLevel | "neclasific
 }
 
 const REVIEW_STYLES: Record<ReviewStatus, string> = {
-  propus: "text-amber-700 bg-amber-50",
-  aprobat: "text-emerald-700 bg-emerald-50",
-  respins: "text-red-700 bg-red-50",
+  propus: "text-amber-800 bg-amber-50",
+  aprobat: "text-emerald-800 bg-emerald-50",
+  respins: "text-red-800 bg-red-50",
 };
 
 export function ReviewBadge({ status }: { status: ReviewStatus }) {
@@ -91,9 +91,9 @@ export function ReviewBadge({ status }: { status: ReviewStatus }) {
 
 const OBL_STYLES: Record<ObligationStatus, string> = {
   de_facut: "bg-slate-100 text-slate-600",
-  in_lucru: "bg-blue-50 text-blue-700",
-  indeplinit: "bg-emerald-50 text-emerald-700",
-  nu_se_aplica: "bg-slate-50 text-slate-400 line-through",
+  in_lucru: "bg-blue-50 text-blue-800",
+  indeplinit: "bg-emerald-50 text-emerald-800",
+  nu_se_aplica: "bg-slate-50 text-slate-500 line-through",
 };
 
 export function ObligationStatusSelect({ value, onChange, disabled }: { value: ObligationStatus; onChange: (v: ObligationStatus) => void; disabled?: boolean }) {

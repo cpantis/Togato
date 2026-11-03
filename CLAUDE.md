@@ -11,6 +11,8 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 - **Multi-tenant**: orice citire/scriere filtrează pe `organizationId` din `c.get("auth")`, inclusiv în clauza WHERE a UPDATE/DELETE. Un id din alt cabinet → 404.
 - **Row-Level Security** (a doua linie de apărare): fiecare cerere autentificată rulează într-o tranzacție cu `SET LOCAL ROLE togato_app` și `app.org_id` = cabinetul (`withTenant` în `db/index.ts`, apelat din `authMiddleware`); `db` e un proxy către tranzacția cererii. Politicile `tenant_isolation` (migrația `0010_row_level_security.sql`) refuză rândurile altor cabinete; fără `app.org_id`, interogările eșuează. La eroare (inclusiv 4xx aruncate) modificările cererii se anulează. Workerul, migrațiile și rutele publice (autentificare, portal) folosesc conexiunea de serviciu (proprietarul tabelelor, fără RLS) și filtrează explicit. `withoutTenant()` doar pentru verificări la nivel de platformă (ex. unicitatea emailului). Un tabel nou cu `organization_id` are nevoie de politică într-o migrație (`npm run db:generate -- --custom`) — `test/rls.int.test.ts` pică altfel. Filtrul pe `organizationId` din cod rămâne obligatoriu.
 - Id-urile din URL trec prin `uuidParam()` (altfel Postgres dă 500).
+- Listele care pot crește sunt paginate (`?limit=&offset=`, răspuns `Page<T>`: `data`, `total`, `limit`, `offset`); acum: `GET /api/clients` (implicit 50, maximum 200).
+- Antetele HTTP sunt doar ASCII: nu puneți în ele text cu diacritice (folosiți un hash sau `contentDisposition()`).
 - Încadrarea e o **propunere**: orice modificare a răspunsurilor resetează `reviewStatus` la `propus`.
 - Obligațiile se sincronizează doar prin `services/obligationsSync.ts` (păstrează starea și notele celor care rămân aplicabile).
 - Analiza AI: `services/memo.ts`, model `claude-opus-5-5`, cu fallback server-side (`fallbacks: "default"`). Pasajele relevante din textul oficial (`selectLegalPassages`: articolele obligațiilor și motivelor, plafonate la 60.000 de caractere) se trimit ca documente cu citări activate; răspunsul devine text cu trimiteri `[n]` + `aiMemoCitations` (`parseMemoResponse`). Promptul spune explicit că textul e cel inițial și ce a schimbat Omnibus-ul. Funcțiile pure sunt testate în `memo.test.ts`.
@@ -59,13 +61,15 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 ## Teste
 - Unitare: `npm test -w @togato/shared`, `npm test -w @togato/api` (fără bază de date).
 - Integrare: `TEST_DATABASE_URL=postgres://...togato_test npm run test:int -w @togato/api` — API-ul real (`src/app.ts`, prin `app.request`) pe un Postgres real, golit și migrat la fiecare rulare. `test/isolation.int.test.ts` citește **toate** rutele din aplicație și verifică separarea între cabinete; o rută nouă cu un parametru necunoscut face testul să pice — adăugați maparea în `resolveParams`.
-- Browser: `E2E_DATABASE_URL=... npm run e2e` (Playwright, `e2e/`), după `npx next build` în `apps/web`.
+- Contract API ↔ web: `test/contracts.ts` — scheme zod stricte legate la compilare de tipurile din `@togato/shared` (`same<A, B>(true)`); `test/contract.int.test.ts` validează răspunsurile reale. Un câmp nou în răspuns = actualizați tipul din `types.ts` și schema. Testele se verifică la compilare cu `npx tsc -p tsconfig.test.json`.
+- Browser: `E2E_DATABASE_URL=... npm run e2e` (Playwright, `e2e/`), după `npx next build` în `apps/web`. `e2e/a11y.spec.ts` rulează axe (WCAG 2.1 AA) pe paginile principale — încălcările „serious”/„critical” pică testul. Textul secundar: `slate-400` / `slate-500` sunt redefinite în `globals.css` pentru contrast ≥ 4,5:1; nu estompați textul cu `opacity`.
+- Încărcare: `RATE_LIMIT=off` pe API, apoi `DATABASE_URL=... node scripts/loadtest.mjs` (CLIENTS, CONCURRENCY, DURATION). Referință (4 nuclee, un singur proces API, 60 de clienți): ~115 cereri/s cu 20 de conexiuni, 0 erori; fără concurență p50 8–18 ms. Limita e CPU-ul procesului Node (Drizzle + driverul Postgres); API-ul e fără stare (sesiuni, limitări, joburi în Postgres), deci se scalează orizontal cu mai multe instanțe.
 - CI rulează toate trei (`.github/workflows/ci.yml`).
 
 ## Înainte de commit
 ```bash
 npm run build -w @togato/shared && npm test -w @togato/shared
-cd apps/api && npx tsc --noEmit && npm test && npm run test:int   # cu TEST_DATABASE_URL
+cd apps/api && npx tsc --noEmit && npx tsc -p tsconfig.test.json && npm test && npm run test:int   # cu TEST_DATABASE_URL
 cd apps/web && npx next build
 ```
 Dacă oricare eșuează, nu face commit.
