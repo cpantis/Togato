@@ -142,3 +142,66 @@ describe("incidentele de securitate", () => {
     expect(names.some((n) => n.startsWith("gdpr/") && n.endsWith(".docx"))).toBe(true);
   });
 });
+
+describe("evaluarea de impact și scrisorile", () => {
+  it("lista ANSPDCP face evaluarea obligatorie; proiect precompletat; finalizare doar completă; Word", async () => {
+    const A = await seedCabinet("DPIA");
+    const act = await call("POST", `/api/clients/${A.clientId}/processing`, { token: A.token, body: { name: "Monitorizarea flotei", purpose: "Localizarea vehiculelor de serviciu", legalBases: ["6_1_f"], dataCategories: ["localizare"], subjectCategories: ["angajati"], dpiaListItems: ["iot"], retention: "6 luni", securityMeasures: ["acces"], systematicMonitoring: true } });
+    expect(act.body.check.dpiaMandatory).toBe(true);
+    expect(act.body.dpia).toBeNull();
+
+    const draft = await call("GET", `/api/processing/${act.body.id}/dpia`, { token: A.token });
+    check(C.dpiaResponse, draft.body);
+    expect(draft.body.saved).toBe(false);
+    expect(draft.body.dpia.description).toContain("Localizarea vehiculelor");
+    expect(draft.body.dpia.risks.map((r: any) => r.title)).toContain("Intruziune în viața privată");
+
+    const risks = draft.body.dpia.risks;
+    const notReady = await call("PUT", `/api/processing/${act.body.id}/dpia`, { token: A.token, body: { ...draft.body.dpia, finalize: true } });
+    expect(notReady.status).toBe(400);
+    expect(notReady.body.missing.length).toBeGreaterThan(0);
+
+    const saved = await call("PUT", `/api/processing/${act.body.id}/dpia`, { token: A.token, body: { ...draft.body.dpia, necessity: "Localizarea e necesară pentru siguranța șoferilor; doar în timpul programului.", risks: risks.map((r: any) => ({ ...r, measures: "Acces restricționat, informarea angajaților, dezactivare în afara programului." })), reviewOn: "2027-11-01" } });
+    expect(saved.body.saved).toBe(true);
+    expect(saved.body.dpia.finalizedAt).toBeNull();
+    const fin = await call("PUT", `/api/processing/${act.body.id}/dpia`, { token: A.token, body: { ...saved.body.dpia, finalize: true } });
+    expect(fin.status).toBe(200);
+    expect(fin.body.dpia.finalizedAt).toBeTruthy();
+    expect(fin.body.activity.dpia).toMatchObject({ outcome: "acceptabil_cu_masuri" });
+
+    // risc rezidual ridicat → consultare prealabilă
+    const high = await call("PUT", `/api/processing/${act.body.id}/dpia`, { token: A.token, body: { ...fin.body.dpia, risks: [{ ...fin.body.dpia.risks[0], likelihood: 3, severity: 3, residualLikelihood: 2, residualSeverity: 3 }] } });
+    expect(high.body.dpia.assessment.outcome).toBe("consultare_prealabila");
+    expect(high.body.dpia.finalizedAt).toBeNull(); // modificarea readuce la proiect
+
+    const gd = await call("GET", `/api/clients/${A.clientId}/gdpr`, { token: A.token });
+    check(C.clientGdpr, gd.body);
+    expect(gd.body.processing.find((p: any) => p.id === act.body.id).dpia.outcome).toBe("consultare_prealabila");
+
+    const doc = await app.request(`/api/processing/${act.body.id}/dpia/docx`, { headers: { authorization: `Bearer ${A.token}` } });
+    const xml = strFromU8(unzipSync(new Uint8Array(await doc.arrayBuffer()))["word/document.xml"]);
+    expect(xml).toContain("Evaluarea impactului asupra protecției datelor");
+    expect(xml).toContain("Art. 36");
+    expect(xml).toContain("Lista ANSPDCP");
+  });
+
+  it("scrisorile pentru cereri: toate tipurile; notificarea prelungirii doar după prelungire", async () => {
+    const A = await seedCabinet("Scrisori");
+    const letter = (id: string, kind: string) => app.request(`/api/dsar/${id}/letter?kind=${kind}`, { headers: { authorization: `Bearer ${A.token}` } });
+    const xmlOf = async (r: Response) => strFromU8(unzipSync(new Uint8Array(await r.arrayBuffer()))["word/document.xml"]);
+    expect((await letter(A.dsarId, "prelungire")).status).toBe(400);
+    expect((await letter(A.dsarId, "necunoscut")).status).toBe(400);
+    const access = await xmlOf(await letter(A.dsarId, "raspuns"));
+    expect(access).toContain("Salarizare"); // activitățile din registru
+    expect(access).toContain("dataprotection.ro");
+    expect(await xmlOf(await letter(A.dsarId, "confirmare"))).toContain("Vă confirmăm primirea");
+    expect(await xmlOf(await letter(A.dsarId, "identitate"))).toContain("art. 12 alin. (6)");
+    await call("PATCH", `/api/dsar/${A.dsarId}`, { token: A.token, body: { extend: { reason: "Datele sunt în mai multe sisteme de arhivă." } } });
+    expect(await xmlOf(await letter(A.dsarId, "prelungire"))).toContain("Datele sunt în mai multe sisteme de arhivă.");
+    for (const type of ["stergere", "rectificare", "restrictionare", "portabilitate", "opozitie", "decizii_automate"]) {
+      const d = await call("POST", `/api/clients/${A.clientId}/dsar`, { token: A.token, body: { type, requesterName: "Test Persoană", receivedOn: new Date().toISOString().slice(0, 10) } });
+      expect((await letter(d.body.id, "raspuns")).status).toBe(200);
+      expect((await letter(d.body.id, "refuz")).status).toBe(200);
+    }
+  });
+});

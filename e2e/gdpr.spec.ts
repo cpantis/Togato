@@ -55,3 +55,41 @@ test("GDPR: registrul prelucrărilor, o cerere de acces, un incident cu termenul
   await page.goto("/dashboard");
   await expect(page.getByText("Incident: Laptop pierdut cu rețete")).toBeVisible();
 });
+
+test("GDPR: evaluarea de impact obligatorie (lista ANSPDCP) și scrisorile pentru o cerere", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signup(page);
+  await addClient(page, "Transport Flotă SRL");
+  await page.getByRole("link", { name: "Deschide ›" }).click();
+  await page.getByRole("button", { name: "Adaugă activitate" }).click();
+  const d = page.getByRole("dialog");
+  await d.getByLabel("Denumirea activității").fill("Monitorizarea GPS a flotei");
+  await d.getByLabel("Scopul prelucrării").fill("Localizarea vehiculelor de serviciu");
+  await d.getByLabel(/dispozitive cu senzori/).check();
+  await expect(d.getByText(/Evaluarea de impact \(Art\. 35\) este obligatorie/)).toBeVisible();
+  await d.getByRole("button", { name: "Salvează" }).click();
+  await page.getByText("DPIA obligatorie").click();
+
+  await page.waitForURL(/\/gdpr\/dpia\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("Proiect precompletat din registru")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  await expect(page.getByRole("button", { name: "Finalizează evaluarea" })).toBeDisabled();
+  await page.getByLabel(/Necesitate și proporționalitate/).fill("Localizarea e necesară pentru siguranța șoferilor, doar în program.");
+  for (const box of await page.getByLabel("Măsuri de atenuare").all()) await box.fill("Acces restricționat și informarea angajaților.");
+  await page.getByRole("button", { name: "Finalizează evaluarea" }).click();
+  await expect(page.getByText("Evaluarea a fost finalizată.")).toBeVisible();
+  const [docx] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descarcă .docx" }).click()]);
+  expect(docx.suggestedFilename()).toMatch(/^Evaluarea_de_impact.*\.docx$/);
+
+  // scrisorile pentru o cerere
+  await page.getByRole("link", { name: "‹ Registrul prelucrărilor" }).click();
+  await expect(page.getByText("DPIA finalizată")).toBeVisible();
+  await page.getByRole("tab", { name: /Cereri ale persoanelor/ }).click();
+  await page.getByRole("button", { name: "Înregistrează o cerere" }).click();
+  await page.getByRole("dialog").getByLabel("Solicitant").fill("Mihai Pop");
+  await page.getByRole("dialog").getByRole("button", { name: "Salvează" }).click();
+  await page.getByText("Acces la date — Mihai Pop").click();
+  await expect(page.getByRole("dialog").getByRole("button", { name: "Notificarea prelungirii termenului" })).toBeDisabled();
+  const [letter] = await Promise.all([page.waitForEvent("download"), page.getByRole("dialog").getByRole("button", { name: "Răspunsul la cerere" }).click()]);
+  expect(letter.suggestedFilename()).toMatch(/Mihai_Pop.*\.docx$/);
+});

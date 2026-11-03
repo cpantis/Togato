@@ -296,6 +296,8 @@ export const processingActivities = pgTable("processing_activities", {
   largeScale: boolean("large_scale").notNull().default(false),
   systematicMonitoring: boolean("systematic_monitoring").notNull().default(false),
   automatedDecisions: boolean("automated_decisions").notNull().default(false),
+  /** operațiuni din lista ANSPDCP (Decizia 174/2018) bifate explicit */
+  dpiaListItems: jsonb("dpia_list_items").$type<string[]>().notNull().default([]),
   /** sistemele AI din inventarul clientului folosite în această prelucrare */
   aiSystemIds: jsonb("ai_system_ids").$type<string[]>().notNull().default([]),
   notes: text("notes"),
@@ -305,6 +307,33 @@ export const processingActivities = pgTable("processing_activities", {
 }, (t) => [
   index("processing_org_idx").on(t.organizationId),
   index("processing_client_idx").on(t.clientId),
+]);
+
+/** Evaluarea impactului asupra protecției datelor (Art. 35) pentru o activitate din registru. */
+export const dpias = pgTable("dpias", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  processingId: uuid("processing_id").notNull().references(() => processingActivities.id, { onDelete: "cascade" }),
+  /** descrierea sistematică a operațiunilor (Art. 35(7)(a)), precompletată din registru */
+  description: text("description"),
+  /** necesitate și proporționalitate (Art. 35(7)(b)) */
+  necessity: text("necessity"),
+  /** riscurile, cu măsurile și riscul rezidual (Art. 35(7)(c)–(d)) */
+  risks: jsonb("risks").$type<import("@togato/shared").DpiaRisk[]>().notNull().default([]),
+  /** avizul responsabilului cu protecția datelor (Art. 35(2)) și opinia persoanelor vizate (Art. 35(9)) */
+  dpoOpinion: text("dpo_opinion"),
+  subjectsViews: text("subjects_views"),
+  /** data la care evaluarea trebuie revizuită (Art. 35(11)) */
+  reviewOn: date("review_on"),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+  finalizedBy: uuid("finalized_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("dpias_processing_unique").on(t.processingId),
+  index("dpias_org_idx").on(t.organizationId),
 ]);
 
 /** Cererile persoanelor vizate primite de client (Art. 12–22), cu termenul legal de răspuns. */

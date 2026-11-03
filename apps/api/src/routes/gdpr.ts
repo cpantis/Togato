@@ -6,17 +6,18 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import {
-  BREACH_TYPES, DATA_CATEGORIES, DSAR_TYPES, LEGAL_BASES, SECURITY_MEASURES, SPECIAL_CONDITIONS, SUBJECT_CATEGORIES, TRANSFER_MECHANISMS,
+  ANSPDCP_DPIA_LIST, BREACH_TYPES, DATA_CATEGORIES, DSAR_LETTERS, DSAR_TYPES, assessDpia, suggestDpiaRisks, type DpiaRisk, LEGAL_BASES, SECURITY_MEASURES, SPECIAL_CONDITIONS, SUBJECT_CATEGORIES, TRANSFER_MECHANISMS,
   breachDeadline, breachDuties, checkProcessing, dsarDueDate,
 } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, breaches, clients, dsarRequests, processingActivities } from "../db/schema";
+import { aiSystems, breaches, clients, dpias, dsarRequests, processingActivities } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { badRequest, notFound, uuidParam } from "../lib/http";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { loadDocContext } from "../services/documents/common";
-import { breachNotificationBlocks, renderGdprDocument, ropaBlocks } from "../services/documents/gdprTemplates";
+import { breachNotificationBlocks, dpiaBlocks, dsarLetterBlocks, renderGdprDocument, ropaBlocks } from "../services/documents/gdprTemplates";
+import crypto from "crypto";
 import { contentDisposition } from "../services/storage/files";
 import { enqueue } from "../jobs/queue";
 
@@ -38,7 +39,13 @@ type Activity = typeof processingActivities.$inferSelect;
 type Dsar = typeof dsarRequests.$inferSelect;
 type Breach = typeof breaches.$inferSelect;
 
-export function serializeActivity(a: Activity) {
+type DpiaRow = typeof dpias.$inferSelect;
+export function dpiaSummary(d: DpiaRow | undefined) {
+  if (!d) return null;
+  return { id: d.id, finalizedAt: d.finalizedAt?.toISOString() ?? null, outcome: assessDpia({ necessity: d.necessity, risks: d.risks }).outcome, reviewOn: d.reviewOn };
+}
+
+export function serializeActivity(a: Activity, dpia?: DpiaRow) {
   return {
     id: a.id, clientId: a.clientId, name: a.name, purpose: a.purpose, role: a.role, controllerName: a.controllerName,
     legalBases: a.legalBases, legalBasisDetails: a.legalBasisDetails, specialConditions: a.specialConditions,
@@ -46,8 +53,9 @@ export function serializeActivity(a: Activity) {
     transferOutsideEea: a.transferOutsideEea, transferCountries: a.transferCountries, transferMechanism: a.transferMechanism,
     retention: a.retention, securityMeasures: a.securityMeasures, securityDetails: a.securityDetails,
     largeScale: a.largeScale, systematicMonitoring: a.systematicMonitoring, automatedDecisions: a.automatedDecisions,
-    aiSystemIds: a.aiSystemIds, notes: a.notes, updatedAt: a.updatedAt.toISOString(),
+    dpiaListItems: a.dpiaListItems, aiSystemIds: a.aiSystemIds, notes: a.notes, updatedAt: a.updatedAt.toISOString(),
     check: checkProcessing({ ...a, usesAi: a.aiSystemIds.length > 0 }),
+    dpia: dpiaSummary(dpia),
   };
 }
 
@@ -89,7 +97,9 @@ gdprRoutes.get("/clients/:clientId/gdpr", async (c) => {
     .where(and(eq(dsarRequests.organizationId, auth.organizationId), eq(dsarRequests.clientId, client.id))).orderBy(desc(dsarRequests.receivedOn));
   const brs = await db.select().from(breaches)
     .where(and(eq(breaches.organizationId, auth.organizationId), eq(breaches.clientId, client.id))).orderBy(desc(breaches.discoveredAt));
-  return c.json({ processing: acts.map(serializeActivity), dsars: dsars.map(serializeDsar), breaches: brs.map(serializeBreach) });
+  const dps = await db.select().from(dpias).where(and(eq(dpias.organizationId, auth.organizationId), eq(dpias.clientId, client.id)));
+  const byProcessing = new Map(dps.map((d) => [d.processingId, d]));
+  return c.json({ processing: acts.map((a) => serializeActivity(a, byProcessing.get(a.id))), dsars: dsars.map(serializeDsar), breaches: brs.map(serializeBreach) });
 });
 
 /** GET /gdpr/overview — pentru panou: cereri deschise (după termen) și incidente deschise, la clienții activi */
@@ -130,6 +140,7 @@ const activitySchema = z.object({
   largeScale: z.boolean().default(false),
   systematicMonitoring: z.boolean().default(false),
   automatedDecisions: z.boolean().default(false),
+  dpiaListItems: codes(ANSPDCP_DPIA_LIST),
   aiSystemIds: z.array(z.string().uuid()).max(50).default([]),
   notes: text(5000),
 });
@@ -166,7 +177,8 @@ gdprRoutes.put("/processing/:id", async (c) => {
   const [row] = await db.update(processingActivities).set({ ...body, updatedBy: auth.userId, updatedAt: new Date() })
     .where(and(eq(processingActivities.id, existing.id), eq(processingActivities.organizationId, auth.organizationId))).returning();
   await audit(auth, "update", "processing", row.id, { name: row.name });
-  return c.json(serializeActivity(row));
+  const dpia = await db.query.dpias.findFirst({ where: and(eq(dpias.processingId, row.id), eq(dpias.organizationId, auth.organizationId)) });
+  return c.json(serializeActivity(row, dpia));
 });
 
 gdprRoutes.delete("/processing/:id", async (c) => {
@@ -353,3 +365,95 @@ gdprRoutes.get("/breaches/:id/notification", async (c) => {
   return new Response(new Uint8Array(doc.buffer), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Disposition": contentDisposition(doc.filename), "Cache-Control": "no-store" } });
 });
 
+
+// ─── evaluarea de impact (Art. 35) ───────────────────────
+
+function serializeDpia(d: { id: string | null; description: string | null; necessity: string | null; risks: DpiaRisk[]; dpoOpinion: string | null; subjectsViews: string | null; reviewOn: string | null; finalizedAt: Date | null; updatedAt: Date | null }) {
+  return {
+    id: d.id, description: d.description, necessity: d.necessity, risks: d.risks, dpoOpinion: d.dpoOpinion, subjectsViews: d.subjectsViews,
+    reviewOn: d.reviewOn, finalizedAt: d.finalizedAt?.toISOString() ?? null, updatedAt: d.updatedAt?.toISOString() ?? null,
+    assessment: assessDpia({ necessity: d.necessity, risks: d.risks }),
+  };
+}
+
+/** descrierea precompletată din registru (Art. 35(7)(a)) */
+function describeActivity(a: Activity): string {
+  const L = (list: { code: string; label: string }[], codes: string[]) => codes.map((c) => list.find((o) => o.code === c)?.label ?? c).join("; ");
+  return [
+    `Scop: ${a.purpose}`,
+    `Temei legal: ${L(LEGAL_BASES, a.legalBases) || "—"}`,
+    `Persoane vizate: ${L(SUBJECT_CATEGORIES, a.subjectCategories) || "—"}`,
+    `Categorii de date: ${L(DATA_CATEGORIES, a.dataCategories) || "—"}`,
+    `Destinatari: ${a.recipients || "—"}`,
+    `Păstrare: ${a.retention || "—"}`,
+    a.transferOutsideEea ? `Transfer în afara SEE: ${a.transferCountries || "—"}` : null,
+  ].filter(Boolean).join("\n");
+}
+
+/** GET /processing/:id/dpia — evaluarea salvată sau un proiect precompletat (nesalvat) */
+gdprRoutes.get("/processing/:id/dpia", async (c) => {
+  const auth = c.get("auth");
+  const a = await loadActivity(auth.organizationId, uuidParam(c.req.param("id")));
+  const d = await db.query.dpias.findFirst({ where: and(eq(dpias.processingId, a.id), eq(dpias.organizationId, auth.organizationId)) });
+  const activity = serializeActivity(a, d);
+  if (d) return c.json({ activity, dpia: serializeDpia(d), saved: true });
+  const risks = suggestDpiaRisks({ ...a, usesAi: a.aiSystemIds.length > 0 }).map((r) => ({ ...r, id: crypto.randomUUID() }));
+  return c.json({ activity, dpia: serializeDpia({ id: null, description: describeActivity(a), necessity: null, risks, dpoOpinion: null, subjectsViews: null, reviewOn: null, finalizedAt: null, updatedAt: null }), saved: false });
+});
+
+const level = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+const dpiaSchema = z.object({
+  description: text(10000),
+  necessity: text(10000),
+  risks: z.array(z.object({
+    id: z.string().uuid(), title: z.string().trim().min(2).max(300), description: z.string().trim().max(3000).default(""),
+    likelihood: level, severity: level, measures: z.string().trim().max(5000).default(""), residualLikelihood: level, residualSeverity: level,
+  })).max(40),
+  dpoOpinion: text(5000),
+  subjectsViews: text(5000),
+  reviewOn: day.nullish().transform((v) => v ?? null),
+  /** true = finalizează (doar dacă nu lipsește nimic); orice modificare ulterioară o readuce la proiect */
+  finalize: z.boolean().default(false),
+});
+
+gdprRoutes.put("/processing/:id/dpia", async (c) => {
+  const auth = c.get("auth");
+  const a = await loadActivity(auth.organizationId, uuidParam(c.req.param("id")));
+  const { finalize, ...body } = dpiaSchema.parse(await c.req.json());
+  const assessment = assessDpia({ necessity: body.necessity, risks: body.risks });
+  if (finalize && assessment.missing.length) return c.json({ error: `Evaluarea nu poate fi finalizată: ${assessment.missing.join(" ")}`, missing: assessment.missing }, 400);
+  const values = { ...body, finalizedAt: finalize ? new Date() : null, finalizedBy: finalize ? auth.userId : null, updatedBy: auth.userId, updatedAt: new Date() };
+  const [row] = await db.insert(dpias).values({ ...values, organizationId: auth.organizationId, clientId: a.clientId, processingId: a.id })
+    .onConflictDoUpdate({ target: dpias.processingId, set: values, setWhere: eq(dpias.organizationId, auth.organizationId) }).returning();
+  if (!row) notFound("Evaluarea nu a fost găsită");
+  await audit(auth, finalize ? "finalize" : "update", "dpia", row.id, { processing: a.name, outcome: assessment.outcome });
+  return c.json({ activity: serializeActivity(a, row), dpia: serializeDpia(row), saved: true });
+});
+
+gdprRoutes.get("/processing/:id/dpia/docx", async (c) => {
+  const auth = c.get("auth");
+  const a = await loadActivity(auth.organizationId, uuidParam(c.req.param("id")));
+  const d = await db.query.dpias.findFirst({ where: and(eq(dpias.processingId, a.id), eq(dpias.organizationId, auth.organizationId)) });
+  if (!d) notFound("Salvați întâi evaluarea de impact");
+  const ctx = (await loadDocContext(auth.organizationId, a.clientId, auth.name))!;
+  const doc = await renderGdprDocument(ctx, `Evaluarea de impact - ${a.name}`, dpiaBlocks(ctx, a, d));
+  await audit(auth, "generate", "document", a.clientId, { type: "dpia", processingId: a.id });
+  return new Response(new Uint8Array(doc.buffer), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Disposition": contentDisposition(doc.filename), "Cache-Control": "no-store" } });
+});
+
+// ─── scrisori pentru cererile persoanelor vizate ─────────
+
+/** GET /dsar/:id/letter?kind=confirmare|identitate|prelungire|raspuns|refuz — proiectul scrisorii (Word) */
+gdprRoutes.get("/dsar/:id/letter", async (c) => {
+  const auth = c.get("auth");
+  const d = await loadDsar(auth.organizationId, uuidParam(c.req.param("id")));
+  const kind = z.enum(DSAR_LETTERS.map((l) => l.code) as [string, ...string[]]).parse(c.req.query("kind"));
+  if (kind === "prelungire" && !d.extended) badRequest("Prelungiți întâi termenul (cu motivarea), apoi generați notificarea.");
+  const ctx = (await loadDocContext(auth.organizationId, d.clientId, auth.name))!;
+  const acts = await db.select().from(processingActivities)
+    .where(and(eq(processingActivities.organizationId, auth.organizationId), eq(processingActivities.clientId, d.clientId))).orderBy(asc(processingActivities.name));
+  const label = DSAR_LETTERS.find((l) => l.code === kind)!.label;
+  const doc = await renderGdprDocument(ctx, `${label} - ${d.requesterName}`, dsarLetterBlocks(ctx, d, kind as never, acts));
+  await audit(auth, "generate", "document", d.clientId, { type: `dsar_${kind}`, dsarId: d.id });
+  return new Response(new Uint8Array(doc.buffer), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Disposition": contentDisposition(doc.filename), "Cache-Control": "no-store" } });
+});

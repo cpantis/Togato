@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import {
-  DATA_CATEGORIES, LEGAL_BASES, PROCESSING_ROLES, SECURITY_MEASURES, SPECIAL_CONDITIONS, SUBJECT_CATEGORIES, TRANSFER_MECHANISMS,
+  ANSPDCP_DPIA_LIST, DPIA_OUTCOME_LABELS, DATA_CATEGORIES, LEGAL_BASES, PROCESSING_ROLES, SECURITY_MEASURES, SPECIAL_CONDITIONS, SUBJECT_CATEGORIES, TRANSFER_MECHANISMS,
   checkProcessing, type AiSystem, type ProcessingActivity,
 } from "@togato/shared";
 import { apiDelete, apiDownload, apiPost, apiPut } from "@/lib/api";
@@ -9,11 +10,11 @@ import { formatDate } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, Field, Modal, inputClass, textareaClass } from "@/components/ui";
 import { CheckList, Pill } from "./common";
 
-type Form = Omit<ProcessingActivity, "id" | "clientId" | "updatedAt" | "check">;
+type Form = Omit<ProcessingActivity, "id" | "clientId" | "updatedAt" | "check" | "dpia">;
 const EMPTY: Form = {
   name: "", purpose: "", role: "operator", controllerName: null, legalBases: [], legalBasisDetails: null, specialConditions: [], dataCategories: [],
   subjectCategories: [], recipients: null, transferOutsideEea: false, transferCountries: null, transferMechanism: null, retention: null,
-  securityMeasures: [], securityDetails: null, largeScale: false, systematicMonitoring: false, automatedDecisions: false, aiSystemIds: [], notes: null,
+  securityMeasures: [], securityDetails: null, largeScale: false, systematicMonitoring: false, automatedDecisions: false, dpiaListItems: [], aiSystemIds: [], notes: null,
 };
 const SPECIAL = new Set(DATA_CATEGORIES.filter((d) => d.special).map((d) => d.code));
 
@@ -69,12 +70,15 @@ function ActivityForm({ initial, systems, onSave, onCancel, busy }: { initial: F
           <label key={k} className="flex items-center gap-2 px-2 py-1 text-[13px] text-slate-700"><input type="checkbox" className="h-4 w-4 accent-brand" checked={f[k]} onChange={(e) => set(k, e.target.checked)} /> {l}</label>
         ))}
       </fieldset>
+      <CheckList label="Operațiuni din lista ANSPDCP pentru care evaluarea de impact e obligatorie (Decizia nr. 174/2018)" options={ANSPDCP_DPIA_LIST} value={f.dpiaListItems} onChange={(v) => set("dpiaListItems", v)} />
       {systems.length > 0 && (
         <CheckList label="Sisteme AI folosite (din inventarul clientului)" options={systems.map((s) => ({ code: s.id, label: s.name }))} value={f.aiSystemIds} onChange={(v) => set("aiSystemIds", v)} columns={2} />
       )}
       <div className="space-y-2" aria-live="polite">
         {live.issues.map((t) => <Alert key={t} kind="warning">{t}</Alert>)}
-        {live.dpiaLikely && <Alert kind="info">Evaluarea de impact (Art. 35) e probabil necesară: {live.dpiaReasons.join(", ")}.</Alert>}
+        {live.dpiaMandatory
+          ? <Alert kind="warning">Evaluarea de impact (Art. 35) este obligatorie: {live.dpiaMandatoryReasons.join("; ")}.</Alert>
+          : live.dpiaLikely && <Alert kind="info">Evaluarea de impact (Art. 35) e probabil necesară: {live.dpiaReasons.join(", ")}.</Alert>}
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Renunță</Button>
@@ -127,12 +131,16 @@ export function ProcessingTab({ clientId, items, systems, onChange }: { clientId
           {items.map((a) => (
             <li key={a.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
-                <button type="button" onClick={() => { const { id, clientId: _c, updatedAt: _u, check: _k, ...form } = a; setEditing({ id, form }); }} className="text-left text-[14px] font-semibold text-ink hover:underline">{a.name}</button>
+                <button type="button" onClick={() => { const { id, clientId: _c, updatedAt: _u, check: _k, dpia: _d, ...form } = a; setEditing({ id, form }); }} className="text-left text-[14px] font-semibold text-ink hover:underline">{a.name}</button>
                 <div className="truncate text-[12px] text-slate-500">{a.purpose}</div>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {a.check.issues.length > 0 ? <Pill tone="amber">{a.check.issues.length} de completat</Pill> : <Pill tone="green">Complet</Pill>}
-                {a.check.dpiaLikely && <Pill tone="sky">DPIA probabilă</Pill>}
+                {a.dpia
+                  ? <Link href={`/clients/${clientId}/gdpr/dpia/${a.id}`}><Pill tone={a.dpia.outcome === "consultare_prealabila" ? "red" : a.dpia.finalizedAt ? "green" : "amber"}>DPIA {a.dpia.finalizedAt ? "finalizată" : "în lucru"}</Pill></Link>
+                  : a.check.dpiaMandatory ? <Link href={`/clients/${clientId}/gdpr/dpia/${a.id}`}><Pill tone="red">DPIA obligatorie</Pill></Link>
+                  : a.check.dpiaLikely && <Link href={`/clients/${clientId}/gdpr/dpia/${a.id}`}><Pill tone="sky">DPIA probabilă</Pill></Link>}
+                <Link href={`/clients/${clientId}/gdpr/dpia/${a.id}`} className="text-[12px] font-semibold text-brand hover:underline" title={a.dpia ? DPIA_OUTCOME_LABELS[a.dpia.outcome] : undefined}>Evaluare de impact</Link>
                 {a.aiSystemIds.length > 0 && <Pill tone="slate">AI</Pill>}
                 <span className="text-[11px] text-slate-500">{formatDate(a.updatedAt)}</span>
                 <button type="button" onClick={() => remove(a)} className="ml-1 text-[12px] text-slate-500 hover:text-red-700">Șterge</button>

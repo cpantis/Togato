@@ -6,7 +6,7 @@
 import { z } from "zod";
 import type {
   AiSystem, AiSystemAnswers, AuthUser, BillingState, ClassificationResult, ClientDetail, ClientSummary, DashboardData,
-  Breach, ClientGdpr, DirectoryCabinet, DsarRequest, LegislationData, ProcessingActivity, Obligation, Referral, SelfAssessmentData, Organization, Page, PortalAnswers, PortalData, PortalLinkStatus, SystemDetail, TeamData,
+  Breach, ClientGdpr, DirectoryCabinet, DpiaResponse, DsarRequest, LegislationData, ProcessingActivity, Obligation, Referral, SelfAssessmentData, Organization, Page, PortalAnswers, PortalData, PortalLinkStatus, SystemDetail, TeamData,
 } from "@togato/shared";
 
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -165,8 +165,9 @@ export const processingActivity = z.object({
   dataCategories: z.array(z.string()), subjectCategories: z.array(z.string()), recipients: z.string().nullable(),
   transferOutsideEea: z.boolean(), transferCountries: z.string().nullable(), transferMechanism: z.string().nullable(), retention: z.string().nullable(),
   securityMeasures: z.array(z.string()), securityDetails: z.string().nullable(), largeScale: z.boolean(), systematicMonitoring: z.boolean(),
-  automatedDecisions: z.boolean(), aiSystemIds: z.array(uuid), notes: z.string().nullable(), updatedAt: iso,
-  check: z.object({ issues: z.array(z.string()), warnings: z.array(z.string()), dpiaLikely: z.boolean(), dpiaReasons: z.array(z.string()) }).strict(),
+  automatedDecisions: z.boolean(), dpiaListItems: z.array(z.string()), aiSystemIds: z.array(uuid), notes: z.string().nullable(), updatedAt: iso,
+  check: z.object({ issues: z.array(z.string()), warnings: z.array(z.string()), dpiaLikely: z.boolean(), dpiaReasons: z.array(z.string()), dpiaMandatory: z.boolean(), dpiaMandatoryReasons: z.array(z.string()) }).strict(),
+  dpia: z.object({ id: uuid, finalizedAt: iso.nullable(), outcome: z.enum(["acceptabil", "acceptabil_cu_masuri", "consultare_prealabila"]), reviewOn: day.nullable() }).strict().nullable(),
 }).strict();
 same<z.infer<typeof processingActivity>, ProcessingActivity>(true);
 
@@ -189,3 +190,17 @@ same<z.infer<typeof breach>, Breach>(true);
 
 export const clientGdpr = z.object({ processing: z.array(processingActivity), dsars: z.array(dsarRequest), breaches: z.array(breach) }).strict();
 same<z.infer<typeof clientGdpr>, ClientGdpr>(true);
+
+const dpiaLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+const riskLvl = z.enum(["scazut", "mediu", "ridicat"]);
+export const dpiaResponse = z.object({
+  activity: processingActivity,
+  dpia: z.object({
+    id: uuid.nullable(), description: z.string().nullable(), necessity: z.string().nullable(),
+    risks: z.array(z.object({ id: uuid, title: z.string(), description: z.string(), likelihood: dpiaLevel, severity: dpiaLevel, measures: z.string(), residualLikelihood: dpiaLevel, residualSeverity: dpiaLevel }).strict()),
+    dpoOpinion: z.string().nullable(), subjectsViews: z.string().nullable(), reviewOn: day.nullable(), finalizedAt: iso.nullable(), updatedAt: iso.nullable(),
+    assessment: z.object({ outcome: z.enum(["acceptabil", "acceptabil_cu_masuri", "consultare_prealabila"]), missing: z.array(z.string()), residual: z.array(z.object({ id: z.string(), inherent: riskLvl, residual: riskLvl }).strict()) }).strict(),
+  }).strict(),
+  saved: z.boolean(),
+}).strict();
+same<z.infer<typeof dpiaResponse>, DpiaResponse>(true);

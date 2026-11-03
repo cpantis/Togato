@@ -312,10 +312,34 @@ export interface ProcessingActivity {
   largeScale: boolean;
   systematicMonitoring: boolean;
   automatedDecisions: boolean;
+  dpiaListItems: string[];
   aiSystemIds: string[];
   notes: string | null;
   updatedAt: string;
   check: import("./gdpr").ProcessingCheck;
+  /** evaluarea de impact salvată pentru activitate (null = niciuna) */
+  dpia: { id: string; finalizedAt: string | null; outcome: import("./gdpr").DpiaOutcome; reviewOn: string | null } | null;
+}
+
+export interface DpiaData {
+  id: string | null;
+  description: string | null;
+  necessity: string | null;
+  risks: import("./gdpr").DpiaRisk[];
+  dpoOpinion: string | null;
+  subjectsViews: string | null;
+  reviewOn: string | null;
+  finalizedAt: string | null;
+  updatedAt: string | null;
+  assessment: import("./gdpr").DpiaAssessment;
+}
+
+/** GET/PUT /api/processing/:id/dpia */
+export interface DpiaResponse {
+  activity: ProcessingActivity;
+  dpia: DpiaData;
+  /** false = proiect precompletat, încă nesalvat */
+  saved: boolean;
 }
 
 export interface DsarRequest {

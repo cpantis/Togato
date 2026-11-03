@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import { DSAR_STATUS_LABELS, DSAR_TYPES, daysBetween, type DsarRequest, type DsarStatus, type DsarType } from "@togato/shared";
-import { apiPatch, apiPost } from "@/lib/api";
+import { DSAR_LETTERS, DSAR_STATUS_LABELS, DSAR_TYPES, daysBetween, type DsarRequest, type DsarStatus, type DsarType } from "@togato/shared";
+import { apiDownload, apiPatch, apiPost } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, Field, Modal, inputClass, textareaClass } from "@/components/ui";
 import { Pill } from "./common";
@@ -101,6 +101,15 @@ export function DsarTab({ clientId, items, onChange }: { clientId: string; items
                 )}
               </>
             )}
+            <div className="rounded-lg border border-slate-200 p-3">
+              <div className="mb-2 text-[12px] font-semibold text-slate-700">Scrisori (proiecte Word, de verificat înainte de trimitere)</div>
+              <div className="flex flex-wrap gap-1.5">
+                {DSAR_LETTERS.map((l) => (
+                  <Button key={l.code} size="sm" variant="secondary" title={l.help} disabled={l.code === "prelungire" && !open.extended}
+                    onClick={() => apiDownload(`/api/dsar/${open.id}/letter?kind=${l.code}`, "scrisoare.docx").catch((e) => setError(e.message))}>{l.label}</Button>
+                ))}
+              </div>
+            </div>
             <Field label="Răspunsul dat solicitantului"><textarea className={textareaClass} rows={3} value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="ex. Copia datelor a fost trimisă pe email la..." /></Field>
             <div className="flex flex-wrap justify-end gap-2">
               {(["finalizata", "respinsa"] as DsarStatus[]).map((s) => (

@@ -134,6 +134,10 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `PUT` | `/api/breaches/:id` | sesiune |
 | `DELETE` | `/api/breaches/:id` | sesiune |
 | `GET` | `/api/breaches/:id/notification` | sesiune |
+| `GET` | `/api/processing/:id/dpia` | sesiune |
+| `PUT` | `/api/processing/:id/dpia` | sesiune |
+| `GET` | `/api/processing/:id/dpia/docx` | sesiune |
+| `GET` | `/api/dsar/:id/letter` | sesiune |
 
 ## Clienți
 

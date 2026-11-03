@@ -101,16 +101,35 @@ export interface ProcessingInput {
   automatedDecisions: boolean;
   /** prelucrarea folosește un sistem AI din inventar */
   usesAi: boolean;
+  /** operațiuni din lista ANSPDCP bifate explicit (vezi ANSPDCP_DPIA_LIST) */
+  dpiaListItems?: string[];
 }
+
+/**
+ * Lista operațiunilor pentru care evaluarea de impact e obligatorie — Decizia ANSPDCP nr. 174/2018,
+ * redată parafrazat. De verificat cu textul oficial înainte de a o prezenta ca atare clientului.
+ */
+export const ANSPDCP_DPIA_LIST: GdprOption[] = [
+  { code: "scoring", label: "Evaluarea sau notarea sistematică a persoanelor, inclusiv profilare și predicție, cu efecte juridice sau similare (ex. bonitate, asigurări)" },
+  { code: "vulnerabili", label: "Monitorizarea sau înregistrarea sistematică, pe scară largă, a comportamentului persoanelor vulnerabile (în special minori și angajați), inclusiv în scop de marketing" },
+  { code: "tehnologii_noi", label: "Utilizarea pe scară largă a unor tehnologii noi sau inovatoare (ex. recunoaștere facială), mai ales când limitează exercitarea drepturilor" },
+  { code: "iot", label: "Prelucrarea pe scară largă a datelor generate de dispozitive cu senzori care transmit date prin internet" },
+  { code: "localizare", label: "Prelucrarea pe scară largă și/sau sistematică a datelor de trafic sau de localizare" },
+  { code: "biometrice", label: "Prelucrarea pe scară largă a datelor biometrice pentru identificarea unică a persoanelor" },
+  { code: "genetice", label: "Prelucrarea pe scară largă a datelor genetice" },
+];
 
 export interface ProcessingCheck {
   /** probleme de conformitate care trebuie rezolvate */
   issues: string[];
   /** semnale de atenție */
   warnings: string[];
-  /** indicație: evaluarea de impact (Art. 35) e probabil necesară */
+  /** indicație: evaluarea de impact (Art. 35) e probabil necesară (criteriile EDPB) */
   dpiaLikely: boolean;
   dpiaReasons: string[];
+  /** evaluarea de impact e obligatorie: Art. 35(3) sau lista ANSPDCP */
+  dpiaMandatory: boolean;
+  dpiaMandatoryReasons: string[];
 }
 
 const label = (list: GdprOption[], code: string) => list.find((o) => o.code === code)?.label ?? code;
@@ -143,8 +162,25 @@ export function checkProcessing(p: ProcessingInput): ProcessingCheck {
   if (p.usesAi) reasons.push("utilizare inovatoare a tehnologiei (sistem AI)");
   if (p.subjectCategories.includes("angajati") || p.subjectCategories.includes("minori") || p.subjectCategories.includes("pacienti")) reasons.push("persoane vulnerabile (angajați, minori, pacienți)");
   if (p.transferOutsideEea) reasons.push("transfer în afara SEE");
-  const dpiaLikely = reasons.length >= 2 || (p.automatedDecisions && special.length > 0);
-  return { issues, warnings, dpiaLikely, dpiaReasons: reasons };
+  // Art. 35(3) și lista ANSPDCP: evaluarea e obligatorie
+  const mandatory: string[] = [];
+  const hasCriminal = p.dataCategories.includes("cazier");
+  if (p.automatedDecisions) mandatory.push("Art. 35(3)(a): evaluare sistematică și cuprinzătoare, bazată pe prelucrare automată, cu efecte juridice sau similare");
+  if (p.largeScale && (special.length || hasCriminal)) mandatory.push("Art. 35(3)(b): categorii speciale de date sau date penale, pe scară largă");
+  if (p.largeScale && p.systematicMonitoring && (p.subjectCategories.includes("public") || p.subjectCategories.includes("vizitatori"))) mandatory.push("Art. 35(3)(c): monitorizarea sistematică, pe scară largă, a unei zone accesibile publicului");
+  const listItems = new Set(p.dpiaListItems ?? []);
+  // deduse din date, pe lângă cele bifate explicit
+  if (p.largeScale && p.dataCategories.includes("biometrice")) listItems.add("biometrice");
+  if (p.largeScale && p.dataCategories.includes("genetice")) listItems.add("genetice");
+  if (p.largeScale && p.dataCategories.includes("localizare")) listItems.add("localizare");
+  if (p.largeScale && p.systematicMonitoring && (p.subjectCategories.includes("angajati") || p.subjectCategories.includes("minori"))) listItems.add("vulnerabili");
+  for (const code of listItems) {
+    const item = ANSPDCP_DPIA_LIST.find((o) => o.code === code);
+    if (item) mandatory.push(`Lista ANSPDCP: ${item.label.charAt(0).toLowerCase()}${item.label.slice(1)}`);
+  }
+  const dpiaMandatory = mandatory.length > 0;
+  const dpiaLikely = dpiaMandatory || reasons.length >= 2 || (p.automatedDecisions && special.length > 0);
+  return { issues, warnings, dpiaLikely, dpiaReasons: reasons, dpiaMandatory, dpiaMandatoryReasons: mandatory };
 }
 
 // ─── Cererile persoanelor vizate (Art. 12–22) ────────────
@@ -221,3 +257,82 @@ export function breachDuties(risk: BreachRisk): BreachDuties {
       return { notifyAuthority: true, notifySubjects: false, summary: "Evaluați riscul cât mai repede. Până la evaluare, tratați incidentul ca notificabil: termenul de 72 de ore curge de la luarea la cunoștință." };
   }
 }
+
+// ─── Evaluarea de impact (DPIA, Art. 35) ─────────────────
+
+export type DpiaLevel = 1 | 2 | 3;
+export const DPIA_LIKELIHOOD_LABELS: Record<DpiaLevel, string> = { 1: "Redusă", 2: "Medie", 3: "Ridicată" };
+export const DPIA_SEVERITY_LABELS: Record<DpiaLevel, string> = { 1: "Limitată", 2: "Semnificativă", 3: "Gravă" };
+export type DpiaRiskLevel = "scazut" | "mediu" | "ridicat";
+export const DPIA_RISK_LABELS: Record<DpiaRiskLevel, string> = { scazut: "Scăzut", mediu: "Mediu", ridicat: "Ridicat" };
+
+export interface DpiaRisk {
+  id: string;
+  title: string;
+  description: string;
+  likelihood: DpiaLevel;
+  severity: DpiaLevel;
+  measures: string;
+  residualLikelihood: DpiaLevel;
+  residualSeverity: DpiaLevel;
+}
+
+/** matricea probabilitate × gravitate: 1–2 scăzut, 3–4 mediu, 6–9 ridicat */
+export function dpiaRiskLevel(likelihood: DpiaLevel, severity: DpiaLevel): DpiaRiskLevel {
+  const score = likelihood * severity;
+  return score >= 6 ? "ridicat" : score >= 3 ? "mediu" : "scazut";
+}
+
+export type DpiaOutcome = "acceptabil" | "acceptabil_cu_masuri" | "consultare_prealabila";
+export const DPIA_OUTCOME_LABELS: Record<DpiaOutcome, string> = {
+  acceptabil: "Riscurile reziduale sunt acceptabile",
+  acceptabil_cu_masuri: "Acceptabil cu aplicarea măsurilor și reevaluare periodică",
+  consultare_prealabila: "Risc rezidual ridicat — consultarea prealabilă a ANSPDCP înainte de începerea prelucrării (Art. 36)",
+};
+
+export interface DpiaAssessment {
+  outcome: DpiaOutcome;
+  /** ce lipsește pentru a putea finaliza evaluarea */
+  missing: string[];
+  residual: { id: string; inherent: DpiaRiskLevel; residual: DpiaRiskLevel }[];
+}
+
+export function assessDpia(d: { necessity: string | null; risks: DpiaRisk[] }): DpiaAssessment {
+  const missing: string[] = [];
+  if (!d.necessity?.trim()) missing.push("Evaluarea necesității și proporționalității (Art. 35(7)(b)).");
+  if (!d.risks.length) missing.push("Identificați cel puțin un risc pentru drepturile și libertățile persoanelor (Art. 35(7)(c)).");
+  const residual = d.risks.map((r) => ({ id: r.id, inherent: dpiaRiskLevel(r.likelihood, r.severity), residual: dpiaRiskLevel(r.residualLikelihood, r.residualSeverity) }));
+  for (const r of d.risks) {
+    if (dpiaRiskLevel(r.likelihood, r.severity) !== "scazut" && !r.measures.trim()) missing.push(`Riscul „${r.title}” nu are măsuri de atenuare (Art. 35(7)(d)).`);
+    if (r.residualLikelihood * r.residualSeverity > r.likelihood * r.severity) missing.push(`Riscul rezidual pentru „${r.title}” nu poate fi mai mare decât riscul inițial.`);
+  }
+  const outcome: DpiaOutcome = residual.some((r) => r.residual === "ridicat") ? "consultare_prealabila" : residual.some((r) => r.residual === "mediu") ? "acceptabil_cu_masuri" : "acceptabil";
+  return { outcome, missing, residual };
+}
+
+/** riscuri propuse pornind din activitatea din registru — avocatul le ajustează */
+export function suggestDpiaRisks(p: ProcessingInput): Omit<DpiaRisk, "id">[] {
+  const special = p.dataCategories.some((c) => DATA_CATEGORIES.find((d) => d.code === c)?.special) || p.dataCategories.includes("cazier");
+  const sev: DpiaLevel = special ? 3 : 2;
+  const risks: Omit<DpiaRisk, "id">[] = [
+    { title: "Acces neautorizat sau divulgarea datelor", description: "Persoane neautorizate (interne sau externe) accesează sau copiază datele.", likelihood: 2, severity: sev, measures: "", residualLikelihood: 1, residualSeverity: sev },
+    { title: "Pierderea sau indisponibilitatea datelor", description: "Ștergere accidentală, defecțiune, ransomware; persoanele nu își pot exercita drepturile sau sunt afectate de lipsa datelor.", likelihood: 2, severity: 2, measures: "", residualLikelihood: 1, residualSeverity: 2 },
+    { title: "Utilizarea în alt scop sau păstrarea excesivă", description: "Datele sunt folosite în scopuri incompatibile cu cel inițial sau păstrate mai mult decât e necesar.", likelihood: 2, severity: 2, measures: "", residualLikelihood: 1, residualSeverity: 2 },
+  ];
+  if (p.automatedDecisions || p.usesAi) risks.push({ title: "Decizii eronate sau discriminatorii", description: "Rezultatele automate (inclusiv ale sistemelor AI) sunt greșite sau părtinitoare și afectează persoanele, fără o intervenție umană reală.", likelihood: 2, severity: 3, measures: "", residualLikelihood: 1, residualSeverity: 3 });
+  if (p.systematicMonitoring) risks.push({ title: "Intruziune în viața privată", description: "Monitorizarea continuă creează un efect de descurajare și depășește așteptările rezonabile ale persoanelor.", likelihood: 3, severity: 2, measures: "", residualLikelihood: 2, residualSeverity: 2 });
+  if (p.transferOutsideEea) risks.push({ title: "Acces al autorităților dintr-o țară terță", description: "Datele transferate în afara SEE pot fi accesate de autorități fără garanții echivalente.", likelihood: 2, severity: 2, measures: "", residualLikelihood: 1, residualSeverity: 2 });
+  if (p.subjectCategories.includes("angajati") || p.subjectCategories.includes("minori") || p.subjectCategories.includes("pacienti")) risks.push({ title: "Dezechilibru de putere față de persoanele vizate", description: "Angajații, minorii sau pacienții nu se pot opune efectiv prelucrării și nu își exercită drepturile.", likelihood: 2, severity: 2, measures: "", residualLikelihood: 1, residualSeverity: 2 });
+  return risks;
+}
+
+// ─── Scrisori pentru cererile persoanelor vizate ─────────
+
+export type DsarLetter = "confirmare" | "identitate" | "prelungire" | "raspuns" | "refuz";
+export const DSAR_LETTERS: { code: DsarLetter; label: string; help: string }[] = [
+  { code: "confirmare", label: "Confirmarea primirii", help: "Trimisă imediat: data primirii și termenul de răspuns." },
+  { code: "identitate", label: "Cerere de informații pentru identificare", help: "Art. 12(6): când există îndoieli rezonabile privind identitatea solicitantului." },
+  { code: "prelungire", label: "Notificarea prelungirii termenului", help: "Art. 12(3): în prima lună, cu motivele prelungirii." },
+  { code: "raspuns", label: "Răspunsul la cerere", help: "Conținutul se adaptează tipului cererii (acces, ștergere, rectificare...)." },
+  { code: "refuz", label: "Refuzul motivat", help: "Art. 12(4): motivele și dreptul de a depune plângere la ANSPDCP și de a se adresa instanței." },
+];
