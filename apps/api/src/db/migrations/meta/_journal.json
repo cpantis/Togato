@@ -127,6 +127,20 @@
       "when": 1793696380780,
       "tag": "0017_platform_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793702502078,
+      "tag": "0018_self_assessment",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793702503234,
+      "tag": "0019_self_assessment_rls",
+      "breakpoints": true
     }
   ]
 }

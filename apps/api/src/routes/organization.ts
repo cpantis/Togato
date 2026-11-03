@@ -12,6 +12,7 @@ import { storage } from "../services/storage";
 import { MIME, detectKind } from "../services/storage/files";
 import { enqueue } from "../jobs/queue";
 import crypto from "crypto";
+import { JUDETE } from "@togato/shared";
 
 export const organizationRoutes = new Hono<AppEnv>();
 
@@ -20,6 +21,7 @@ function serialize(o: typeof organizations.$inferSelect) {
     id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl,
     logoSrc: logoSrc(o), logoUploaded: !!o.logoKey,
     aiEnabled: o.aiEnabled, aiEnabledAt: o.aiEnabledAt?.toISOString() ?? null, require2fa: o.require2fa,
+    directory: { listed: o.directoryListed, county: o.directoryCounty, city: o.directoryCity, description: o.directoryDescription, website: o.directoryWebsite, email: o.directoryEmail },
     supportAccessUntil: o.supportAccessUntil && o.supportAccessUntil > new Date() ? o.supportAccessUntil.toISOString() : null,
   };
 }
@@ -102,5 +104,26 @@ organizationRoutes.delete("/support-access", requireAdmin, async (c) => {
   const auth = c.get("auth");
   const [org] = await db.update(organizations).set({ supportAccessUntil: null, supportAccessGrantedBy: null }).where(eq(organizations.id, auth.organizationId)).returning();
   await audit(auth, "support_access_revoke", "organization", auth.organizationId);
+  return c.json(serialize(org));
+});
+
+/** PUT /directory — profilul cabinetului în directorul văzut de firmele care își fac autoevaluarea */
+organizationRoutes.put("/directory", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const opt = (max: number) => z.string().trim().max(max).nullish().transform((v) => (v ? v : null));
+  const body = z.object({
+    listed: z.boolean(),
+    county: z.enum(JUDETE).nullish().transform((v) => v ?? null),
+    city: opt(100),
+    description: opt(600),
+    website: z.string().trim().max(300).url("Adresa site-ului nu e validă").refine((u) => /^https?:\/\//.test(u), "Adresa trebuie să înceapă cu https://").nullish().or(z.literal("")).transform((v) => (v ? v : null)),
+    email: z.string().trim().toLowerCase().email("Email invalid").max(200).nullish().or(z.literal("")).transform((v) => (v ? v : null)),
+  }).refine((b) => !b.listed || b.county, { message: "Alegeți județul în care activează cabinetul", path: ["county"] })
+    .parse(await c.req.json());
+  const [org] = await db.update(organizations).set({
+    directoryListed: body.listed, directoryCounty: body.county, directoryCity: body.city,
+    directoryDescription: body.description, directoryWebsite: body.website, directoryEmail: body.email,
+  }).where(eq(organizations.id, auth.organizationId)).returning();
+  await audit(auth, "directory_update", "organization", auth.organizationId, { listed: body.listed, county: body.county });
   return c.json(serialize(org));
 });

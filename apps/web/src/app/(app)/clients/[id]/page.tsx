@@ -132,7 +132,7 @@ export default function ClientPage() {
                   <li key={s.id}>
                     <Link href={`/systems/${s.id}`} className="flex flex-col gap-2 px-5 py-3.5 hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[14px] font-semibold text-ink">{s.name}{s.source === "portal" && <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 align-middle text-[11px] font-semibold text-sky-700">din portal</span>}</div>
+                        <div className="truncate text-[14px] font-semibold text-ink">{s.name}{s.source !== "cabinet" && <span className="ml-2 rounded bg-sky-50 px-1.5 py-0.5 align-middle text-[11px] font-semibold text-sky-800">{s.source === "portal" ? "din portal" : "din autoevaluare"}</span>}</div>
                         <div className="truncate text-[12px] text-slate-400">{[s.vendor, s.department, s.purpose].filter(Boolean).join(" · ") || "—"}</div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">

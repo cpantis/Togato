@@ -11,7 +11,7 @@ type Seed = Awaited<ReturnType<typeof seedCabinet>>;
 let A: Seed;
 let B: Seed;
 
-const PUBLIC = [/^\/health(\/ready)?$/, /^\/api\/auth\//, /^\/api\/portal\//, /^\/api\/public\//, /^\/api\/stripe\//];
+const PUBLIC = [/^\/health(\/ready)?$/, /^\/api\/auth\//, /^\/api\/portal\//, /^\/api\/public\//, /^\/api\/stripe\//, /^\/api\/self-assessments/, /^\/api\/directory/];
 
 /** Corpuri valide, ca refuzul să vină din verificarea cabinetului, nu din validare. */
 function bodyFor(method: string, path: string, b: Seed): unknown {
@@ -44,6 +44,7 @@ function resolveParams(path: string, a: Seed): string | null {
       if (path.startsWith("/api/account/sessions/")) return a.sessionId;
       if (path.startsWith("/api/evidence/")) return a.evidenceId;
       if (path.startsWith("/api/platform/organizations/")) return a.organizationId;
+      if (path.startsWith("/api/referrals/")) return a.referralId;
     }
     unknown = true;
     return "?";

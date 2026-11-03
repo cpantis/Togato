@@ -6,7 +6,7 @@
 import { z } from "zod";
 import type {
   AiSystem, AiSystemAnswers, AuthUser, BillingState, ClassificationResult, ClientDetail, ClientSummary, DashboardData,
-  LegislationData, Obligation, Organization, Page, PortalAnswers, PortalData, PortalLinkStatus, SystemDetail, TeamData,
+  DirectoryCabinet, LegislationData, Obligation, Referral, SelfAssessmentData, Organization, Page, PortalAnswers, PortalData, PortalLinkStatus, SystemDetail, TeamData,
 } from "@togato/shared";
 
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -31,6 +31,7 @@ export const organization = z.object({
   brandColor: z.string().nullable(), logoUrl: z.string().nullable(), logoSrc: z.string().nullable().optional(),
   billingState: billingState.optional() as z.ZodOptional<z.ZodType<BillingState>>, logoUploaded: z.boolean().optional(),
   aiEnabled: z.boolean(), aiEnabledAt: iso.nullable().optional(), require2fa: z.boolean(), supportAccessUntil: iso.nullable().optional(),
+  directory: z.object({ listed: z.boolean(), county: z.string().nullable(), city: z.string().nullable(), description: z.string().nullable(), website: z.string().nullable(), email: z.string().nullable() }).strict().optional(),
 }).strict();
 same<z.infer<typeof organization>, Organization>(true);
 
@@ -66,7 +67,7 @@ export const aiSystem = z.object({
   aiMemoStatus: z.enum(["in_lucru", "gata", "esuat"]).nullable(), aiMemoError: z.string().nullable(),
   computedRiskLevel: riskNoUnclassified.nullable(), riskOverride: riskNoUnclassified.nullable(), overrideReason: z.string().nullable(),
   overrideByName: z.string().nullable(), overrideAt: iso.nullable(), rulesetVersion: z.string(), reclassNote: z.string().nullable(),
-  reclassifiedAt: iso.nullable(), source: z.enum(["cabinet", "portal"]), portalAnswers: portalAnswers.nullable(),
+  reclassifiedAt: iso.nullable(), source: z.enum(["cabinet", "portal", "autoevaluare"]), portalAnswers: portalAnswers.nullable(),
   submittedByName: z.string().nullable(), submittedByEmail: z.string().nullable(), createdAt: iso, updatedAt: iso,
   obligationsTotal: z.number().int().optional(), obligationsDone: z.number().int().optional(),
 }).strict();
@@ -125,3 +126,35 @@ export const legislation = z.object({
   affected: z.array(z.object({ id: uuid, name: z.string(), clientId: uuid, clientName: z.string(), note: z.string(), reclassifiedAt: iso.nullable(), riskLevel: risk }).strict()),
 }).strict();
 same<z.infer<typeof legislation>, LegislationData>(true);
+
+const obligationTpl = z.object({ code: z.string(), article: z.string(), title: z.string(), description: z.string(), appliesFrom: day }).strict();
+const verdict = z.enum(["minim", "transparenta", "risc_ridicat", "de_verificat"]);
+const selfTool = z.object({ id: uuid, name: z.string(), vendor: z.string().nullable(), purpose: z.string().nullable(), answers: portalAnswers }).strict();
+const toolResult = z.object({ verdict, summary: z.string(), lawyerReason: z.string().nullable(), obligations: z.array(obligationTpl) }).strict();
+const referralStatus = z.enum(["nou", "acceptat", "respins"]);
+
+export const selfAssessment = z.object({
+  companyName: z.string(), cui: z.string().nullable(), county: z.string().nullable(), contactName: z.string(), contactEmail: z.string().email(),
+  createdAt: iso, updatedAt: iso,
+  report: z.object({
+    tools: z.array(selfTool.extend({ result: toolResult }).strict()),
+    general: z.array(obligationTpl), needsLawyer: z.boolean(),
+    counts: z.object({ minim: z.number().int(), transparenta: z.number().int(), risc_ridicat: z.number().int(), de_verificat: z.number().int() }).strict(),
+  }).strict(),
+  requests: z.array(z.object({ id: uuid, organizationId: uuid, cabinetName: z.string(), status: referralStatus, createdAt: iso, respondedAt: iso.nullable(), responseMessage: z.string().nullable(), cabinetEmail: z.string().nullable() }).strict()),
+  maxRequests: z.number().int(),
+}).strict();
+same<z.infer<typeof selfAssessment>, SelfAssessmentData>(true);
+
+export const directoryCabinet = z.object({ id: uuid, name: z.string(), county: z.string().nullable(), city: z.string().nullable(), description: z.string().nullable(), website: z.string().nullable(), logoSrc: z.string().nullable(), brandColor: z.string().nullable() }).strict();
+same<z.infer<typeof directoryCabinet>, DirectoryCabinet>(true);
+export const directoryPage = z.object({ data: z.array(directoryCabinet), total: z.number().int(), limit: z.number().int(), offset: z.number().int() }).strict();
+
+export const referral = z.object({
+  id: uuid, status: referralStatus, createdAt: iso, respondedAt: iso.nullable(), message: z.string().nullable(), responseMessage: z.string().nullable(), clientId: uuid.nullable(),
+  company: z.object({ name: z.string(), cui: z.string().nullable(), county: z.string().nullable() }).strict(),
+  contact: z.object({ name: z.string(), email: z.string() }).strict(),
+  needsLawyer: z.boolean(),
+  tools: z.array(selfTool.extend({ result: toolResult }).strict()),
+}).strict();
+same<z.infer<typeof referral>, Referral>(true);

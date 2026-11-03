@@ -108,7 +108,7 @@ describe("resetarea parolei", () => {
     expect(unknown.status).toBe(200);
     expect(known.body).toEqual(unknown.body);
     await runJobs();
-    const mail = sentEmails().find((m) => m.to === A.email)!;
+    const mail = sentEmails().find((m) => m.to === A.email && m.subject.includes("Resetarea parolei"))!;
     const token = mail.text.match(/\/reset\/([A-Za-z0-9_-]+)/)![1];
 
     expect((await call("POST", "/api/auth/password/reset", { body: { token, password: "scurt" } })).status).toBe(400);
@@ -123,7 +123,7 @@ describe("resetarea parolei", () => {
     const A = await seedCabinet("Reset Expirat");
     await call("POST", "/api/auth/password/forgot", { body: { email: A.email } });
     await runJobs();
-    const token = sentEmails().find((m) => m.to === A.email)!.text.match(/\/reset\/([A-Za-z0-9_-]+)/)![1];
+    const token = sentEmails().find((m) => m.to === A.email && m.subject.includes("Resetarea parolei"))!.text.match(/\/reset\/([A-Za-z0-9_-]+)/)![1];
     await db.execute(sql`update password_resets set expires_at = now() - interval '1 minute'`);
     expect((await call("POST", "/api/auth/password/reset", { body: { token, password: "parola-resetata-1" } })).status).toBe(400);
   });

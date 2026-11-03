@@ -11,6 +11,7 @@ import { NotificationsCard } from "@/components/NotificationsCard";
 import { AccountSecurityCard } from "@/components/AccountSecurityCard";
 import { BillingCard } from "@/components/BillingCard";
 import { SupportAccessCard } from "@/components/SupportAccessCard";
+import { DirectoryCard } from "@/components/DirectoryCard";
 
 const PRESETS = ["#7a1f3a", "#1e3a8a", "#0f766e", "#334155", "#9a3412", "#4c1d95"];
 
@@ -141,6 +142,9 @@ export default function SettingsPage() {
           {form.logoUrl && !logoOk && <p className="mt-2 text-[12px] text-red-600">Imaginea logo-ului nu se poate încărca de la această adresă.</p>}
         </div>
       </div>
+
+      <h2 id="director" className="mb-3 mt-8 text-[15px] font-semibold text-ink">Director</h2>
+      <DirectoryCard org={org} isAdmin={isAdmin} onChange={setOrg} />
 
       <h2 id="abonament" className="mb-3 mt-8 text-[15px] font-semibold text-ink">Abonament</h2>
       <BillingCard />

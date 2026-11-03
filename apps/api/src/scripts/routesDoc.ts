@@ -6,9 +6,10 @@
 import fs from "fs";
 import path from "path";
 
-const PUBLIC = [/^\/health/, /^\/api\/auth\//, /^\/api\/portal\//, /^\/api\/public\//, /^\/api\/stripe\//];
+const PUBLIC = [/^\/health/, /^\/api\/auth\//, /^\/api\/portal\//, /^\/api\/public\//, /^\/api\/stripe\//, /^\/api\/self-assessments/, /^\/api\/directory/];
 const GROUPS: [RegExp, string][] = [
   [/^\/health/, "Operațional"], [/^\/api\/auth\//, "Autentificare (public)"], [/^\/api\/portal\//, "Portalul clientului (public, token în URL)"],
+  [/^\/api\/(self-assessments|directory)/, "Autoevaluarea firmelor și directorul cabinetelor (public)"], [/^\/api\/referrals/, "Solicitări primite de cabinet"],
   [/^\/api\/public\//, "Fișiere publice"], [/^\/api\/stripe\//, "Stripe (webhook semnat)"], [/^\/api\/account/, "Contul propriu"],
   [/^\/api\/organization/, "Cabinet"], [/^\/api\/team/, "Echipă"], [/^\/api\/billing/, "Abonament"], [/^\/api\/clients/, "Clienți"],
   [/^\/api\/ai-systems/, "Sisteme AI"], [/^\/api\/(obligations|evidence)/, "Obligații și dovezi"], [/^\/api\/snapshots/, "Avize înghețate"],

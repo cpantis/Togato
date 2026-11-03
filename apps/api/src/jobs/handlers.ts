@@ -155,6 +155,8 @@ const maintenancePrune: JobHandler = async () => {
   await pruneExpiredSessions();
   await pruneRateLimits();
   await db.execute(sql`delete from password_resets where expires_at < now() - interval '1 day'`);
+  // autoevaluările nefolosite de 12 luni (solicitările deja trimise rămân la cabinete)
+  await db.execute(sql`delete from self_assessments where updated_at < now() - interval '12 months'`);
 };
 
 export const handlers: Record<string, JobHandler> = {

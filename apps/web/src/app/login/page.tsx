@@ -70,7 +70,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Autentificare" subtitle="Intră în contul cabinetului tău." footer={<>Nu ai cont? <Link href="/signup" className="font-semibold text-brand hover:underline">Creează un cont de cabinet</Link></>}>
+    <AuthLayout title="Autentificare" subtitle="Intră în contul cabinetului tău." footer={<>Nu ai cont? <Link href="/signup" className="font-semibold text-brand hover:underline">Creează un cont de cabinet</Link><div className="mt-2">Sunteți o firmă? <Link href="/autoevaluare" className="font-semibold text-brand hover:underline">Autoevaluare AI Act gratuită</Link></div></>}>
       <form onSubmit={submit} className="space-y-4">
         {error && <Alert>{error}</Alert>}
         <Field label="Email">

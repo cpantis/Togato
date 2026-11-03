@@ -69,6 +69,32 @@ export const templates = {
     ], { label: "Deschide sistemul", url: p.url });
   },
 
+  selfAssessmentLink(p: { to: string; name: string; companyName: string; url: string }) {
+    return build(p.to, `Autoevaluarea AI Act pentru ${p.companyName}`, [
+      `Bună ziua, ${escapeHtml(p.name)}. Autoevaluarea pentru <strong>${escapeHtml(p.companyName)}</strong> a fost salvată.`,
+      "Puteți reveni oricând cu linkul de mai jos ca să adăugați instrumente, să vedeți rezultatul sau să trimiteți dosarul unui cabinet de avocatură. Păstrați linkul: oricine îl are poate vedea autoevaluarea.",
+    ], { label: "Deschide autoevaluarea", url: p.url }, { footer: "Togato — autoevaluare AI Act gratuită. Rezultatul este orientativ și nu constituie consultanță juridică." });
+  },
+
+  referralNew(p: { to: string; companyName: string; contactName: string; tools: number; needsLawyer: boolean; url: string; message?: string | null }) {
+    return build(p.to, `Solicitare nouă: ${p.companyName} vă cere asistență pentru AI Act`, [
+      `${escapeHtml(p.contactName)} de la <strong>${escapeHtml(p.companyName)}</strong> v-a ales din directorul Togato și vă trimite autoevaluarea firmei (${p.tools} ${p.tools === 1 ? "instrument AI" : "instrumente AI"}).`,
+      ...(p.needsLawyer ? ["Autoevaluarea indică cel puțin un instrument cu risc ridicat sau care cere o analiză juridică."] : []),
+      ...(p.message ? [`Mesajul firmei: „${escapeHtml(p.message).replace(/\n/g, "<br>")}”`] : []),
+      "Dacă acceptați, firma devine client în Togato, cu instrumentele deja introduse, gata de încadrat.",
+    ], { label: "Vezi solicitarea", url: p.url });
+  },
+
+  referralAnswered(p: { to: string; companyName: string; cabinetName: string; accepted: boolean; message?: string | null; cabinetEmail?: string | null }) {
+    return build(p.to, p.accepted ? `${p.cabinetName} a acceptat solicitarea dumneavoastră` : `Răspuns de la ${p.cabinetName}`, [
+      p.accepted
+        ? `Cabinetul <strong>${escapeHtml(p.cabinetName)}</strong> a acceptat să analizeze conformitatea AI Act pentru ${escapeHtml(p.companyName)} și vă va contacta.`
+        : `Cabinetul <strong>${escapeHtml(p.cabinetName)}</strong> nu poate prelua în acest moment solicitarea pentru ${escapeHtml(p.companyName)}. Puteți alege alt cabinet din autoevaluare.`,
+      ...(p.message ? [`Mesajul cabinetului: „${escapeHtml(p.message).replace(/\n/g, "<br>")}”`] : []),
+      ...(p.accepted && p.cabinetEmail ? [`Contact: ${escapeHtml(p.cabinetEmail)}`] : []),
+    ], undefined, { replyTo: p.cabinetEmail ?? undefined });
+  },
+
   deadlineDigest(p: { to: string; name: string; items: { client: string; title: string; dueDate: string; overdue: boolean; url: string }[]; dashboardUrl: string }) {
     const list = p.items.slice(0, 25).map((i) => `• ${i.overdue ? "<strong>DEPĂȘIT</strong> " : ""}${escapeHtml(i.dueDate)} — ${escapeHtml(i.client)}: ${escapeHtml(i.title)}`);
     return build(p.to, `Togato: ${p.items.length} termene în următoarele 7 zile`, [

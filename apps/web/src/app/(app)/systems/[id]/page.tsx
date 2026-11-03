@@ -267,10 +267,10 @@ export default function SystemPage() {
             </div>
           )}
 
-          {system.source === "portal" && system.portalAnswers && (
+          {(system.source === "portal" || system.source === "autoevaluare") && system.portalAnswers && (
             <Card className="border-sky-200 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-[14px] font-semibold text-ink">Trimis de client prin portal</h2>
+                <h2 className="text-[14px] font-semibold text-ink">{system.source === "portal" ? "Trimis de client prin portal" : "Din autoevaluarea gratuită a firmei"}</h2>
                 <span className="text-[12px] text-slate-500">{system.submittedByName}{system.submittedByEmail ? ` · ${system.submittedByEmail}` : ""} · {formatDate(system.createdAt)}</span>
               </div>
               <p className="mt-1 text-[12px] text-slate-500">Încadrarea de mai jos e dedusă automat din răspunsurile clientului. Verificați-o și completați chestionarul cu „Editează răspunsurile”.</p>

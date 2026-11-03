@@ -50,6 +50,13 @@ export async function seedCabinet(name: string) {
   const portal = await call("POST", `/api/clients/${clientId}/portal`, { token });
   const ev = await upload(`/api/obligations/${obligationId}/evidence`, token, "proces-verbal.pdf", Buffer.from("%PDF-1.4\n%dovadă de test\n"));
   if (ev.status !== 201) throw new Error(`evidence: ${JSON.stringify(ev.body)}`);
+  // autoevaluarea unei firme, trimisă acestui cabinet (cabinetul apare în director)
+  await call("PUT", "/api/organization/directory", { token, body: { listed: true, county: "Cluj", city: "Cluj-Napoca" } });
+  const self = await call("POST", "/api/self-assessments", { body: { companyName: `Firma ${name} SRL`, contactName: "Ion Pop", contactEmail: `${unique("firma")}@firma.ro`, terms: true } });
+  await call("POST", `/api/self-assessments/${self.body.token}/tools`, { body: { name: "Chatbot site", answers: { talksToPeople: true } } });
+  await call("POST", `/api/self-assessments/${self.body.token}/requests`, { body: { organizationId, consent: true } });
+  const refs = await call("GET", "/api/referrals", { token });
+  const referralId = refs.body.data[0]?.id as string;
   const [session] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId)).limit(1);
-  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string, organizationId };
+  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string, organizationId, referralId, selfToken: self.body.token as string };
 }

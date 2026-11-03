@@ -7,7 +7,8 @@ export const userRoleEnum = pgEnum("user_role", ["admin", "membru"]);
 export const userStatusEnum = pgEnum("user_status", ["activ", "dezactivat"]);
 export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis", "neaplicabil"]);
 export const reviewStatusEnum = pgEnum("review_status", ["propus", "aprobat", "respins"]);
-export const systemSourceEnum = pgEnum("system_source", ["cabinet", "portal"]);
+export const systemSourceEnum = pgEnum("system_source", ["cabinet", "portal", "autoevaluare"]);
+export const referralStatusEnum = pgEnum("referral_status", ["nou", "acceptat", "respins"]);
 export const obligationStatusEnum = pgEnum("obligation_status", ["de_facut", "in_lucru", "indeplinit", "nu_se_aplica"]);
 export const jobStatusEnum = pgEnum("job_status", ["pending", "running", "done", "failed"]);
 export const memoStatusEnum = pgEnum("memo_status", ["in_lucru", "gata", "esuat"]);
@@ -41,6 +42,13 @@ export const organizations = pgTable("organizations", {
   supportAccessUntil: timestamp("support_access_until", { withTimezone: true }),
   supportAccessGrantedBy: uuid("support_access_granted_by"),
   suspendedReason: text("suspended_reason"),
+  /** profilul public din directorul cabinetelor (vizibil firmelor care fac autoevaluarea) */
+  directoryListed: boolean("directory_listed").notNull().default(false),
+  directoryCounty: text("directory_county"),
+  directoryCity: text("directory_city"),
+  directoryDescription: text("directory_description"),
+  directoryWebsite: text("directory_website"),
+  directoryEmail: text("directory_email"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -331,6 +339,45 @@ export const passwordResets = pgTable("password_resets", {
 }, (t) => [
   uniqueIndex("password_resets_token_unique").on(t.tokenHash),
   index("password_resets_user_idx").on(t.userId),
+]);
+
+/**
+ * Autoevaluarea gratuită a unei firme (fără cont): accesată printr-un link secret (în DB doar hash-ul).
+ * Nu aparține niciunui cabinet; un cabinet primește datele doar când firma îi trimite o solicitare.
+ */
+export const selfAssessments = pgTable("self_assessments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tokenHash: text("token_hash").notNull(),
+  companyName: text("company_name").notNull(),
+  cui: text("cui"),
+  county: text("county"),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  /** instrumentele AI: [{ id, name, vendor, purpose, answers }] (răspunsurile simple din portal) */
+  tools: jsonb("tools").notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("self_assessments_token_unique").on(t.tokenHash)]);
+
+/**
+ * Solicitarea unei firme către un cabinet ales de ea. `payload` = copia datelor pe care firma a
+ * acceptat să le trimită (companie, contact, instrumente, rezultat), la momentul trimiterii.
+ */
+export const referrals = pgTable("referrals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  selfAssessmentId: uuid("self_assessment_id").references(() => selfAssessments.id, { onDelete: "set null" }),
+  status: referralStatusEnum("status").notNull().default("nou"),
+  payload: jsonb("payload").notNull(),
+  message: text("message"),
+  responseMessage: text("response_message"),
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+  respondedBy: uuid("responded_by").references(() => users.id, { onDelete: "set null" }),
+  respondedAt: timestamp("responded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("referrals_org_idx").on(t.organizationId, t.createdAt),
+  uniqueIndex("referrals_org_assessment_unique").on(t.organizationId, t.selfAssessmentId),
 ]);
 
 /**

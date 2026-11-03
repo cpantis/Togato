@@ -33,6 +33,29 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/portal/:token/systems` | public |
 | `DELETE` | `/api/portal/:token/systems/:id` | public |
 
+## Autoevaluarea firmelor și directorul cabinetelor (public)
+
+| Metodă | Rută | Acces |
+|---|---|---|
+| `POST` | `/api/self-assessments` | public |
+| `GET` | `/api/self-assessments/:token` | public |
+| `PUT` | `/api/self-assessments/:token` | public |
+| `POST` | `/api/self-assessments/:token/tools` | public |
+| `DELETE` | `/api/self-assessments/:token/tools/:toolId` | public |
+| `DELETE` | `/api/self-assessments/:token` | public |
+| `POST` | `/api/self-assessments/:token/requests` | public |
+| `GET` | `/api/directory` | public |
+| `GET` | `/api/directory/counties` | public |
+
+## Solicitări primite de cabinet
+
+| Metodă | Rută | Acces |
+|---|---|---|
+| `GET` | `/api/referrals` | sesiune |
+| `GET` | `/api/referrals/:id` | sesiune |
+| `POST` | `/api/referrals/:id/accept` | sesiune |
+| `POST` | `/api/referrals/:id/decline` | sesiune |
+
 ## Fișiere publice
 
 | Metodă | Rută | Acces |
@@ -71,6 +94,7 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `DELETE` | `/api/organization/logo` | sesiune |
 | `POST` | `/api/organization/support-access` | sesiune |
 | `DELETE` | `/api/organization/support-access` | sesiune |
+| `PUT` | `/api/organization/directory` | sesiune |
 
 ## Echipă
 

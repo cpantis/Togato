@@ -22,6 +22,8 @@ import { evidenceRoutes, MAX_EVIDENCE_BYTES } from "./routes/evidence";
 import { publicFileRoutes } from "./routes/publicFiles";
 import { billingRoutes, stripeWebhookRoutes } from "./routes/billing";
 import { platformRoutes } from "./routes/platform";
+import { directoryRoutes, selfAssessmentRoutes } from "./routes/selfAssessment";
+import { referralRoutes } from "./routes/referrals";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -92,6 +94,15 @@ app.route("/api/portal", portalRoutes);
 app.route("/api/public", publicFileRoutes);
 app.route("/api/stripe", stripeWebhookRoutes);
 
+// Autoevaluarea gratuită a firmelor și directorul cabinetelor (publice)
+app.use("/api/directory/*", rateLimit({ windowMs: 60_000, max: 60, key: "directory" }));
+app.use("/api/directory", rateLimit({ windowMs: 60_000, max: 60, key: "directory" }));
+app.use("/api/self-assessments/*", rateLimit({ windowMs: 60_000, max: 60, key: "self" }));
+app.on("POST", "/api/self-assessments", rateLimit({ windowMs: 60 * 60_000, max: 10, key: "self-create" }));
+app.on("POST", "/api/self-assessments/*", rateLimit({ windowMs: 60_000, max: 20, key: "self-write" }));
+app.route("/api/self-assessments", selfAssessmentRoutes);
+app.route("/api/directory", directoryRoutes);
+
 app.use("/api/*", authMiddleware);
 app.use("/api/clients/lookup", rateLimit({ windowMs: 60_000, max: 20, key: "lookup" }));
 app.use("/api/ai-systems/*/memo", rateLimit({ windowMs: 60_000, max: 6, key: "memo" }));
@@ -115,6 +126,7 @@ app.use("/api/account/password", rateLimit({ windowMs: 15 * 60_000, max: 10, key
 app.route("/api/account", accountRoutes);
 app.route("/api/billing", billingRoutes);
 app.route("/api/platform", platformRoutes);
+app.route("/api/referrals", referralRoutes);
 
 app.notFound((c) => c.json({ error: "Ruta nu există" }, 404));
 app.onError(errorHandler);

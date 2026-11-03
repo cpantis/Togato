@@ -32,6 +32,58 @@ export interface Organization {
   require2fa: boolean;
   /** acces de suport acordat echipei Togato, până la această dată */
   supportAccessUntil?: string | null;
+  /** profilul din directorul cabinetelor */
+  directory?: DirectoryProfile;
+}
+
+export interface DirectoryProfile {
+  listed: boolean;
+  county: string | null;
+  city: string | null;
+  description: string | null;
+  website: string | null;
+  email: string | null;
+}
+
+/** un cabinet din directorul public */
+export interface DirectoryCabinet {
+  id: string;
+  name: string;
+  county: string | null;
+  city: string | null;
+  description: string | null;
+  website: string | null;
+  logoSrc: string | null;
+  brandColor: string | null;
+}
+
+/** autoevaluarea unei firme, văzută de firmă (prin linkul secret) */
+export interface SelfAssessmentData {
+  companyName: string;
+  cui: string | null;
+  county: string | null;
+  contactName: string;
+  contactEmail: string;
+  createdAt: string;
+  updatedAt: string;
+  report: import("./selfAssessment").SelfReport;
+  requests: { id: string; organizationId: string; cabinetName: string; status: "nou" | "acceptat" | "respins"; createdAt: string; respondedAt: string | null; responseMessage: string | null; cabinetEmail: string | null }[];
+  maxRequests: number;
+}
+
+/** o solicitare primită de cabinet */
+export interface Referral {
+  id: string;
+  status: "nou" | "acceptat" | "respins";
+  createdAt: string;
+  respondedAt: string | null;
+  message: string | null;
+  responseMessage: string | null;
+  clientId: string | null;
+  company: { name: string; cui: string | null; county: string | null };
+  contact: { name: string; email: string };
+  needsLawyer: boolean;
+  tools: import("./selfAssessment").SelfToolWithResult[];
 }
 
 export interface ClientSummary {
@@ -107,7 +159,7 @@ export interface AiSystem {
   rulesetVersion: string;
   reclassNote: string | null;
   reclassifiedAt: string | null;
-  source: "cabinet" | "portal";
+  source: "cabinet" | "portal" | "autoevaluare";
   portalAnswers: PortalAnswers | null;
   submittedByName: string | null;
   submittedByEmail: string | null;
