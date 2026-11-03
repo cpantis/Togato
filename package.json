@@ -11,9 +11,11 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "dev:web": "npm run dev -w @togato/web",
-    "dev:api": "npm run dev -w @togato/api"
+    "dev:api": "npm run dev -w @togato/api",
+    "e2e": "playwright test --config e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "turbo": "^2.5.0"
   }
 }

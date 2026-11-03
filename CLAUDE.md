@@ -4,7 +4,7 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 
 ## Structură
 - `packages/shared/src/aiAct.ts` — **sursa unică** pentru textul legii: opțiunile chestionarului, catalogul de obligații, datele de aplicare și `classifyAiSystem` (funcție pură; rulează în API la salvare și în browser pentru previzualizare). Orice schimbare de regulă se face aici și se acoperă cu un test în `aiAct.test.ts`.
-- `apps/api` — Hono + Drizzle. Rute în `src/routes/`, logică în `src/services/`. Schema în `src/db/schema.ts`; migrațiile se generează cu `npm run db:generate -w @togato/api` (nu se scriu de mână).
+- `apps/api` — Hono + Drizzle. `src/app.ts` construiește aplicația (fără efecte la import), `src/index.ts` o pornește; configurarea e validată în `src/config.ts` (zod). Rute în `src/routes/`, logică în `src/services/`. Schema în `src/db/schema.ts`; migrațiile se generează cu `npm run db:generate -w @togato/api` (nu se scriu de mână).
 - `apps/web` — Next.js 15 App Router, Tailwind 4. Componente comune în `src/components/ui.tsx`. Culoarea de brand: `brand` (#7a1f3a).
 
 ## Reguli
@@ -39,10 +39,16 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
    Stările, notele și termenele interne ale obligațiilor se păstrează (prin `obligationsSync`). Încadrarea manuală (`riskOverride`) nu se suprascrie niciodată — conflictul e doar semnalat.
 4. Nu schimba niciodată codul unei obligații existente (`code`) doar pentru că s-a schimbat textul — codul e cheia care păstrează starea și notele.
 
+## Teste
+- Unitare: `npm test -w @togato/shared`, `npm test -w @togato/api` (fără bază de date).
+- Integrare: `TEST_DATABASE_URL=postgres://...togato_test npm run test:int -w @togato/api` — API-ul real (`src/app.ts`, prin `app.request`) pe un Postgres real, golit și migrat la fiecare rulare. `test/isolation.int.test.ts` citește **toate** rutele din aplicație și verifică separarea între cabinete; o rută nouă cu un parametru necunoscut face testul să pice — adăugați maparea în `resolveParams`.
+- Browser: `E2E_DATABASE_URL=... npm run e2e` (Playwright, `e2e/`), după `npx next build` în `apps/web`.
+- CI rulează toate trei (`.github/workflows/ci.yml`).
+
 ## Înainte de commit
 ```bash
 npm run build -w @togato/shared && npm test -w @togato/shared
-cd apps/api && npx tsc --noEmit && npm test
+cd apps/api && npx tsc --noEmit && npm test && npm run test:int   # cu TEST_DATABASE_URL
 cd apps/web && npx next build
 ```
 Dacă oricare eșuează, nu face commit.
