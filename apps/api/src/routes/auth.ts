@@ -13,6 +13,7 @@ import { sendEmail, templates } from "../services/email";
 import { frontendBaseUrl } from "../config";
 import { clientIp } from "../lib/clientIp";
 import { log } from "../lib/logger";
+import { logoSrc } from "../lib/logo";
 
 export const authRoutes = new Hono();
 
@@ -55,7 +56,7 @@ function publicUser(u: typeof users.$inferSelect) {
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {
-  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, aiEnabled: o.aiEnabled, require2fa: o.require2fa };
+  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa };
 }
 
 const signupSchema = z.object({

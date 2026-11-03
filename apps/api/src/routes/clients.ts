@@ -1,9 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { ClientSummary } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, clients, obligations, users } from "../db/schema";
+import { aiSystems, clients, evidence, obligations, portalLinks, users } from "../db/schema";
+import { enqueue } from "../jobs/queue";
+import { buildDossierZip } from "../services/dossierExport";
+import { contentDisposition } from "../services/storage/files";
+import { requireAdmin } from "../middleware/requireAdmin";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { badRequest, notFound, uuidParam } from "../lib/http";
@@ -57,8 +61,11 @@ clientRoutes.get("/", async (c) => {
   const auth = c.get("auth");
   const search = c.req.query("search")?.trim();
   const mine = c.req.query("mine") === "1";
+  // implicit doar clienții activi; ?archived=1 = doar cei arhivați
+  const archived = c.req.query("archived") === "1";
   const where = and(
     eq(clients.organizationId, auth.organizationId),
+    archived ? isNotNull(clients.archivedAt) : isNull(clients.archivedAt),
     mine ? eq(clients.responsibleUserId, auth.userId) : undefined,
     search ? or(ilike(clients.name, `%${search}%`), ilike(clients.cui, `%${search.replace(/\D/g, "") || search}%`)) : undefined,
   );
@@ -82,7 +89,7 @@ clientRoutes.get("/", async (c) => {
     const o = obl.find((x) => x.clientId === r.id);
     return {
       id: r.id, cui: r.cui, name: r.name, city: r.city, county: r.county, caen: r.caen, caenDescription: r.caenDescription,
-      employees: r.employees, createdAt: r.createdAt.toISOString(),
+      employees: r.employees, createdAt: r.createdAt.toISOString(), archivedAt: r.archivedAt?.toISOString() ?? null,
       responsibleUserId: r.responsibleUserId, responsibleName: r.responsibleName,
       systemsCount: rr.reduce((s, x) => s + x.n, 0),
       riskCounts: Object.fromEntries(rr.map((x) => [x.riskLevel, x.n])),
@@ -143,6 +150,7 @@ clientRoutes.get("/:id", async (c) => {
     id: row.id, cui: row.cui, name: row.name, regCom: row.regCom, address: row.address, city: row.city, county: row.county,
     caen: row.caen, caenDescription: row.caenDescription, employees: row.employees, turnover: row.turnover, vatPayer: row.vatPayer,
     contactName: row.contactName, contactEmail: row.contactEmail, notes: row.notes, createdAt: row.createdAt.toISOString(),
+    archivedAt: row.archivedAt?.toISOString() ?? null,
     responsibleUserId: row.responsibleUserId,
     responsibleName: row.responsibleUserId ? (await db.query.users.findFirst({ where: eq(users.id, row.responsibleUserId), columns: { name: true } }))?.name ?? null : null,
     aiSystems: systems.map((s) => {
@@ -175,12 +183,58 @@ clientRoutes.put("/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-clientRoutes.delete("/:id", async (c) => {
+/**
+ * POST /:id/archive — clientul iese din liste, termene și rezumate; portalul se dezactivează.
+ * Datele (inclusiv avizele înghețate și dovezile) rămân, pentru obligația de arhivare.
+ */
+clientRoutes.post("/:id/archive", async (c) => {
   const auth = c.get("auth");
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  if (row.archivedAt) return c.json({ ok: true, archivedAt: row.archivedAt.toISOString() });
+  const now = new Date();
+  await db.update(clients).set({ archivedAt: now, archivedBy: auth.userId, updatedAt: now })
+    .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await db.delete(portalLinks).where(and(eq(portalLinks.clientId, row.id), eq(portalLinks.organizationId, auth.organizationId)));
+  await audit(auth, "archive", "client", row.id, { name: row.name });
+  return c.json({ ok: true, archivedAt: now.toISOString() });
+});
+
+clientRoutes.post("/:id/unarchive", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  await db.update(clients).set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
+    .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await audit(auth, "unarchive", "client", row.id, { name: row.name });
+  return c.json({ ok: true });
+});
+
+/**
+ * DELETE /:id — ștergere definitivă (inclusiv avize și dovezi). Doar pentru clienți arhivați,
+ * doar de un administrator, cu numele clientului confirmat (?confirm=<denumire>).
+ */
+clientRoutes.delete("/:id", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  if (!row.archivedAt) return c.json({ error: "Arhivați mai întâi clientul. Ștergerea definitivă e permisă doar pentru clienții arhivați.", code: "not_archived" }, 409);
+  if ((c.req.query("confirm") ?? "").trim() !== row.name) badRequest("Confirmați ștergerea scriind exact denumirea clientului.");
+  const files = await db.select({ key: evidence.storageKey }).from(evidence)
+    .where(and(eq(evidence.clientId, row.id), eq(evidence.organizationId, auth.organizationId)));
   await db.delete(clients).where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
-  await audit(auth, "delete", "client", row.id, { name: row.name, cui: row.cui });
+  if (files.length) await enqueue("storage.delete", { keys: files.map((f) => f.key) }, { organizationId: auth.organizationId });
+  await audit(auth, "delete", "client", row.id, { name: row.name, cui: row.cui, files: files.length });
   return c.body(null, 204);
+});
+
+/** GET /:id/export — dosarul complet al clientului (ZIP) */
+clientRoutes.get("/:id/export", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  const result = await buildDossierZip(auth.organizationId, row.id, auth.name);
+  if (!result) notFound("Clientul nu a fost găsit");
+  await audit(auth, "export", "client", row.id, { size: result.zip.length });
+  return new Response(new Uint8Array(result.zip), {
+    headers: { "Content-Type": "application/zip", "Content-Disposition": contentDisposition(result.filename), "Cache-Control": "no-store" },
+  });
 });
 
 /** PATCH /:id/responsible { userId } — schimbă doar avocatul responsabil */

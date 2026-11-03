@@ -16,13 +16,15 @@ function ClientsInner() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [mine, setMine] = useState(false);
+  const [archived, setArchived] = useState(params.get("archived") === "1");
   const [modal, setModal] = useState(params.get("nou") === "1");
 
-  const load = useCallback(async (q: string, onlyMine: boolean) => {
+  const load = useCallback(async (q: string, onlyMine: boolean, onlyArchived: boolean) => {
     try {
       const qs = new URLSearchParams();
       if (q) qs.set("search", q);
       if (onlyMine) qs.set("mine", "1");
+      if (onlyArchived) qs.set("archived", "1");
       const res = await apiGet<{ data: ClientSummary[] }>(`/api/clients${qs.toString() ? `?${qs.toString()}` : ""}`);
       setRows(res.data);
       setError(null);
@@ -32,9 +34,9 @@ function ClientsInner() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => load(search.trim(), mine), search ? 250 : 0);
+    const t = setTimeout(() => load(search.trim(), mine, archived), search ? 250 : 0);
     return () => clearTimeout(t);
-  }, [search, mine, load]);
+  }, [search, mine, archived, load]);
 
   return (
     <div className="fade-up">
@@ -48,11 +50,16 @@ function ClientsInner() {
             </button>
           ))}
         </div>
+        <label className="flex items-center gap-2 text-[13px] text-slate-600">
+          <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-brand" />
+          Doar arhivați
+        </label>
       </div>
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       {!rows ? <LoadingBlock /> : rows.length === 0 ? (
         <Card>
-          {search ? <EmptyState title="Niciun rezultat" text={`Niciun client nu se potrivește cu „${search}”.`} />
+          {archived ? <EmptyState title="Niciun client arhivat" text="Clienții arhivați (dosare închise) apar aici. Datele lor se păstrează." />
+            : search ? <EmptyState title="Niciun rezultat" text={`Niciun client nu se potrivește cu „${search}”.`} />
             : mine ? <EmptyState title="Niciun client alocat ție" text="Clienții pe care îi adaugi sau care îți sunt alocați apar aici." />
             : <EmptyState title="Niciun client încă" text="Adaugă prima firmă-client după CUI." action={<Button onClick={() => setModal(true)}>Adaugă client</Button>} />}
         </Card>

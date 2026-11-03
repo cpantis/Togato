@@ -3,8 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ClientDetail, Obligation, TeamData } from "@togato/shared";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api";
-import { formatNumber } from "@/lib/format";
+import { apiDelete, apiDownload, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { formatDate, formatNumber } from "@/lib/format";
+import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, ProgressBar, ReviewBadge, RiskBadge } from "@/components/ui";
 import { ObligationList } from "@/components/ObligationList";
 import { DocumentsCard } from "@/components/DocumentsCard";
@@ -18,6 +19,10 @@ export default function ClientPage() {
   const [deleting, setDeleting] = useState(false);
   const [team, setTeam] = useState<TeamData["members"]>([]);
   const [assigning, setAssigning] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     apiGet<TeamData>("/api/team").then((d) => setTeam(d.members)).catch(() => setTeam([]));
@@ -42,15 +47,37 @@ export default function ClientPage() {
   useEffect(() => { load(); }, [load]);
 
   async function remove() {
-    if (!client || !confirm(`Ștergi clientul „${client.name}” împreună cu inventarul AI și obligațiile? Acțiunea nu poate fi anulată.`)) return;
+    if (!client) return;
+    const typed = prompt(`Ștergere definitivă: inventarul AI, obligațiile, avizele înghețate și dovezile clientului „${client.name}” vor fi șterse și nu mai pot fi recuperate.\n\nRecomandare: descărcați întâi dosarul (Export).\n\nScrieți denumirea exactă a clientului pentru confirmare:`);
+    if (typed === null) return;
     setDeleting(true);
     try {
-      await apiDelete(`/api/clients/${id}`);
-      router.replace("/clients");
+      await apiDelete(`/api/clients/${id}?confirm=${encodeURIComponent(typed.trim())}`);
+      router.replace("/clients?archived=1");
     } catch (e) {
-      setError((e as Error).message);
+      setActionError((e as Error).message);
       setDeleting(false);
     }
+  }
+
+  async function setArchived(archive: boolean) {
+    if (archive && !confirm(`Arhivați clientul „${client?.name}”? Nu va mai apărea în liste, termene și rezumate, iar linkul de portal se dezactivează. Datele se păstrează și clientul poate fi reactivat oricând.`)) return;
+    setArchiving(true); setActionError(null);
+    try {
+      await apiPost(`/api/clients/${id}/${archive ? "archive" : "unarchive"}`);
+      load();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  async function exportDossier() {
+    setExporting(true); setActionError(null);
+    try { await apiDownload(`/api/clients/${id}/export`, "dosar.zip"); }
+    catch (e) { setActionError((e as Error).message); }
+    finally { setExporting(false); }
   }
 
   if (error) return <Alert>{error}</Alert>;
@@ -73,10 +100,22 @@ export default function ClientPage() {
         title={client.name}
         subtitle={info.length ? info.map(([k, v]) => `${k} ${v}`).slice(0, 3).join(" · ") : undefined}
         actions={<>
-          <Button variant="danger" size="sm" onClick={remove} loading={deleting}>Șterge clientul</Button>
-          <Link href={`/clients/${id}/systems/new`}><Button>Adaugă sistem AI</Button></Link>
+          <Button variant="secondary" size="sm" onClick={exportDossier} loading={exporting}>Export dosar (ZIP)</Button>
+          {client.archivedAt ? (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => setArchived(false)} loading={archiving}>Reactivează</Button>
+              {user?.role === "admin" && <Button variant="danger" size="sm" onClick={remove} loading={deleting}>Șterge definitiv</Button>}
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setArchived(true)} loading={archiving}>Arhivează</Button>
+              <Link href={`/clients/${id}/systems/new`}><Button>Adaugă sistem AI</Button></Link>
+            </>
+          )}
         </>}
       />
+      {client.archivedAt && <div className="mb-4"><Alert kind="warning">Client arhivat la {formatDate(client.archivedAt)}. Nu apare în liste și termene, iar portalul e dezactivat. Datele, avizele și dovezile se păstrează.</Alert></div>}
+      {actionError && <div className="mb-4"><Alert>{actionError}</Alert></div>}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-5">

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Organization } from "@togato/shared";
-import { apiGet, apiPut } from "@/lib/api";
+import { apiDelete, apiGet, apiPut } from "@/lib/api";
 import { DEFAULT_BRAND, softOf, textOn } from "@/lib/brand";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, Card, Field, LoadingBlock, PageHeader, inputClass } from "@/components/ui";
@@ -21,6 +21,30 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [logoOk, setLogoOk] = useState(true);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  async function uploadLogo(file: File | undefined) {
+    if (!file) return;
+    setUploadingLogo(true); setError(null);
+    try {
+      if (file.size > 1024 * 1024) throw new Error("Imaginea depășește 1 MB.");
+      const form = new FormData();
+      form.append("file", file);
+      const csrf = document.cookie.match(/(?:^|;\s*)togato_csrf=([^;]+)/)?.[1] ?? "";
+      const res = await fetch("/api/organization/logo", { method: "POST", body: form, credentials: "same-origin", headers: { "X-CSRF-Token": decodeURIComponent(csrf) } });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || `Eroare ${res.status}`);
+      setOrg(body); setLogoOk(true); refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
+  async function removeLogo() {
+    try { setOrg(await apiDelete<Organization>("/api/organization/logo")); refresh(); } catch (err) { setError((err as Error).message); }
+  }
 
   useEffect(() => {
     apiGet<Organization>("/api/organization").then((o) => {
@@ -68,9 +92,20 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </Field>
-              <Field label="Adresa logo-ului (opțional)" hint="Un link https:// către o imagine PNG sau SVG, de preferat pătrată.">
-                <input className={inputClass} placeholder="https://cabinet.ro/logo.png" value={form.logoUrl} onChange={(e) => setForm((f) => ({ ...f, logoUrl: e.target.value }))} />
+              <Field label="Logo" hint="PNG, JPG sau WebP, maximum 1 MB, de preferat pătrat.">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:bg-slate-50">
+                    {uploadingLogo ? "Se încarcă..." : org?.logoUploaded ? "Înlocuiește" : "Încarcă un fișier"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => uploadLogo(e.target.files?.[0])} aria-label="Încarcă logo" />
+                  </label>
+                  {org?.logoUploaded && <Button type="button" size="sm" variant="ghost" onClick={removeLogo}>Elimină</Button>}
+                </div>
               </Field>
+              {!org?.logoUploaded && (
+                <Field label="sau adresa unui logo existent (opțional)" hint="Un link https:// către o imagine PNG sau JPG.">
+                  <input className={inputClass} placeholder="https://cabinet.ro/logo.png" value={form.logoUrl} onChange={(e) => setForm((f) => ({ ...f, logoUrl: e.target.value }))} />
+                </Field>
+              )}
               <div className="flex justify-end"><Button type="submit" loading={saving}>Salvează</Button></div>
             </fieldset>
           </form>
@@ -80,9 +115,9 @@ export default function SettingsPage() {
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Previzualizare portal</div>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#f6f7f9]">
             <div className="flex items-center gap-3 px-4 py-4" style={{ background: color, color: textOn(color) }}>
-              {form.logoUrl && logoOk ? (
+              {(org?.logoUploaded ? org.logoSrc : form.logoUrl) && logoOk ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.logoUrl} alt="" onError={() => setLogoOk(false)} className="h-9 w-9 rounded-lg bg-white object-contain p-1" />
+                <img src={(org?.logoUploaded ? org.logoSrc : form.logoUrl) || ""} alt="" onError={() => setLogoOk(false)} className="h-9 w-9 rounded-lg bg-white object-contain p-1" />
               ) : (
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg text-[13px] font-bold" style={{ background: softOf(textOn(color), 0.18) }}>
                   {(form.name || "C").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}

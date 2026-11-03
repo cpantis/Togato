@@ -1,5 +1,5 @@
 /** Construcția aplicației Hono — fără efecte la import (folosită de server și de teste). */
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
@@ -17,6 +17,8 @@ import { legislationRoutes } from "./routes/legislation";
 import { lawRoutes } from "./routes/law";
 import { snapshotRoutes } from "./routes/snapshots";
 import { accountRoutes } from "./routes/account";
+import { evidenceRoutes, MAX_EVIDENCE_BYTES } from "./routes/evidence";
+import { publicFileRoutes } from "./routes/publicFiles";
 import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimit } from "./middleware/rateLimit";
@@ -62,7 +64,12 @@ app.use("/api/*", cors({
   allowHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Request-Id"],
   exposeHeaders: ["X-Request-Id", "Content-Disposition", "X-Togato-Integrity", "Retry-After"],
 }));
-app.use("/api/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "Cererea e prea mare" }, 413) }));
+// încărcările de fișiere au limita lor; restul cererilor (JSON) — 2 MB
+const UPLOAD_PATHS = /^\/api\/(obligations\/[^/]+\/evidence|organization\/logo)$/;
+const tooLarge = (c: Context) => c.json({ error: "Cererea e prea mare" }, 413);
+const jsonLimit = bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge });
+const uploadLimit = bodyLimit({ maxSize: MAX_EVIDENCE_BYTES + 512 * 1024, onError: (c) => c.json({ error: "Fișierul depășește 15 MB." }, 413) });
+app.use("/api/*", (c, next) => (UPLOAD_PATHS.test(c.req.path) ? uploadLimit(c, next) : jsonLimit(c, next)));
 
 app.use("/api/auth/signup", rateLimit({ windowMs: 60_000, max: 5, key: "signup" }));
 app.use("/api/auth/login", rateLimit({ windowMs: 60_000, max: 10, key: "login" }));
@@ -77,6 +84,7 @@ app.route("/api/auth", authRoutes);
 app.use("/api/portal/*", rateLimit({ windowMs: 60_000, max: 60, key: "portal" }));
 app.on("POST", "/api/portal/*", rateLimit({ windowMs: 60_000, max: 10, key: "portal-write" }));
 app.route("/api/portal", portalRoutes);
+app.route("/api/public", publicFileRoutes);
 
 app.use("/api/*", authMiddleware);
 app.use("/api/clients/lookup", rateLimit({ windowMs: 60_000, max: 20, key: "lookup" }));
@@ -89,6 +97,7 @@ app.route("/api/clients", clientPortalRoutes);
 app.route("/api/clients", clientRoutes);
 app.route("/api/ai-systems", aiSystemRoutes);
 app.route("/api/obligations", obligationRoutes);
+app.route("/api", evidenceRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/team", teamRoutes);
 app.route("/api/organization", organizationRoutes);

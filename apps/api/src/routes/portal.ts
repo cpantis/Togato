@@ -11,6 +11,7 @@ import { aiSystems, auditLog, portalLinks } from "../db/schema";
 import { resolvePortalToken } from "../lib/portalToken";
 import { syncClientObligations, syncSystemObligations } from "../services/obligationsSync";
 import { enqueue } from "../jobs/queue";
+import { logoSrc } from "../lib/logo";
 
 export const portalRoutes = new Hono();
 
@@ -36,7 +37,7 @@ portalRoutes.get("/:token", async (c) => {
   }).from(aiSystems).where(eq(aiSystems.clientId, client.id)).orderBy(desc(aiSystems.createdAt));
 
   return c.json({
-    cabinet: { name: org.name, brandColor: org.brandColor, logoUrl: org.logoUrl },
+    cabinet: { name: org.name, brandColor: org.brandColor, logoUrl: logoSrc(org) },
     client: { name: client.name },
     expiresAt: link.expiresAt.toISOString(),
     systems: systems.map((s) => ({

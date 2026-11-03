@@ -4,6 +4,7 @@ import type { Obligation, ObligationStatus } from "@togato/shared";
 import { apiDownload, apiPatch } from "@/lib/api";
 import { OBLIGATION_DOCUMENTS, documentUrl } from "@/lib/documents";
 import { LawRef } from "@/components/LawRef";
+import { EvidencePanel } from "@/components/EvidencePanel";
 import { daysUntil, formatDate } from "@/lib/format";
 import { ObligationStatusSelect, cn, inputClass, textareaClass } from "@/components/ui";
 
@@ -71,9 +72,10 @@ function ObligationRow({ item, onChange }: { item: Obligation; onChange: (o: Obl
             </button>
           )}
           <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
-            <textarea className={textareaClass} rows={2} placeholder="Notă internă: ce s-a făcut, unde e dovada..." value={note} onChange={(e) => setNote(e.target.value)} />
+            <textarea className={textareaClass} rows={2} placeholder="Notă internă: ce s-a făcut, ce mai e de obținut de la client..." value={note} onChange={(e) => setNote(e.target.value)} />
             <input className={inputClass} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} aria-label="Termen intern" />
           </div>
+          <EvidencePanel obligationId={item.id} />
           {error && <div className="text-[12px] text-red-600">{error}</div>}
           {dirty && (
             <div className="flex justify-end">

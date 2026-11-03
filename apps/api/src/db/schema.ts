@@ -22,6 +22,9 @@ export const organizations = pgTable("organizations", {
   /** white-label (portalul clientului) */
   brandColor: text("brand_color"),
   logoUrl: text("logo_url"),
+  /** logo încărcat (în stocare); are prioritate față de logoUrl */
+  logoKey: text("logo_key"),
+  logoContentType: text("logo_content_type"),
   /** analiza AI trimite date ale clienților către Anthropic — dezactivată până o activează un administrator */
   aiEnabled: boolean("ai_enabled").notNull().default(false),
   aiEnabledBy: uuid("ai_enabled_by"),
@@ -115,6 +118,9 @@ export const clients = pgTable("clients", {
   sourceData: jsonb("source_data"),
   /** avocatul / consultantul responsabil de client */
   responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+  /** clientul arhivat nu mai apare în liste și termene; doar un client arhivat poate fi șters */
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by").references(() => users.id, { onDelete: "set null" }),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -237,6 +243,26 @@ export const auditLog = pgTable("audit_log", {
   index("audit_org_created_idx").on(t.organizationId, t.createdAt),
 ]);
 
+/** Dovezi atașate unei obligații (procese-verbale, politici semnate, capturi): fișierul stă în stocare. */
+export const evidence = pgTable("evidence", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  obligationId: uuid("obligation_id").notNull().references(() => obligations.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  sha256: text("sha256").notNull(),
+  storageKey: text("storage_key").notNull(),
+  note: text("note"),
+  uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("evidence_org_idx").on(t.organizationId),
+  index("evidence_client_idx").on(t.clientId),
+  index("evidence_obligation_idx").on(t.obligationId),
+]);
+
 /**
  * Coada de joburi (Postgres, FOR UPDATE SKIP LOCKED): emailuri, memorii AI, reîncadrări, mementouri.
  * `dedupeKey` unic împiedică dublarea joburilor programate (ex. mementoul zilnic).
@@ -306,6 +332,11 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
   responsible: one(users, { fields: [clients.responsibleUserId], references: [users.id] }),
   aiSystems: many(aiSystems),
   obligations: many(obligations),
+}));
+
+export const evidenceRelations = relations(evidence, ({ one }) => ({
+  obligation: one(obligations, { fields: [evidence.obligationId], references: [obligations.id] }),
+  uploader: one(users, { fields: [evidence.uploadedBy], references: [users.id] }),
 }));
 
 export const aiSystemsRelations = relations(aiSystems, ({ one, many }) => ({

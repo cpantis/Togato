@@ -78,6 +78,20 @@
       "when": 1793693872703,
       "tag": "0010_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793694169264,
+      "tag": "0011_evidence_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793694170710,
+      "tag": "0012_evidence_rls",
+      "breakpoints": true
     }
   ]
 }

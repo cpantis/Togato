@@ -66,7 +66,7 @@ export const apiGet = <T = any>(path: string) => api<T>(path);
 export const apiPost = <T = any>(path: string, data?: unknown) => api<T>(path, { method: "POST", body: data === undefined ? undefined : JSON.stringify(data) });
 export const apiPut = <T = any>(path: string, data: unknown) => api<T>(path, { method: "PUT", body: JSON.stringify(data) });
 export const apiPatch = <T = any>(path: string, data: unknown) => api<T>(path, { method: "PATCH", body: JSON.stringify(data) });
-export const apiDelete = (path: string) => api<void>(path, { method: "DELETE" });
+export const apiDelete = <T = void>(path: string) => api<T>(path, { method: "DELETE" });
 
 /** Descarcă un fișier de la o rută autentificată și îl salvează cu numele trimis de server. */
 export async function apiDownload(path: string, fallbackName = "document.docx"): Promise<void> {

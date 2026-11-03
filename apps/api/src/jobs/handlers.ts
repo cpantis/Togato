@@ -1,5 +1,5 @@
 /** Tipurile de joburi și handlerele lor. */
-import { and, eq, inArray, isNotNull, lte, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import { RULESET_VERSION, classifyAiSystem, normalizeAnswers } from "@togato/shared";
 import { db } from "../db";
 import { aiSystems, auditLog, clients, obligations, organizations, users } from "../db/schema";
@@ -10,6 +10,7 @@ import { generateMemo, memoAvailable } from "../services/memo";
 import { reclassifyOutdated } from "../services/reclassify";
 import { PermanentJobError, enqueue, pruneFinished, type JobHandler } from "./queue";
 import { pruneExpiredSessions } from "../services/sessions";
+import { storage } from "../services/storage";
 import { pruneRateLimits } from "../middleware/rateLimit";
 
 // ─── email ───────────────────────────────────────────────
@@ -121,6 +122,7 @@ const remindersDaily: JobHandler = async (p: { date?: string }) => {
       lte(obligations.dueDate, horizon),
       inArray(obligations.status, ["de_facut", "in_lucru"]),
       ne(organizations.status, "suspendat"),
+      isNull(clients.archivedAt),
     ));
 
   // grupare pe destinatar: responsabilul clientului sau, în lipsă, administratorii
@@ -143,6 +145,11 @@ const remindersDaily: JobHandler = async (p: { date?: string }) => {
   log.info("rezumat termene", { date: today, recipients: byUser.size, obligations: rows.length });
 };
 
+// ─── ștergerea fișierelor din stocare (după ștergerea rândurilor) ──
+const storageDelete: JobHandler = async (p: { keys: string[] }) => {
+  if (p.keys?.length) await storage().delete(p.keys);
+};
+
 const maintenancePrune: JobHandler = async () => {
   await pruneFinished();
   await pruneExpiredSessions();
@@ -157,6 +164,7 @@ export const handlers: Record<string, JobHandler> = {
   "portal.notify": portalNotify,
   "reminders.daily": remindersDaily,
   "maintenance.prune": maintenancePrune,
+  "storage.delete": storageDelete,
 };
 
 /** programările zilnice — idempotente prin dedupeKey; apelate periodic de worker */

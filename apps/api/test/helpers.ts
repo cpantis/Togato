@@ -16,6 +16,15 @@ export async function call<T = any>(method: string, path: string, opts: { token?
   return { status: res.status, body: body as T, headers: res.headers };
 }
 
+/** încărcare multipart („file”, opțional „note”) */
+export async function upload(path: string, token: string, filename: string, content: Buffer, extra: Record<string, string> = {}) {
+  const form = new FormData();
+  form.append("file", new File([new Uint8Array(content)], filename));
+  for (const [k, v] of Object.entries(extra)) form.append(k, v);
+  const res = await app.request(path, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: form });
+  return { status: res.status, body: (await res.json()) as any };
+}
+
 let seq = 0;
 export const unique = (prefix: string) => `${prefix}${Date.now()}${++seq}`;
 
@@ -38,6 +47,8 @@ export async function seedCabinet(name: string) {
   const snapshotId = snaps.body.data[0].id as string;
   const inv = await call("POST", "/api/team/invitations", { token, body: { email: `${unique("coleg")}@x.ro` } });
   const portal = await call("POST", `/api/clients/${clientId}/portal`, { token });
+  const ev = await upload(`/api/obligations/${obligationId}/evidence`, token, "proces-verbal.pdf", Buffer.from("%PDF-1.4\n%dovadă de test\n"));
+  if (ev.status !== 201) throw new Error(`evidence: ${JSON.stringify(ev.body)}`);
   const [session] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId)).limit(1);
-  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id };
+  return { token, userId, email, clientId, systemId, obligationId, snapshotId, invitationId: inv.body.id as string, portalUrl: portal.body.url as string, sessionId: session.id, evidenceId: ev.body.id as string };
 }

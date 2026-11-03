@@ -12,6 +12,6 @@ export async function resolvePortalToken(token: string | undefined) {
   if (!link) return null;
   const client = await db.query.clients.findFirst({ where: and(eq(clients.id, link.clientId), eq(clients.organizationId, link.organizationId)) });
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, link.organizationId) });
-  if (!client || !org || org.status === "suspendat") return null;
+  if (!client || client.archivedAt || !org || org.status === "suspendat") return null;
   return { link, client, org };
 }

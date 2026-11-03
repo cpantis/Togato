@@ -20,6 +20,9 @@ export interface Organization {
   trialEndsAt: string | null;
   brandColor: string | null;
   logoUrl: string | null;
+  /** logo-ul afișat (încărcat sau extern) */
+  logoSrc?: string | null;
+  logoUploaded?: boolean;
   aiEnabled: boolean;
   aiEnabledAt?: string | null;
   require2fa: boolean;
@@ -116,6 +119,7 @@ export interface ClientDetail {
   contactEmail: string | null;
   notes: string | null;
   createdAt: string;
+  archivedAt: string | null;
   responsibleUserId: string | null;
   responsibleName: string | null;
   aiSystems: AiSystem[];

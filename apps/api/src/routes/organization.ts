@@ -6,12 +6,19 @@ import { organizations, users } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { logoSrc } from "../lib/logo";
+import { badRequest } from "../lib/http";
+import { storage } from "../services/storage";
+import { MIME, detectKind } from "../services/storage/files";
+import { enqueue } from "../jobs/queue";
+import crypto from "crypto";
 
 export const organizationRoutes = new Hono<AppEnv>();
 
 function serialize(o: typeof organizations.$inferSelect) {
   return {
     id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl,
+    logoSrc: logoSrc(o), logoUploaded: !!o.logoKey,
     aiEnabled: o.aiEnabled, aiEnabledAt: o.aiEnabledAt?.toISOString() ?? null, require2fa: o.require2fa,
   };
 }
@@ -46,5 +53,33 @@ organizationRoutes.put("/", requireAdmin, async (c) => {
       : {}),
   }).where(eq(organizations.id, auth.organizationId)).returning();
   await audit(auth, "update", "organization", auth.organizationId, body);
+  return c.json(serialize(org));
+});
+
+/** POST /logo (multipart „file”) — PNG, JPG sau WebP, maximum 1 MB. SVG nu (poate conține scripturi). */
+organizationRoutes.post("/logo", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const form = await c.req.parseBody();
+  const file = form.file;
+  if (!(file instanceof File)) badRequest("Alegeți o imagine.");
+  if (file.size > 1024 * 1024) badRequest("Imaginea depășește 1 MB.");
+  const buf = Buffer.from(await file.arrayBuffer());
+  const kind = detectKind(buf, file.name);
+  if (kind !== "png" && kind !== "jpeg" && kind !== "webp") badRequest("Logo-ul trebuie să fie PNG, JPG sau WebP.");
+  const current = (await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId) }))!;
+  const key = `${auth.organizationId}/logo/${crypto.randomUUID()}`;
+  await storage().put(key, buf, MIME[kind]);
+  const [org] = await db.update(organizations).set({ logoKey: key, logoContentType: MIME[kind] }).where(eq(organizations.id, auth.organizationId)).returning();
+  if (current.logoKey) await enqueue("storage.delete", { keys: [current.logoKey] }, { organizationId: auth.organizationId });
+  await audit(auth, "logo_upload", "organization", auth.organizationId, { size: buf.length });
+  return c.json(serialize(org));
+});
+
+organizationRoutes.delete("/logo", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const current = (await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId) }))!;
+  const [org] = await db.update(organizations).set({ logoKey: null, logoContentType: null }).where(eq(organizations.id, auth.organizationId)).returning();
+  if (current.logoKey) await enqueue("storage.delete", { keys: [current.logoKey] }, { organizationId: auth.organizationId });
+  await audit(auth, "logo_delete", "organization", auth.organizationId);
   return c.json(serialize(org));
 });
