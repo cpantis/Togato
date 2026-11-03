@@ -12,14 +12,15 @@ export async function audit(
   tx?: Tx,
 ) {
   try {
-    await (tx || db).insert(auditLog).values({
+    // savepoint: o eroare aici nu compromite tranzacția cererii
+    await (tx || db).transaction((t) => t.insert(auditLog).values({
       organizationId: auth.organizationId,
       userId: auth.userId,
       action,
       entity,
       entityId,
       details: details ?? null,
-    });
+    }));
   } catch (e) {
     // Jurnalul nu trebuie să blocheze operația principală
     log.warn("jurnalul de audit nu s-a scris", { action, entity, err: (e as Error).message });

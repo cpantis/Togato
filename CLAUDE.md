@@ -9,6 +9,7 @@ Togato e un SaaS pentru cabinete de avocatură / consultanță: conformitatea AI
 
 ## Reguli
 - **Multi-tenant**: orice citire/scriere filtrează pe `organizationId` din `c.get("auth")`, inclusiv în clauza WHERE a UPDATE/DELETE. Un id din alt cabinet → 404.
+- **Row-Level Security** (a doua linie de apărare): fiecare cerere autentificată rulează într-o tranzacție cu `SET LOCAL ROLE togato_app` și `app.org_id` = cabinetul (`withTenant` în `db/index.ts`, apelat din `authMiddleware`); `db` e un proxy către tranzacția cererii. Politicile `tenant_isolation` (migrația `0010_row_level_security.sql`) refuză rândurile altor cabinete; fără `app.org_id`, interogările eșuează. La eroare (inclusiv 4xx aruncate) modificările cererii se anulează. Workerul, migrațiile și rutele publice (autentificare, portal) folosesc conexiunea de serviciu (proprietarul tabelelor, fără RLS) și filtrează explicit. `withoutTenant()` doar pentru verificări la nivel de platformă (ex. unicitatea emailului). Un tabel nou cu `organization_id` are nevoie de politică într-o migrație (`npm run db:generate -- --custom`) — `test/rls.int.test.ts` pică altfel. Filtrul pe `organizationId` din cod rămâne obligatoriu.
 - Id-urile din URL trec prin `uuidParam()` (altfel Postgres dă 500).
 - Încadrarea e o **propunere**: orice modificare a răspunsurilor resetează `reviewStatus` la `propus`.
 - Obligațiile se sincronizează doar prin `services/obligationsSync.ts` (păstrează starea și notele celor care rămân aplicabile).

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, asc, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
-import { db } from "../db";
+import { db, withoutTenant } from "../db";
 import { clients, invitations, organizations, users } from "../db/schema";
 import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
@@ -58,7 +58,8 @@ const inviteSchema = z.object({
 teamRoutes.post("/invitations", requireAdmin, async (c) => {
   const auth = c.get("auth");
   const body = inviteSchema.parse(await c.req.json());
-  const existing = await db.query.users.findFirst({ where: eq(users.email, body.email) });
+  // emailul e unic pe toată platforma: verificarea trebuie să vadă și alte cabinete
+  const existing = await withoutTenant(() => db.query.users.findFirst({ where: eq(users.email, body.email) }));
   if (existing) {
     return c.json({ error: existing.organizationId === auth.organizationId ? "Această persoană e deja membră a cabinetului" : "Există deja un cont Togato cu acest email" }, 409);
   }

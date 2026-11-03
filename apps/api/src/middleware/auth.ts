@@ -4,7 +4,7 @@ import { verify, sign } from "hono/jwt";
 import { getCookie } from "hono/cookie";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
-import { db } from "../db";
+import { RollbackSignal, db, withTenant } from "../db";
 import { organizations, users } from "../db/schema";
 import type { AuthContext } from "../types/hono";
 import { CSRF_COOKIE, resolveSession, sessionTokenFrom } from "../services/sessions";
@@ -84,5 +84,15 @@ export const authMiddleware = async (c: Context, next: Next) => {
     name: user.name,
     sessionId: s.session.id,
   } satisfies AuthContext);
-  await next();
+
+  // restul cererii rulează sub Row-Level Security, într-o singură tranzacție:
+  // la eroare (inclusiv 4xx aruncate), modificările parțiale se anulează
+  try {
+    await withTenant(user.organizationId, async () => {
+      await next();
+      if (c.error) throw new RollbackSignal();
+    });
+  } catch (e) {
+    if (!(e instanceof RollbackSignal)) throw e;
+  }
 };
