@@ -21,6 +21,7 @@ import { accountRoutes } from "./routes/account";
 import { evidenceRoutes, MAX_EVIDENCE_BYTES } from "./routes/evidence";
 import { publicFileRoutes } from "./routes/publicFiles";
 import { billingRoutes, stripeWebhookRoutes } from "./routes/billing";
+import { emailWebhookRoutes } from "./routes/emailWebhook";
 import { platformRoutes } from "./routes/platform";
 import { directoryRoutes, selfAssessmentRecoveryRoutes, selfAssessmentRoutes } from "./routes/selfAssessment";
 import { referralRoutes } from "./routes/referrals";
@@ -94,6 +95,7 @@ app.on("POST", "/api/portal/*", rateLimit({ windowMs: 60_000, max: 10, key: "por
 app.route("/api/portal", portalRoutes);
 app.route("/api/public", publicFileRoutes);
 app.route("/api/stripe", stripeWebhookRoutes);
+app.route("/api/email", emailWebhookRoutes);
 
 // Autoevaluarea gratuită a firmelor și directorul cabinetelor (publice)
 app.use("/api/directory/*", rateLimit({ windowMs: 60_000, max: 60, key: "directory" }));

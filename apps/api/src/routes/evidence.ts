@@ -15,6 +15,7 @@ import { storage } from "../services/storage";
 import { MIME, contentDisposition, detectKind, safeFilename } from "../services/storage/files";
 import { enqueue } from "../jobs/queue";
 import { log } from "../lib/logger";
+import { assertClean } from "../services/antivirus";
 
 export const evidenceRoutes = new Hono<AppEnv>();
 
@@ -58,6 +59,7 @@ evidenceRoutes.post("/obligations/:id/evidence", async (c) => {
   const fileName = safeFilename(file.name);
   const kind = detectKind(buf, fileName);
   if (!kind) badRequest("Tip de fișier nepermis. Acceptăm PDF, imagini (PNG, JPG, WebP), Word, Excel, PowerPoint, ODT, TXT și CSV.");
+  await assertClean(buf, { organizationId: auth.organizationId, obligationId: obl.id });
   const note = typeof form.note === "string" ? form.note.trim().slice(0, 1000) || null : null;
 
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(evidence).where(and(eq(evidence.obligationId, obl.id), eq(evidence.organizationId, auth.organizationId)));

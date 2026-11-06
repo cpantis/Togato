@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Captcha } from "@/components/Captcha";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JUDETE, SELF_ASSESSMENT_DISCLAIMER } from "@togato/shared";
@@ -17,6 +18,8 @@ export default function SelfAssessmentStart() {
   const router = useRouter();
   const [form, setForm] = useState({ companyName: "", cui: "", county: "", contactName: "", contactEmail: "", website: "" });
   const [terms, setTerms] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -25,10 +28,11 @@ export default function SelfAssessmentStart() {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      const res = await api<{ token: string }>("/api/self-assessments", { method: "POST", body: JSON.stringify({ ...form, cui: form.cui || null, county: form.county || null, website: form.website || undefined, terms }) });
+      const res = await api<{ token: string }>("/api/self-assessments", { method: "POST", body: JSON.stringify({ ...form, cui: form.cui || null, county: form.county || null, website: form.website || undefined, terms, captchaToken: captcha ?? undefined }) });
       router.push(`/autoevaluare/${res.token}`);
     } catch (err) {
       setError((err as Error).message);
+      setCaptcha(null); setCaptchaKey((k) => k + 1);
       setBusy(false);
     }
   }
@@ -72,6 +76,7 @@ export default function SelfAssessmentStart() {
               <input type="checkbox" className="mt-0.5 h-4 w-4 accent-brand" checked={terms} onChange={(e) => setTerms(e.target.checked)} required />
               <span>Am înțeles că rezultatul este orientativ și nu constituie consultanță juridică. Datele introduse se păstrează pentru autoevaluare și se transmit unui cabinet numai dacă aleg eu acest lucru; le pot șterge oricând.</span>
             </label>
+            <Captcha key={captchaKey} onToken={setCaptcha} />
             <Button type="submit" className="w-full" loading={busy}>Continuă</Button>
           </form>
           <p className="mt-4 text-center text-[12px] text-slate-500">Ați început deja o autoevaluare? <Link href="/autoevaluare/recuperare" className="font-semibold text-brand hover:underline">Primiți din nou linkul</Link></p>

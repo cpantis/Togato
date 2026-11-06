@@ -218,3 +218,9 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/platform/organizations/:id/plan` | sesiune |
 | `GET` | `/api/platform/organizations/:id/support` | sesiune |
 | `GET` | `/api/platform/audit` | sesiune |
+
+## Altele
+
+| Metodă | Rută | Acces |
+|---|---|---|
+| `POST` | `/api/email/webhook` | sesiune |

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LEGAL_VERSION } from "@togato/shared";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Alert, Button, Field, inputClass } from "@/components/ui";
+import { Captcha } from "@/components/Captcha";
 
 export default function SignupPage() {
   const { signup } = useAuth();
@@ -14,6 +15,8 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [accept, setAccept] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function submit(e: React.FormEvent) {
@@ -21,10 +24,11 @@ export default function SignupPage() {
     setBusy(true);
     setError(null);
     try {
-      await signup({ ...form, acceptTerms: accept, legalVersion: LEGAL_VERSION });
+      await signup({ ...form, acceptTerms: accept, legalVersion: LEGAL_VERSION, captchaToken: captcha ?? undefined });
       router.replace("/dashboard");
     } catch (err) {
       setError((err as Error).message);
+      setCaptcha(null); setCaptchaKey((k) => k + 1); // tokenul se folosește o singură dată
     } finally {
       setBusy(false);
     }
@@ -50,6 +54,7 @@ export default function SignupPage() {
           <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-brand" required checked={accept} onChange={(e) => setAccept(e.target.checked)} />
           <span>Accept, în numele cabinetului, <Link href="/termeni" target="_blank" className="font-semibold text-brand hover:underline">Termenii și condițiile</Link>, <Link href="/dpa" target="_blank" className="font-semibold text-brand hover:underline">Acordul de prelucrare a datelor</Link> și am citit <Link href="/confidentialitate" target="_blank" className="font-semibold text-brand hover:underline">Politica de confidențialitate</Link>.</span>
         </label>
+        <Captcha key={captchaKey} onToken={setCaptcha} />
         <Button type="submit" className="w-full" loading={busy}>Creează contul</Button>
       </form>
     </AuthLayout>

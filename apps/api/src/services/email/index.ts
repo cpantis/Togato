@@ -3,7 +3,10 @@
  * ultimele mesaje în memorie) sau `resend` (API HTTP). Emailurile se trimit doar din joburi
  * (`email.send`), ca o cădere a furnizorului să nu blocheze cererea și să fie reîncercată.
  */
+import { eq } from "drizzle-orm";
 import { config } from "../../config";
+import { rootDb } from "../../db";
+import { emailSuppressions } from "../../db/schema";
 import { log } from "../../lib/logger";
 import { enqueue, PermanentJobError, type EnqueueOptions } from "../../jobs/queue";
 import type { EmailMessage } from "./templates";
@@ -18,6 +21,12 @@ export function _clearOutbox() { outbox.length = 0; }
 
 export async function deliver(msg: EmailMessage): Promise<void> {
   const cfg = config();
+  // adresele care au respins definitiv mesajele sau le-au marcat ca spam: nu mai trimitem (reputația domeniului)
+  const [suppressed] = await rootDb.select({ reason: emailSuppressions.reason }).from(emailSuppressions).where(eq(emailSuppressions.email, msg.to.trim().toLowerCase())).limit(1);
+  if (suppressed) {
+    log.info("email nelivrat: adresă blocată", { to: msg.to, reason: suppressed.reason, subject: msg.subject });
+    return;
+  }
   if (cfg.EMAIL_PROVIDER === "log") {
     outbox.push(msg);
     if (outbox.length > 200) outbox.shift();

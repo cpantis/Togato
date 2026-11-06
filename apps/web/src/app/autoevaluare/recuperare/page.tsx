@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Captcha } from "@/components/Captcha";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { PublicShell } from "@/components/PublicShell";
@@ -10,15 +11,18 @@ export default function SelfAssessmentRecovery() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      const r = await api<{ message: string }>("/api/self-assessment-recovery", { method: "POST", body: JSON.stringify({ email }) });
+      const r = await api<{ message: string }>("/api/self-assessment-recovery", { method: "POST", body: JSON.stringify({ email, captchaToken: captcha ?? undefined }) });
       setDone(r.message);
     } catch (err) {
       setError((err as Error).message);
+      setCaptcha(null); setCaptchaKey((k) => k + 1);
     } finally {
       setBusy(false);
     }
@@ -35,6 +39,7 @@ export default function SelfAssessmentRecovery() {
           <form onSubmit={submit} className="mt-4 space-y-3">
             {error && <Alert>{error}</Alert>}
             <Field label="Email"><input className={inputClass} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+            <Captcha key={captchaKey} onToken={setCaptcha} />
             <Button type="submit" className="w-full" loading={busy}>Trimite linkurile</Button>
           </form>
         )}

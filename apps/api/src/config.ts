@@ -49,6 +49,15 @@ const schema = z.object({
   /** contul de cabinet e folosibil doar după confirmarea emailului (implicit: doar în producție) */
   REQUIRE_EMAIL_VERIFICATION: z.enum(["on", "off", "true", "false", "1", "0"]).optional(),
   /** administratorii trebuie să aibă 2FA activ (implicit: doar în producție) */
+  /** antivirus pentru fișierele încărcate (clamd, protocolul INSTREAM); lipsă = fără scanare */
+  CLAMAV_HOST: z.string().optional(),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  /** clamd indisponibil: refuză încărcarea (implicit) sau o acceptă nescanată */
+  CLAMAV_FAIL_OPEN: bool.default("off"),
+  /** Cloudflare Turnstile pe formularele publice (înregistrare, autoevaluare, recuperare); lipsă = fără captcha */
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+  /** semnătura webhook-ului Resend (whsec_…): adresele care resping emailurile sau le marchează ca spam */
+  RESEND_WEBHOOK_SECRET: z.string().optional(),
   REQUIRE_ADMIN_2FA: z.enum(["on", "off", "true", "false", "1", "0"]).optional(),
 }).superRefine((c, ctx) => {
   if (c.NODE_ENV === "production") {

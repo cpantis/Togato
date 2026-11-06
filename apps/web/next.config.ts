@@ -11,7 +11,9 @@ const nextConfig: NextConfig = {
     // 'unsafe-inline' pentru scripturi: Next.js injectează scripturi inline la hidratare (fără nonce în paginile statice)
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      // challenges.cloudflare.com: captcha Turnstile (doar pe formularele publice, dacă e configurată)
+      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      "frame-src https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       // logo-ul cabinetului poate fi un URL extern (https); codul QR pentru 2FA e data:

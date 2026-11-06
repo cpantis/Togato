@@ -17,6 +17,8 @@ import { logoSrc } from "../lib/logo";
 import { sendEmail, templates } from "../services/email";
 import { stateOf } from "../services/billing";
 import { cleanCui } from "../services/companyLookup";
+import { clientIp } from "../lib/clientIp";
+import { assertCaptcha } from "../services/captcha";
 
 export const selfAssessmentRoutes = new Hono();
 export const directoryRoutes = new Hono();
@@ -77,7 +79,9 @@ selfAssessmentRoutes.post("/", async (c) => {
     terms: z.literal(true, { message: "Confirmați că ați citit informarea" }),
     // câmp-capcană pentru roboți (ascuns în formular)
     website: z.string().max(0).optional(),
+    captchaToken: z.string().max(4000).optional(),
   }).parse(await c.req.json());
+  await assertCaptcha(body.captchaToken, clientIp(c), "self-assessment");
   const { token, hash } = newToken();
   const verify = newToken();
   const url = `${frontendBaseUrl()}/autoevaluare/${token}`;
@@ -252,7 +256,8 @@ directoryRoutes.get("/counties", async (c) => {
  */
 export const selfAssessmentRecoveryRoutes = new Hono();
 selfAssessmentRecoveryRoutes.post("/", async (c) => {
-  const { email } = z.object({ email: z.string().trim().toLowerCase().email("Email invalid").max(200) }).parse(await c.req.json());
+  const { email, captchaToken } = z.object({ email: z.string().trim().toLowerCase().email("Email invalid").max(200), captchaToken: z.string().max(4000).optional() }).parse(await c.req.json());
+  await assertCaptcha(captchaToken, clientIp(c), "self-recovery");
   const rows = await db.select().from(selfAssessments).where(eq(selfAssessments.contactEmail, email)).orderBy(desc(selfAssessments.updatedAt)).limit(20);
   if (rows.length) {
     await db.transaction(async (tx) => {

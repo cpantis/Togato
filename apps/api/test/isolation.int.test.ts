@@ -11,7 +11,7 @@ type Seed = Awaited<ReturnType<typeof seedCabinet>>;
 let A: Seed;
 let B: Seed;
 
-const PUBLIC = [/^\/health(\/ready)?$/, /^\/api\/auth\//, /^\/api\/portal\//, /^\/api\/public\//, /^\/api\/stripe\//, /^\/api\/self-assessment/, /^\/api\/directory/];
+const PUBLIC = [/^\/health(\/ready)?$/, /^\/api\/auth\//, /^\/api\/portal\//, /^\/api\/public\//, /^\/api\/stripe\//, /^\/api\/email\//, /^\/api\/self-assessment/, /^\/api\/directory/];
 
 /** Corpuri valide, ca refuzul să vină din verificarea cabinetului, nu din validare. */
 function bodyFor(method: string, path: string, b: Seed): unknown {

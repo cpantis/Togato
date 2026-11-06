@@ -15,3 +15,8 @@ export function uuidParam(value: string | undefined): string {
   if (!value || !UUID_RE.test(value)) notFound();
   return value;
 }
+
+/** eroare cu cod și mesaj pentru utilizator (ex. 422 fișier respins, 503 serviciu indisponibil) */
+export function httpError(status: 400 | 403 | 422 | 503, message: string, code: string): never {
+  throw new HTTPException(status, { res: Response.json({ error: message, code }, { status }) });
+}

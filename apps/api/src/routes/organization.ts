@@ -17,6 +17,7 @@ import { legalAcceptances } from "../db/schema";
 import { clientIp } from "../lib/clientIp";
 import { CLOSURE_GRACE_DAYS, RETENTION_YEARS } from "../services/closure";
 import { buildOrganizationZip } from "../services/dossierExport";
+import { assertClean } from "../services/antivirus";
 import { sendEmail, templates } from "../services/email";
 import { frontendBaseUrl } from "../config";
 import { and } from "drizzle-orm";
@@ -78,6 +79,7 @@ organizationRoutes.post("/logo", requireAdmin, async (c) => {
   const buf = Buffer.from(await file.arrayBuffer());
   const kind = detectKind(buf, file.name);
   if (kind !== "png" && kind !== "jpeg" && kind !== "webp") badRequest("Logo-ul trebuie să fie PNG, JPG sau WebP.");
+  await assertClean(buf, { organizationId: auth.organizationId, logo: true });
   const current = (await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId) }))!;
   const key = `${auth.organizationId}/logo/${crypto.randomUUID()}`;
   await storage().put(key, buf, MIME[kind]);

@@ -13,6 +13,7 @@ import { clearSessionCookies, createSession, revokeSession, revokeUserSessions }
 import { sendEmail, templates } from "../services/email";
 import { frontendBaseUrl } from "../config";
 import { clientIp } from "../lib/clientIp";
+import { assertCaptcha } from "../services/captcha";
 import { log } from "../lib/logger";
 import { logoSrc } from "../lib/logo";
 import { stateOf } from "../services/billing";
@@ -91,6 +92,7 @@ export async function issueEmailVerification(user: { id: string; email: string; 
 
 authRoutes.post("/signup", async (c) => {
   const body = signupSchema.parse(await c.req.json());
+  await assertCaptcha(body.captchaToken, clientIp(c), "signup");
   const existing = await db.query.users.findFirst({ where: eq(users.email, body.email) });
   if (existing) return c.json({ error: "Există deja un cont cu acest email" }, 409);
 

@@ -24,6 +24,9 @@ Togato rulează ca trei servicii din același repository, plus Postgres:
 | `FRONTEND_URL` | `https://app.togato.ro` (domeniul serviciului web) |
 | `TRUST_PROXY_HOPS` | `2` (marginea Railway + Next.js) |
 | `EMAIL_PROVIDER` / `RESEND_API_KEY` / `EMAIL_FROM` | `resend`, cheia Resend, `Togato <noreply@togato.ro>` (domeniu verificat: SPF, DKIM, DMARC) |
+| `RESEND_WEBHOOK_SECRET` | semnătura webhook-ului Resend (`whsec_…`); în Resend: webhook către `https://<api>/api/email/webhook` cu evenimentele `email.bounced` și `email.complained` — adresele respinse definitiv / marcate spam nu mai primesc emailuri |
+| `CLAMAV_HOST` / `CLAMAV_PORT` | antivirus pentru dovezi și logo: un serviciu Railway din imaginea `clamav/clamav` (port 3310, rețeaua privată). Fără el nu se scanează; cu el indisponibil, încărcările primesc 503 (`CLAMAV_FAIL_OPEN=on` le acceptă nescanate) |
+| `TURNSTILE_SECRET_KEY` (API) / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (web, la build) | captcha Cloudflare Turnstile pe înregistrare, autoevaluare și recuperarea linkurilor |
 | `STORAGE_DRIVER` + `S3_*` | `s3`; pentru Cloudflare R2: `S3_ENDPOINT=https://<cont>.r2.cloudflarestorage.com`, `S3_REGION=auto`, bucket privat |
 | `ANTHROPIC_API_KEY` | opțional (memoriul AI; fiecare cabinet îl activează separat) |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_START`, `STRIPE_PRICE_CABINET` | opțional (plata online); webhook Stripe → `https://api.../api/stripe/webhook`, evenimentele `checkout.session.completed`, `customer.subscription.*` |

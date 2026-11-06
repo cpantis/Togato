@@ -618,3 +618,14 @@ export const clientAccess = pgTable("client_access", {
   uniqueIndex("client_access_unique").on(t.clientId, t.userId),
   index("client_access_user_idx").on(t.userId),
 ]);
+
+/**
+ * Adresele la care nu mai trimitem emailuri: respingeri permanente și reclamații de spam (webhook Resend).
+ * Folosit doar pe conexiunea de serviciu (worker); inaccesibil rolului togato_app.
+ */
+export const emailSuppressions = pgTable("email_suppressions", {
+  email: text("email").primaryKey(),
+  reason: text("reason").notNull(),
+  detail: text("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
