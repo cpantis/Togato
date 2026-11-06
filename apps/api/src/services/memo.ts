@@ -14,7 +14,8 @@ import {
 } from "@togato/shared";
 import { loadLaw, resolveRef, type LawData } from "./law";
 
-const MODEL = "claude-opus-5-5";
+export const MEMO_MODEL = "claude-opus-5-5";
+const MODEL = MEMO_MODEL;
 /** limite ca cererea să rămână rezonabilă ca dimensiune și cost */
 const MAX_PASSAGE_CHARS = 6000;
 const MAX_TOTAL_CHARS = 60000;

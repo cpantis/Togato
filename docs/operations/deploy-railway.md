@@ -51,6 +51,9 @@ Togato rulează ca trei servicii din același repository, plus Postgres:
 
 ## Verificări după prima publicare
 
+Mai întâi `npm run check:integrations -w @togato/api -- --email-to=<adresa voastră>` cu variabilele mediului (vezi și `launch-checklist.md`).
+
+
 1. `GET https://api.../health/ready` → `{"status":"ok","db":"ok"}`.
 2. Creați un cont, activați 2FA, încărcați o dovadă (stocarea), invitați un coleg (emailul).
 3. Stripe: o plată de test → starea „Abonament activ” apare în Setări în câteva secunde (webhook).

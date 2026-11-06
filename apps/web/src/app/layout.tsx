@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { connection } from "next/server";
 import { AuthProvider } from "@/hooks/useAuth";
 
 export const metadata: Metadata = {
@@ -7,7 +8,9 @@ export const metadata: Metadata = {
   description: "Conformitate AI Act pentru cabinetele de avocatură și consultanță",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // randare per cerere: nonce-ul CSP se aplică scripturilor doar în paginile dinamice
+  await connection();
   return (
     <html lang="ro">
       <head>
