@@ -246,6 +246,13 @@
       "when": 1793957007612,
       "tag": "0034_ops_events_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793957500520,
+      "tag": "0035_demo_client",
+      "breakpoints": true
     }
   ]
 }

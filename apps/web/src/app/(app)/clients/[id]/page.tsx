@@ -128,6 +128,7 @@ export default function ClientPage() {
         </>}
       />
       {client.archivedAt && <div className="mb-4"><Alert kind="warning">Client arhivat la {formatDate(client.archivedAt)}. Nu apare în liste și termene, iar portalul e dezactivat. Datele, avizele și dovezile se păstrează.</Alert></div>}
+      {client.isDemo && <div className="mb-4"><Alert kind="info">Client demonstrativ cu date fictive, ca să vedeți cum funcționează încadrarea, obligațiile și documentele. Nu intră în limita planului; îl puteți arhiva și șterge oricând.</Alert></div>}
       {client.restricted && <div className="mb-4"><Alert kind="info">Client cu acces restricționat: îl văd doar administratorii, avocatul responsabil și colegii cu acces explicit.</Alert></div>}
       {actionError && <div className="mb-4"><Alert>{actionError}</Alert></div>}
 

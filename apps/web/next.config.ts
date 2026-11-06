@@ -9,16 +9,18 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     // 'unsafe-inline' pentru scripturi: Next.js injectează scripturi inline la hidratare (fără nonce în paginile statice)
+    // analitica Plausible (doar paginile de prezentare), dacă e configurată la build
+    const plausible = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ? new URL(process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || "https://plausible.io/js/script.js").origin : "";
     const csp = [
       "default-src 'self'",
       // challenges.cloudflare.com: captcha Turnstile (doar pe formularele publice, dacă e configurată)
-      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com" + (plausible ? ` ${plausible}` : "") + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
       "frame-src https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       // logo-ul cabinetului poate fi un URL extern (https); codul QR pentru 2FA e data:
       "img-src 'self' data: blob: https:",
-      "connect-src 'self'",
+      "connect-src 'self'" + (plausible ? ` ${plausible}` : ""),
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

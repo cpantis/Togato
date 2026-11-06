@@ -111,6 +111,7 @@ export interface ClientSummary {
   employees: number | null;
   createdAt: string;
   archivedAt: string | null;
+  isDemo: boolean;
   responsibleUserId: string | null;
   responsibleName: string | null;
   systemsCount: number;
@@ -210,6 +211,8 @@ export interface ClientDetail {
   aiExcluded: boolean;
   /** acces restricționat (doar administratorii, responsabilul și membrii cu acces explicit) */
   restricted: boolean;
+  /** client demonstrativ (date fictive) */
+  isDemo: boolean;
   responsibleUserId: string | null;
   responsibleName: string | null;
   aiSystems: AiSystem[];

@@ -79,7 +79,7 @@ function ClientsInner() {
                 <li key={c.id}>
                   <Link href={`/clients/${c.id}`} className="grid gap-2 px-5 py-3.5 hover:bg-slate-50 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_120px_160px] md:items-center md:gap-4">
                     <div className="min-w-0">
-                      <div className="truncate text-[14px] font-semibold text-ink">{c.name}</div>
+                      <div className="truncate text-[14px] font-semibold text-ink">{c.name}{c.isDemo && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 align-middle text-[11px] font-medium text-slate-600">demonstrativ</span>}</div>
                       <div className="truncate text-[12px] text-slate-400">{[c.cui && `CUI ${c.cui}`, c.city, c.responsibleName && `responsabil ${c.responsibleName}`].filter(Boolean).join(" · ") || "—"}</div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">

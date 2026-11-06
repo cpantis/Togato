@@ -24,6 +24,10 @@ test("accesibilitate (WCAG 2.1 AA): paginile principale", async ({ page }) => {
   problems.push(...(await audit(page, "forgot")));
   await page.goto("/termeni");
   problems.push(...(await audit(page, "termeni")));
+  for (const path of ["/", "/preturi", "/ajutor"]) {
+    await page.goto(path);
+    problems.push(...(await audit(page, path)));
+  }
 
   await signup(page, "Cabinet Accesibil");
   problems.push(...(await audit(page, "dashboard")));

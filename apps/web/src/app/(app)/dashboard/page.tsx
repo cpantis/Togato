@@ -4,7 +4,8 @@ import { GdprDashboardCard } from "@/components/gdpr/GdprDashboardCard";
 import Link from "next/link";
 import type { DashboardData, RiskLevel } from "@togato/shared";
 import { RISK_LABELS } from "@togato/shared";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
+import { useRouter } from "next/navigation";
 import { daysUntil, formatDate } from "@/lib/format";
 import { Alert, Button, Card, EmptyState, LoadingBlock, PageHeader, RiskBadge } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +27,13 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const router = useRouter();
+  async function loadDemo() {
+    setDemoBusy(true);
+    try { const r = await apiPost<{ id: string }>("/api/clients/demo"); router.push(`/clients/${r.id}`); }
+    catch (e) { setError((e as Error).message); setDemoBusy(false); }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -45,7 +53,10 @@ export default function DashboardPage() {
 
       {data.clients === 0 ? (
         <Card>
-          <EmptyState title="Începe cu primul client" text="Adaugă o firmă-client după CUI, apoi inventariază sistemele AI pe care le folosește. Togato propune încadrarea și obligațiile." action={<Link href="/clients?nou=1"><Button>Adaugă primul client</Button></Link>} />
+          <EmptyState title="Începe cu primul client" text="Adaugă o firmă-client după CUI, apoi inventariază sistemele AI pe care le folosește. Togato propune încadrarea și obligațiile." action={<div className="flex flex-wrap justify-center gap-2">
+            <Link href="/clients?nou=1"><Button>Adaugă primul client</Button></Link>
+            {user?.role !== "colaborator" && <Button variant="secondary" loading={demoBusy} onClick={loadDemo}>Explorează un client demonstrativ</Button>}
+          </div>} />
         </Card>
       ) : (
         <>

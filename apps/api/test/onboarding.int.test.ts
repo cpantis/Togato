@@ -118,3 +118,20 @@ describe("perioada de probă și 2FA pentru administratori", () => {
     }
   });
 });
+
+describe("clientul demonstrativ", () => {
+  it("trei sisteme încadrate automat, o singură dată, în afara limitelor planului", async () => {
+    const A = await seedCabinet("Demo Cabinet");
+    const r = await call("POST", "/api/clients/demo", { token: A.token });
+    expect(r.status).toBe(201);
+    const again = await call("POST", "/api/clients/demo", { token: A.token });
+    expect(again.status).toBe(200);
+    expect(again.body.id).toBe(r.body.id);
+    const c = await call("GET", `/api/clients/${r.body.id}`, { token: A.token });
+    expect(c.body.isDemo).toBe(true);
+    expect(c.body.aiSystems.map((s: { riskLevel: string }) => s.riskLevel).sort()).toEqual(["minim", "risc_ridicat", "transparenta"]);
+    expect(c.body.aiSystems.every((s: { reviewStatus: string }) => s.reviewStatus === "propus")).toBe(true);
+    const billing = await call("GET", "/api/billing", { token: A.token });
+    expect(billing.body.usage.activeClients).toBe(1);
+  });
+});

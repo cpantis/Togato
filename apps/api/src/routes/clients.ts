@@ -14,6 +14,7 @@ import { audit } from "../lib/audit";
 import { badRequest, notFound, uuidParam } from "../lib/http";
 import { cleanCui, isValidCui, lookupCompany } from "../services/companyLookup";
 import { serializeObligation, serializeSystem } from "./serializers";
+import { createDemoClient } from "../services/demo";
 
 export const clientRoutes = new Hono<AppEnv>();
 
@@ -97,7 +98,7 @@ clientRoutes.get("/", async (c) => {
     const o = obl.find((x) => x.clientId === r.id);
     return {
       id: r.id, cui: r.cui, name: r.name, city: r.city, county: r.county, caen: r.caen, caenDescription: r.caenDescription,
-      employees: r.employees, createdAt: r.createdAt.toISOString(), archivedAt: r.archivedAt?.toISOString() ?? null,
+      employees: r.employees, createdAt: r.createdAt.toISOString(), archivedAt: r.archivedAt?.toISOString() ?? null, isDemo: r.isDemo,
       responsibleUserId: r.responsibleUserId, responsibleName: r.responsibleName,
       systemsCount: rr.reduce((s, x) => s + x.n, 0),
       riskCounts: Object.fromEntries(rr.map((x) => [x.riskLevel, x.n])),
@@ -107,6 +108,14 @@ clientRoutes.get("/", async (c) => {
     };
   });
   return c.json({ data, total, limit, offset });
+});
+
+/** POST /demo — clientul demonstrativ (date fictive), o singură dată per cabinet */
+clientRoutes.post("/demo", async (c) => {
+  const auth = c.get("auth");
+  const r = await createDemoClient(auth.organizationId, auth.userId);
+  if (r.created) await audit(auth, "create_demo", "client", r.id);
+  return c.json({ id: r.id, created: r.created }, r.created ? 201 : 200);
 });
 
 clientRoutes.post("/", async (c) => {
@@ -162,6 +171,7 @@ clientRoutes.get("/:id", async (c) => {
     archivedAt: row.archivedAt?.toISOString() ?? null,
     aiExcluded: row.aiExcluded,
     restricted: row.restricted,
+    isDemo: row.isDemo,
     responsibleUserId: row.responsibleUserId,
     responsibleName: row.responsibleUserId ? (await db.query.users.findFirst({ where: eq(users.id, row.responsibleUserId), columns: { name: true } }))?.name ?? null : null,
     aiSystems: systems.map((s) => {
@@ -213,7 +223,7 @@ clientRoutes.post("/:id/archive", async (c) => {
 clientRoutes.post("/:id/unarchive", async (c) => {
   const auth = c.get("auth");
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
-  if (row.archivedAt) await assertCanAdd(auth.organizationId, "client");
+  if (row.archivedAt && !row.isDemo) await assertCanAdd(auth.organizationId, "client");
   await db.update(clients).set({ archivedAt: null, archivedBy: null, retentionWarnedAt: null, updatedAt: new Date() })
     .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
   await audit(auth, "unarchive", "client", row.id, { name: row.name });

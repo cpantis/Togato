@@ -3,7 +3,7 @@
  * date, trimitem tokenul CSRF din cookie-ul `togato_csrf` în antetul X-CSRF-Token.
  */
 const LEGACY_TOKEN_KEY = "togato-token";
-const PUBLIC_PATHS = /^\/(login|signup|invite|portal|reset|forgot|autoevaluare|confirmare-email|termeni|confidentialitate|dpa|subimputerniciti)(\/|$)/;
+const PUBLIC_PATHS = /^\/($|(login|signup|invite|portal|reset|forgot|autoevaluare|confirmare-email|termeni|confidentialitate|dpa|subimputerniciti|preturi|ajutor)(\/|$))/;
 
 function csrfToken(): string | null {
   if (typeof document === "undefined") return null;

@@ -156,6 +156,8 @@ export const clients = pgTable("clients", {
   responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
   /** acces restricționat: doar administratorii, responsabilul și membrii din `client_access` văd clientul */
   restricted: boolean("restricted").notNull().default(false),
+  /** clientul demonstrativ (date fictive, pentru explorarea aplicației); nu intră în limitele planului */
+  isDemo: boolean("is_demo").notNull().default(false),
   /** clientul e exclus de la analiza AI, chiar dacă cabinetul a activat-o (ex. acord cu clientul) */
   aiExcluded: boolean("ai_excluded").notNull().default(false),
   /** administratorii au fost anunțați că dosarul arhivat urmează să fie șters (politica de păstrare) */

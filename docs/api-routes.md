@@ -158,6 +158,7 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `DELETE` | `/api/clients/:id/portal` | sesiune |
 | `POST` | `/api/clients/lookup` | sesiune |
 | `GET` | `/api/clients` | sesiune |
+| `POST` | `/api/clients/demo` | sesiune |
 | `POST` | `/api/clients` | sesiune |
 | `GET` | `/api/clients/:id` | sesiune |
 | `PUT` | `/api/clients/:id` | sesiune |

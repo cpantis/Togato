@@ -6,7 +6,7 @@ import { jobs, opsEvents, users } from "../src/db/schema";
 import { _resetConfig } from "../src/config";
 import { drain } from "../src/jobs/queue";
 import { handlers } from "../src/jobs/handlers";
-import { findProblems, systemStatus } from "../src/services/monitoring";
+import { findProblems, systemStatus, type SystemStatus } from "../src/services/monitoring";
 import { _clearOutbox, sentEmails } from "../src/services/email";
 import { call, seedCabinet } from "./helpers";
 
@@ -20,7 +20,7 @@ beforeAll(async () => {
 });
 afterAll(() => { delete process.env.PLATFORM_ADMIN_EMAILS; delete process.env.MONITOR_BACKUPS; _resetConfig(); });
 
-const base = () => ({
+const base = (): Omit<SystemStatus, "problems"> => ({
   checkedAt: new Date().toISOString(),
   queue: { pending: 0, running: 0, overdue: 0, oldestOverdueMinutes: null, failedLastHour: 0, failedLast24h: 0, failedByType: {} },
   daily: {}, backup: { lastOkAt: new Date().toISOString(), lastFailedAt: null, ageHours: 1, expected: true }, emailSuppressions: 0,
@@ -30,8 +30,8 @@ describe("regulile de alertare", () => {
   it("totul în regulă → nicio problemă", () => expect(findProblems(base())).toEqual([]));
   it("coadă întârziată, joburi eșuate, job zilnic oprit, backup vechi sau eșuat", () => {
     const s = base();
-    s.queue = { ...s.queue, overdue: 25, oldestOverdueMinutes: 40, failedLastHour: 2, failedByType: { "email.send": 2 } } as typeof s.queue;
-    (s.daily as Record<string, string>)["reminders.daily"] = new Date(Date.now() - 30 * 3600_000).toISOString();
+    s.queue = { ...s.queue, overdue: 25, oldestOverdueMinutes: 40, failedLastHour: 2, failedByType: { "email.send": 2 } };
+    s.daily["reminders.daily"] = new Date(Date.now() - 30 * 3600_000).toISOString();
     s.backup = { ...s.backup, ageHours: 30, lastFailedAt: new Date().toISOString(), lastOkAt: new Date(Date.now() - 30 * 3600_000).toISOString() };
     const p = findProblems(s);
     expect(p).toHaveLength(5);
@@ -57,7 +57,7 @@ describe("starea sistemului și alerta", () => {
     expect((await call("GET", "/api/platform/status", { token: other.token })).status).toBe(404);
 
     _clearOutbox();
-    await handlers["monitoring.check"]({ hour: "test-1" });
+    await handlers["monitoring.check"]({ hour: "test-1" }, { id: "test", attempts: 1, type: "monitoring.check" });
     await rootDb.execute(sql`update jobs set run_at = now() where status = 'pending'`);
     await drain(handlers);
     expect(sentEmails().filter((m) => m.to === OP.email && m.subject.startsWith("Togato:"))).toHaveLength(1);

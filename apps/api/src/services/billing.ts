@@ -42,7 +42,7 @@ export function stateOf(org: Org, now = new Date()): BillingState {
 
 export async function usage(organizationId: string) {
   const [{ n: activeClients }] = await db.select({ n: sql<number>`count(*)::int` }).from(clients)
-    .where(and(eq(clients.organizationId, organizationId), isNull(clients.archivedAt)));
+    .where(and(eq(clients.organizationId, organizationId), isNull(clients.archivedAt), eq(clients.isDemo, false)));
   const [{ n: activeUsers }] = await db.select({ n: sql<number>`count(*)::int` }).from(users)
     .where(and(eq(users.organizationId, organizationId), eq(users.status, "activ")));
   const [{ n: pendingInvites }] = await db.select({ n: sql<number>`count(*)::int` }).from(invitations)

@@ -42,7 +42,7 @@ export const me = z.object({ user: authUser, organization: organization.nullable
 export const clientSummary = z.object({
   id: uuid, cui: z.string().nullable(), name: z.string(), city: z.string().nullable(), county: z.string().nullable(),
   caen: z.string().nullable(), caenDescription: z.string().nullable(), employees: z.number().int().nullable(), createdAt: iso,
-  archivedAt: iso.nullable(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(), systemsCount: z.number().int(),
+  archivedAt: iso.nullable(), isDemo: z.boolean(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(), systemsCount: z.number().int(),
   riskCounts, pendingReview: z.number().int(), obligationsTotal: z.number().int(), obligationsDone: z.number().int(),
 }).strict();
 same<z.infer<typeof clientSummary>, ClientSummary>(true);
@@ -85,7 +85,7 @@ export const clientDetail = z.object({
   id: uuid, cui: z.string().nullable(), name: z.string(), regCom: z.string().nullable(), address: z.string().nullable(), city: z.string().nullable(),
   county: z.string().nullable(), caen: z.string().nullable(), caenDescription: z.string().nullable(), employees: z.number().int().nullable(),
   turnover: z.number().nullable(), vatPayer: z.boolean().nullable(), contactName: z.string().nullable(), contactEmail: z.string().nullable(),
-  notes: z.string().nullable(), createdAt: iso, archivedAt: iso.nullable(), aiExcluded: z.boolean(), restricted: z.boolean(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(),
+  notes: z.string().nullable(), createdAt: iso, archivedAt: iso.nullable(), aiExcluded: z.boolean(), restricted: z.boolean(), isDemo: z.boolean(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(),
   aiSystems: z.array(aiSystem), clientObligations: z.array(obligation),
 }).strict();
 same<z.infer<typeof clientDetail>, ClientDetail>(true);
