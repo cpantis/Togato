@@ -16,6 +16,7 @@ import { sessions } from "../db/schema";
 import { desc } from "drizzle-orm";
 import { revokeUserSessions } from "../services/sessions";
 import { sendEmail, templates } from "../services/email";
+import { issueEmailVerification } from "./auth";
 
 export const accountRoutes = new Hono<AppEnv>();
 
@@ -158,4 +159,13 @@ accountRoutes.post("/2fa/disable", async (c) => {
   await db.update(users).set({ totpEnabled: false, totpSecret: null, totpPendingSecret: null, totpLastStep: null, recoveryCodes: null, totpEnabledAt: null }).where(eq(users.id, u.id));
   await audit(auth, "2fa_disable", "user", u.id);
   return c.json({ ok: true });
+});
+
+/** POST /resend-verification — retrimite linkul de confirmare a emailului */
+accountRoutes.post("/resend-verification", async (c) => {
+  const auth = c.get("auth");
+  const u = await me(auth.userId);
+  if (u.emailVerifiedAt) return c.json({ ok: true, verified: true });
+  await issueEmailVerification(u);
+  return c.json({ ok: true, verified: false });
 });

@@ -9,6 +9,8 @@ import { organizations, users } from "../db/schema";
 import type { AuthContext } from "../types/hono";
 import { CSRF_COOKIE, resolveSession, sessionTokenFrom } from "../services/sessions";
 import { stateOf } from "../services/billing";
+import { LEGAL_VERSION } from "@togato/shared";
+import { requireEmailVerification } from "../config";
 
 const ACTIVITY_THROTTLE_MS = 5 * 60 * 1000;
 const lastActive = new Map<string, number>();
@@ -34,6 +36,8 @@ export async function userFromMfaToken(token: string) {
 const MFA_SETUP_ALLOWED = /^\/api\/account\//;
 /** rute permise indiferent de starea abonamentului: contul propriu și facturarea */
 const BILLING_ALWAYS = /^\/api\/(account|billing|platform)(\/|$)/;
+/** rute permise înainte de acceptarea termenilor actualizați */
+const LEGAL_ALWAYS = /^\/api\/(account|billing|platform|organization\/legal)(\/|$)/;
 
 /**
  * Protecție CSRF pentru sesiunile din cookie: cererile care modifică date trebuie să trimită
@@ -69,6 +73,15 @@ export const authMiddleware = async (c: Context, next: Next) => {
     if (state === "expirat" && !SAFE_METHODS.has(c.req.method)) {
       return c.json({ error: "Perioada de probă sau abonamentul a expirat. Datele rămân disponibile pentru consultare și export; pentru modificări, alegeți un abonament din Setări.", code: "subscription_required" }, 402);
     }
+  }
+
+  // adresa de email trebuie confirmată (în producție); contul propriu rămâne accesibil pentru retrimitere
+  if (requireEmailVerification() && !user.emailVerifiedAt && !MFA_SETUP_ALLOWED.test(c.req.path)) {
+    return c.json({ error: `Confirmați adresa de email (${user.email}) cu linkul primit. Îl puteți retrimite din ecranul de confirmare.`, code: "email_unverified" }, 403);
+  }
+  // termenii actualizați: până la acceptarea lor de un administrator, modificările sunt blocate
+  if (s.org.legalVersion !== LEGAL_VERSION && !SAFE_METHODS.has(c.req.method) && !LEGAL_ALWAYS.test(c.req.path)) {
+    return c.json({ error: user.role === "admin" ? "Termenii Togato au fost actualizați. Citiți și acceptați noua versiune pentru a continua." : "Termenii Togato au fost actualizați. Un administrator al cabinetului trebuie să accepte noua versiune.", code: "terms_required" }, 403);
   }
 
   // politica cabinetului: autentificarea în doi pași obligatorie

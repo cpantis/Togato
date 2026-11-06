@@ -16,6 +16,10 @@ import { clientIp } from "../lib/clientIp";
 import { log } from "../lib/logger";
 import { logoSrc } from "../lib/logo";
 import { stateOf } from "../services/billing";
+import { LEGAL_VERSION } from "@togato/shared";
+import { legalAcceptances } from "../db/schema";
+import { requireEmailVerification } from "../config";
+import type { Tx } from "../db";
 import { isPlatformAdmin } from "../services/platform";
 
 export const authRoutes = new Hono();
@@ -55,11 +59,11 @@ async function sessionResponse(c: Context, user: typeof users.$inferSelect, org:
 const DUMMY_HASH = bcrypt.hashSync("togato-dummy-password", 12);
 
 function publicUser(u: typeof users.$inferSelect) {
-  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled, platformAdmin: isPlatformAdmin(u.email) };
+  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled, platformAdmin: isPlatformAdmin(u.email), emailVerified: !!u.emailVerifiedAt };
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {
-  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa, billingState: stateOf(o) };
+  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa, billingState: stateOf(o), legalVersion: o.legalVersion, legalCurrent: o.legalVersion === LEGAL_VERSION };
 }
 
 const signupSchema = z.object({
@@ -67,19 +71,36 @@ const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email invalid"),
   password: z.string().min(8, "Parola trebuie să aibă cel puțin 8 caractere").max(200),
   cabinetName: z.string().trim().min(2, "Numele cabinetului e prea scurt").max(200),
+  /** acceptarea termenilor, a politicii de confidențialitate și a DPA, în versiunea curentă */
+  acceptTerms: z.literal(true, { message: "Acceptați termenii, politica de confidențialitate și acordul de prelucrare a datelor" }),
+  legalVersion: z.string().max(40).optional(),
+  captchaToken: z.string().max(4000).optional(),
 });
+
+const VERIFY_DAYS = 7;
+
+/** emite un link nou de confirmare a emailului (îl invalidează pe cel vechi) */
+export async function issueEmailVerification(user: { id: string; email: string; name: string; organizationId: string }, tx?: Tx) {
+  const { token, hash } = newToken();
+  const runner = tx ?? db;
+  await runner.update(users).set({ emailVerifyTokenHash: hash }).where(eq(users.id, user.id));
+  await sendEmail(templates.verifyEmail({ to: user.email, name: user.name, url: `${frontendBaseUrl()}/confirmare-email/${token}` }), { tx, organizationId: user.organizationId });
+}
 
 authRoutes.post("/signup", async (c) => {
   const body = signupSchema.parse(await c.req.json());
   const existing = await db.query.users.findFirst({ where: eq(users.email, body.email) });
   if (existing) return c.json({ error: "Există deja un cont cu acest email" }, 409);
 
+  if (body.legalVersion && body.legalVersion !== LEGAL_VERSION) return c.json({ error: "Termenii au fost actualizați între timp. Reîncărcați pagina și citiți versiunea nouă.", code: "terms_outdated" }, 409);
   const passwordHash = await bcrypt.hash(body.password, 12);
+  const now = new Date();
   const { user, org } = await db.transaction(async (tx) => {
     const [org] = await tx.insert(organizations).values({
       name: body.cabinetName,
       status: "trial",
       trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86400_000),
+      legalVersion: LEGAL_VERSION, legalAcceptedAt: now,
     }).returning();
     const [user] = await tx.insert(users).values({
       organizationId: org.id,
@@ -87,7 +108,12 @@ authRoutes.post("/signup", async (c) => {
       name: body.name,
       passwordHash,
       role: "admin",
+      // fără obligația de confirmare (dezvoltare, teste), adresa e considerată confirmată
+      emailVerifiedAt: requireEmailVerification() ? null : now,
     }).returning();
+    await tx.update(organizations).set({ legalAcceptedBy: user.id }).where(eq(organizations.id, org.id));
+    await tx.insert(legalAcceptances).values({ organizationId: org.id, userId: user.id, version: LEGAL_VERSION, ip: clientIp(c), userAgent: (c.req.header("user-agent") || "").slice(0, 300) || null });
+    if (requireEmailVerification()) await issueEmailVerification(user, tx);
     return { user, org };
   });
 
@@ -190,6 +216,8 @@ authRoutes.post("/accept-invitation", async (c) => {
     if (!claimed.length) return null;
     const [u] = await tx.insert(users).values({
       organizationId: inv.organizationId, email: inv.email, name: body.name, passwordHash, role: inv.role,
+      // invitația a ajuns pe această adresă: e confirmată
+      emailVerifiedAt: new Date(),
     }).returning();
     return u;
   });
@@ -252,4 +280,14 @@ authRoutes.post("/password/reset", async (c) => {
   log.info("parolă resetată", { userId: user.id, ip: clientIp(c) });
   // după resetare, utilizatorul se autentifică normal (inclusiv cu al doilea pas, dacă îl are)
   return c.json({ ok: true, mfaRequired: user.totpEnabled });
+});
+
+/** POST /verify-email { token } — confirmă adresa (linkul din email); funcționează și fără sesiune */
+authRoutes.post("/verify-email", async (c) => {
+  const { token } = z.object({ token: z.string().min(20).max(100) }).parse(await c.req.json());
+  const [u] = await db.update(users).set({ emailVerifiedAt: new Date(), emailVerifyTokenHash: null })
+    .where(and(eq(users.emailVerifyTokenHash, hashToken(token)), isNull(users.emailVerifiedAt), gt(users.createdAt, new Date(Date.now() - VERIFY_DAYS * 86400_000))))
+    .returning({ id: users.id });
+  if (!u) return c.json({ error: "Linkul de confirmare nu mai este valabil. Autentificați-vă și cereți unul nou." }, 400);
+  return c.json({ ok: true });
 });

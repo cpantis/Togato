@@ -22,7 +22,7 @@ const riskCounts = z.partialRecord(risk, z.number().int());
 const billingState = z.enum(["proba", "activ", "restant", "expirat", "suspendat"]);
 
 export const authUser = z.object({
-  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(),
+  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(), emailVerified: z.boolean(),
 }).strict();
 same<z.infer<typeof authUser>, AuthUser>(true);
 
@@ -31,6 +31,7 @@ export const organization = z.object({
   brandColor: z.string().nullable(), logoUrl: z.string().nullable(), logoSrc: z.string().nullable().optional(),
   billingState: billingState.optional() as z.ZodOptional<z.ZodType<BillingState>>, logoUploaded: z.boolean().optional(),
   aiEnabled: z.boolean(), aiEnabledAt: iso.nullable().optional(), require2fa: z.boolean(), supportAccessUntil: iso.nullable().optional(),
+  legalVersion: z.string().nullable().optional(), legalCurrent: z.boolean().optional(),
   directory: z.object({ listed: z.boolean(), county: z.string().nullable(), city: z.string().nullable(), description: z.string().nullable(), website: z.string().nullable(), email: z.string().nullable() }).strict().optional(),
 }).strict();
 same<z.infer<typeof organization>, Organization>(true);

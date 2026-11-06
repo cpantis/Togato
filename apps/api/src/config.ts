@@ -46,6 +46,10 @@ const schema = z.object({
   PLATFORM_ADMIN_EMAILS: z.string().default(""),
   /** rulează joburile și în procesul API; dezactivați când rulează un worker separat (`npm run worker`) */
   RUN_WORKER_IN_API: bool.default("on"),
+  /** contul de cabinet e folosibil doar după confirmarea emailului (implicit: doar în producție) */
+  REQUIRE_EMAIL_VERIFICATION: z.enum(["on", "off", "true", "false", "1", "0"]).optional(),
+  /** administratorii trebuie să aibă 2FA activ (implicit: doar în producție) */
+  REQUIRE_ADMIN_2FA: z.enum(["on", "off", "true", "false", "1", "0"]).optional(),
 }).superRefine((c, ctx) => {
   if (c.NODE_ENV === "production") {
     if (c.JWT_SECRET.length < 32) ctx.addIssue({ code: "custom", path: ["JWT_SECRET"], message: "în producție, minimum 32 de caractere" });
@@ -86,3 +90,8 @@ export function _resetConfig() {
 export function frontendBaseUrl(): string {
   return config().FRONTEND_URL.split(",")[0].trim().replace(/\/$/, "");
 }
+
+const flag = (v: string | undefined, fallback: boolean) => (v === undefined ? fallback : v === "on" || v === "true" || v === "1");
+/** comutatoarele cu valoare implicită diferită în producție */
+export const requireEmailVerification = () => flag(config().REQUIRE_EMAIL_VERIFICATION, config().NODE_ENV === "production");
+export const requireAdmin2fa = () => flag(config().REQUIRE_ADMIN_2FA, config().NODE_ENV === "production");

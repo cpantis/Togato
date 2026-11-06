@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { LEGAL_VERSION } from "@togato/shared";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Alert, Button, Field, inputClass } from "@/components/ui";
 
@@ -12,6 +13,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({ cabinetName: "", name: "", email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [accept, setAccept] = useState(false);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function submit(e: React.FormEvent) {
@@ -19,7 +21,7 @@ export default function SignupPage() {
     setBusy(true);
     setError(null);
     try {
-      await signup(form);
+      await signup({ ...form, acceptTerms: accept, legalVersion: LEGAL_VERSION });
       router.replace("/dashboard");
     } catch (err) {
       setError((err as Error).message);
@@ -44,6 +46,10 @@ export default function SignupPage() {
         <Field label="Parolă" hint="Minimum 8 caractere">
           <input className={inputClass} type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set("password")} />
         </Field>
+        <label className="flex items-start gap-2 text-[12px] leading-relaxed text-slate-600">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-brand" required checked={accept} onChange={(e) => setAccept(e.target.checked)} />
+          <span>Accept, în numele cabinetului, <Link href="/termeni" target="_blank" className="font-semibold text-brand hover:underline">Termenii și condițiile</Link>, <Link href="/dpa" target="_blank" className="font-semibold text-brand hover:underline">Acordul de prelucrare a datelor</Link> și am citit <Link href="/confidentialitate" target="_blank" className="font-semibold text-brand hover:underline">Politica de confidențialitate</Link>.</span>
+        </label>
         <Button type="submit" className="w-full" loading={busy}>Creează contul</Button>
       </form>
     </AuthLayout>

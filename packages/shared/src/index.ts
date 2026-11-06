@@ -6,3 +6,4 @@ export * from "./lawRefs";
 export * from "./plans";
 export * from "./selfAssessment";
 export * from "./gdpr";
+export * from "./legal";

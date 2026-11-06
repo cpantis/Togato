@@ -14,7 +14,7 @@ interface AuthContextValue extends AuthState {
   /** întoarce `{ mfaToken }` dacă e nevoie de pasul al doilea */
   login: (email: string, password: string) => Promise<{ mfaToken: string } | null>;
   completeMfa: (mfaToken: string, code: string) => Promise<{ recoveryCodesLeft?: number }>;
-  signup: (data: { name: string; email: string; password: string; cabinetName: string }) => Promise<void>;
+  signup: (data: { name: string; email: string; password: string; cabinetName: string; acceptTerms: boolean; legalVersion: string }) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { recoveryCodesLeft: data.recoveryCodesLeft };
   }, []);
 
-  const signup = useCallback(async (payload: { name: string; email: string; password: string; cabinetName: string }) => {
+  const signup = useCallback(async (payload: { name: string; email: string; password: string; cabinetName: string; acceptTerms: boolean; legalVersion: string }) => {
     const data = await api<{ token: string; user: AuthUser; organization: Organization }>("/api/auth/signup", {
       method: "POST", body: JSON.stringify(payload),
     });

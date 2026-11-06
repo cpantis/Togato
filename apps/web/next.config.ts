@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
       { source: "/invite/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
       { source: "/reset/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
       { source: "/autoevaluare/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      { source: "/confirmare-email/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
     ];
   },
   async rewrites() {

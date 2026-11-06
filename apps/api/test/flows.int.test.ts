@@ -13,9 +13,9 @@ const totp = (secret: string, offset = 0) => hotp(base32Decode(secret), timeStep
 describe("autentificare", () => {
   it("înregistrare, login, parolă greșită, cont dezactivat", async () => {
     const email = `${unique("u")}@x.ro`;
-    const s = await call("POST", "/api/auth/signup", { body: { name: "Ana", email, password: "parola-sigura-1", cabinetName: "Cab" } });
+    const s = await call("POST", "/api/auth/signup", { body: { name: "Ana", email, password: "parola-sigura-1", cabinetName: "Cab", acceptTerms: true } });
     expect(s.status).toBe(201);
-    expect((await call("POST", "/api/auth/signup", { body: { name: "Ana", email, password: "parola-sigura-1", cabinetName: "Cab" } })).status).toBe(409);
+    expect((await call("POST", "/api/auth/signup", { body: { name: "Ana", email, password: "parola-sigura-1", cabinetName: "Cab", acceptTerms: true } })).status).toBe(409);
     expect((await call("POST", "/api/auth/login", { body: { email, password: "gresit" } })).status).toBe(401);
     const ok = await call("POST", "/api/auth/login", { body: { email: email.toUpperCase(), password: "parola-sigura-1" } });
     expect(ok.status).toBe(200);

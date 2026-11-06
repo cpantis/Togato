@@ -23,7 +23,7 @@ const pct = (arr, p) => arr.length ? arr[Math.min(arr.length - 1, Math.floor((p 
 
 async function main() {
   const email = `load${Date.now()}@test.ro`;
-  const s = await req("POST", "/api/auth/signup", null, { name: "Test Încărcare", email, password: "parola-de-test-1", cabinetName: "Cabinet Încărcare" });
+  const s = await req("POST", "/api/auth/signup", null, { name: "Test Încărcare", email, password: "parola-de-test-1", cabinetName: "Cabinet Încărcare", acceptTerms: true });
   if (s.status !== 201) throw new Error(`signup: ${s.status} ${JSON.stringify(s.body)}`);
   const token = s.body.token;
   if (process.env.DATABASE_URL) {

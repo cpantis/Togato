@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, LoadingBlock, Logo, cn } from "@/components/ui";
 import { daysUntil, initials } from "@/lib/format";
 import { TwoFactorCard } from "@/components/TwoFactorCard";
+import { LegalGate } from "@/components/LegalGate";
+import { VerifyEmailScreen } from "@/components/VerifyEmailScreen";
 
 const NAV_SECTIONS = [
   {
@@ -53,6 +55,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  if (!user.emailVerified) return <VerifyEmailScreen />;
 
   // politica cabinetului: fără autentificare în doi pași nu se poate accesa nimic altceva
   if (organization?.require2fa && !user.totpEnabled) {
@@ -138,6 +142,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="font-bold tracking-tight">Togato</span>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-8 sm:py-8">
+          <LegalGate />
           {banner && (
             <div className="mb-5" role="status">
               <Alert kind={banner.kind}>

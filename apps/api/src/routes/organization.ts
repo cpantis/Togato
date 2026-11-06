@@ -12,7 +12,9 @@ import { storage } from "../services/storage";
 import { MIME, detectKind } from "../services/storage/files";
 import { enqueue } from "../jobs/queue";
 import crypto from "crypto";
-import { JUDETE } from "@togato/shared";
+import { JUDETE, LEGAL_VERSION } from "@togato/shared";
+import { legalAcceptances } from "../db/schema";
+import { clientIp } from "../lib/clientIp";
 
 export const organizationRoutes = new Hono<AppEnv>();
 
@@ -22,6 +24,7 @@ function serialize(o: typeof organizations.$inferSelect) {
     logoSrc: logoSrc(o), logoUploaded: !!o.logoKey,
     aiEnabled: o.aiEnabled, aiEnabledAt: o.aiEnabledAt?.toISOString() ?? null, require2fa: o.require2fa,
     directory: { listed: o.directoryListed, county: o.directoryCounty, city: o.directoryCity, description: o.directoryDescription, website: o.directoryWebsite, email: o.directoryEmail },
+    legalVersion: o.legalVersion, legalCurrent: o.legalVersion === LEGAL_VERSION,
     supportAccessUntil: o.supportAccessUntil && o.supportAccessUntil > new Date() ? o.supportAccessUntil.toISOString() : null,
   };
 }
@@ -125,5 +128,17 @@ organizationRoutes.put("/directory", requireAdmin, async (c) => {
     directoryDescription: body.description, directoryWebsite: body.website, directoryEmail: body.email,
   }).where(eq(organizations.id, auth.organizationId)).returning();
   await audit(auth, "directory_update", "organization", auth.organizationId, { listed: body.listed, county: body.county });
+  return c.json(serialize(org));
+});
+
+/** POST /legal/accept { version } — un administrator acceptă versiunea curentă a documentelor juridice */
+organizationRoutes.post("/legal/accept", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const { version } = z.object({ version: z.string().max(40) }).parse(await c.req.json());
+  if (version !== LEGAL_VERSION) return c.json({ error: "Versiunea acceptată nu mai este cea curentă. Reîncărcați pagina.", code: "terms_outdated" }, 409);
+  const [org] = await db.update(organizations).set({ legalVersion: LEGAL_VERSION, legalAcceptedAt: new Date(), legalAcceptedBy: auth.userId })
+    .where(eq(organizations.id, auth.organizationId)).returning();
+  await db.insert(legalAcceptances).values({ organizationId: auth.organizationId, userId: auth.userId, version: LEGAL_VERSION, ip: clientIp(c), userAgent: (c.req.header("user-agent") || "").slice(0, 300) || null });
+  await audit(auth, "legal_accept", "organization", auth.organizationId, { version: LEGAL_VERSION });
   return c.json(serialize(org));
 });

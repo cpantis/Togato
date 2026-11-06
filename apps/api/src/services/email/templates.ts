@@ -39,6 +39,14 @@ export const templates = {
     ], { label: "Creează contul", url: p.url });
   },
 
+  verifyEmail(p: { to: string; name: string; url: string }) {
+    return build(p.to, "Confirmați adresa de email pentru Togato", [
+      `Bună ziua, ${escapeHtml(p.name)}. Mulțumim că ați creat contul cabinetului pe Togato.`,
+      "Confirmați adresa de email ca să începeți. Linkul este valabil 7 zile.",
+      "Dacă nu ați creat dumneavoastră contul, ignorați acest mesaj.",
+    ], { label: "Confirmă adresa", url: p.url });
+  },
+
   passwordReset(p: { to: string; name: string; url: string; expiresMinutes: number }) {
     return build(p.to, "Resetarea parolei Togato", [
       `Bună ziua, ${escapeHtml(p.name)}. Am primit o cerere de resetare a parolei pentru contul dumneavoastră.`,

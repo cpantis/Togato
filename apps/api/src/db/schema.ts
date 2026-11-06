@@ -46,6 +46,10 @@ export const organizations = pgTable("organizations", {
   supportAccessUntil: timestamp("support_access_until", { withTimezone: true }),
   supportAccessGrantedBy: uuid("support_access_granted_by"),
   suspendedReason: text("suspended_reason"),
+  /** versiunea documentelor juridice (termeni, confidențialitate, DPA) acceptată de cabinet */
+  legalVersion: text("legal_version"),
+  legalAcceptedAt: timestamp("legal_accepted_at", { withTimezone: true }),
+  legalAcceptedBy: uuid("legal_accepted_by"),
   /** profilul public din directorul cabinetelor (vizibil firmelor care fac autoevaluarea) */
   directoryListed: boolean("directory_listed").notNull().default(false),
   directoryCounty: text("directory_county"),
@@ -77,6 +81,9 @@ export const users = pgTable("users", {
   /** notificare pe email când un client trimite un instrument prin portal */
   notifyPortal: boolean("notify_portal").notNull().default(true),
   /** protecție la ghicirea parolei: încercări eșuate consecutive și blocarea temporară */
+  /** adresa confirmată prin linkul trimis pe email (invitațiile o confirmă implicit) */
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  emailVerifyTokenHash: text("email_verify_token_hash"),
   failedLogins: integer("failed_logins").notNull().default(0),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
@@ -529,6 +536,17 @@ export const platformAuditLog = pgTable("platform_audit_log", {
   ip: text("ip"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("platform_audit_created_idx").on(t.createdAt)]);
+
+/** Istoricul acceptărilor documentelor juridice (cine, ce versiune, când, de unde). */
+export const legalAcceptances = pgTable("legal_acceptances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  version: text("version").notNull(),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("legal_acceptances_org_idx").on(t.organizationId)]);
 
 /** Evenimentele Stripe deja procesate (webhook-urile pot sosi de mai multe ori). */
 export const stripeEvents = pgTable("stripe_events", {

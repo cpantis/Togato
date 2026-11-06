@@ -24,6 +24,7 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/auth/logout` | public |
 | `POST` | `/api/auth/password/forgot` | public |
 | `POST` | `/api/auth/password/reset` | public |
+| `POST` | `/api/auth/verify-email` | public |
 
 ## Portalul clientului (public, token în URL)
 
@@ -86,6 +87,7 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/account/2fa/enable` | sesiune |
 | `POST` | `/api/account/2fa/recovery-codes` | sesiune |
 | `POST` | `/api/account/2fa/disable` | sesiune |
+| `POST` | `/api/account/resend-verification` | sesiune |
 
 ## Cabinet
 
@@ -98,6 +100,7 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/organization/support-access` | sesiune |
 | `DELETE` | `/api/organization/support-access` | sesiune |
 | `PUT` | `/api/organization/directory` | sesiune |
+| `POST` | `/api/organization/legal/accept` | sesiune |
 
 ## Echipă
 

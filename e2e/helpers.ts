@@ -11,6 +11,7 @@ export async function signup(page: Page, cabinet = "Cabinet Test") {
   await inputs.nth(1).fill("Ana Avocat");
   await inputs.nth(2).fill(email);
   await inputs.nth(3).fill("parola-sigura-1");
+  await page.locator("form input[type=checkbox]").check();
   await page.click("button[type=submit]");
   await page.waitForURL("**/dashboard");
   return email;

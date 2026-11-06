@@ -12,6 +12,8 @@ export interface AuthUser {
   totpEnabled: boolean;
   /** membru al echipei Togato (PLATFORM_ADMIN_EMAILS) — vede consola platformei */
   platformAdmin: boolean;
+  /** adresa de email a fost confirmată */
+  emailVerified: boolean;
 }
 
 export interface Organization {
@@ -34,6 +36,9 @@ export interface Organization {
   supportAccessUntil?: string | null;
   /** profilul din directorul cabinetelor */
   directory?: DirectoryProfile;
+  /** versiunea documentelor juridice acceptată și dacă e cea curentă */
+  legalVersion?: string | null;
+  legalCurrent?: boolean;
 }
 
 export interface DirectoryProfile {

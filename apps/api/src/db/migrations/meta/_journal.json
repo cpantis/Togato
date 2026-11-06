@@ -176,6 +176,20 @@
       "when": 1793710291966,
       "tag": "0024_dpia_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793954275717,
+      "tag": "0025_signup_verify_legal",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793954276442,
+      "tag": "0026_signup_verify_legal_data",
+      "breakpoints": true
     }
   ]
 }

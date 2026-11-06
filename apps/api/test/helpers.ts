@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
-import { selfAssessments, sessions } from "../src/db/schema";
+import { selfAssessments, sessions, users } from "../src/db/schema";
 import { hashToken } from "../src/lib/tokens";
 /** Utilitare pentru testele de integrare: cereri către aplicația reală, fără server HTTP. */
 import { app } from "../src/app";
@@ -37,11 +37,13 @@ export const unique = (prefix: string) => `${prefix}${Date.now()}${++seq}`;
 /** Creează un cabinet complet: administrator, un client, sisteme AI, obligații, aviz, portal, invitație. */
 export async function seedCabinet(name: string) {
   const email = `${unique("admin")}@${name.toLowerCase().replace(/\W/g, "")}.ro`;
-  const signup = await call("POST", "/api/auth/signup", { body: { name: `Admin ${name}`, email, password: "parola-sigura-1", cabinetName: name } });
+  const signup = await call("POST", "/api/auth/signup", { body: { name: `Admin ${name}`, email, password: "parola-sigura-1", cabinetName: name, acceptTerms: true } });
   if (signup.status !== 201) throw new Error(`signup: ${JSON.stringify(signup.body)}`);
   const token = signup.body.token as string;
   const userId = signup.body.user.id as string;
   const organizationId = signup.body.organization.id as string;
+  // dacă testul cere confirmarea emailului, cabinetul de test a confirmat-o deja
+  await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
   const client = await call("POST", "/api/clients", { token, body: { name: `Client ${name} SRL` } });
   const clientId = client.body.id as string;
   const sys = await call("POST", `/api/clients/${clientId}/ai-systems`, {
