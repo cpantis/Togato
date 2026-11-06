@@ -12,6 +12,7 @@ import { AccountSecurityCard } from "@/components/AccountSecurityCard";
 import { BillingCard } from "@/components/BillingCard";
 import { SupportAccessCard } from "@/components/SupportAccessCard";
 import { DirectoryCard } from "@/components/DirectoryCard";
+import { ClosureCard, RetentionCard } from "@/components/ClosureCard";
 
 const PRESETS = ["#7a1f3a", "#1e3a8a", "#0f766e", "#334155", "#9a3412", "#4c1d95"];
 
@@ -156,6 +157,12 @@ export default function SettingsPage() {
         <AccountSecurityCard />
         <NotificationsCard />
         <SupportAccessCard org={org} isAdmin={isAdmin} onChange={setOrg} />
+      </div>
+
+      <h2 id="pastrare" className="mb-3 mt-8 text-[15px] font-semibold text-ink">Date și închiderea contului</h2>
+      <div id="inchidere" className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <RetentionCard org={org} isAdmin={isAdmin} onChange={setOrg} />
+        <ClosureCard org={org} isAdmin={isAdmin} onChange={setOrg} />
       </div>
     </div>
   );

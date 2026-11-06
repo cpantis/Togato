@@ -50,6 +50,12 @@ export const organizations = pgTable("organizations", {
   legalVersion: text("legal_version"),
   legalAcceptedAt: timestamp("legal_accepted_at", { withTimezone: true }),
   legalAcceptedBy: uuid("legal_accepted_by"),
+  /** închiderea contului: cerută de un administrator, ștergerea definitivă la `closureScheduledFor` */
+  closureRequestedAt: timestamp("closure_requested_at", { withTimezone: true }),
+  closureRequestedBy: uuid("closure_requested_by"),
+  closureScheduledFor: timestamp("closure_scheduled_for", { withTimezone: true }),
+  /** clienții arhivați se șterg după acest număr de ani de la arhivare (null = păstrați nelimitat) */
+  archivedRetentionYears: integer("archived_retention_years"),
   /** profilul public din directorul cabinetelor (vizibil firmelor care fac autoevaluarea) */
   directoryListed: boolean("directory_listed").notNull().default(false),
   directoryCounty: text("directory_county"),
@@ -149,6 +155,8 @@ export const clients = pgTable("clients", {
   responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
   /** clientul e exclus de la analiza AI, chiar dacă cabinetul a activat-o (ex. acord cu clientul) */
   aiExcluded: boolean("ai_excluded").notNull().default(false),
+  /** administratorii au fost anunțați că dosarul arhivat urmează să fie șters (politica de păstrare) */
+  retentionWarnedAt: timestamp("retention_warned_at", { withTimezone: true }),
   /** clientul arhivat nu mai apare în liste și termene; doar un client arhivat poate fi șters */
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by").references(() => users.id, { onDelete: "set null" }),

@@ -32,6 +32,7 @@ export const organization = z.object({
   billingState: billingState.optional() as z.ZodOptional<z.ZodType<BillingState>>, logoUploaded: z.boolean().optional(),
   aiEnabled: z.boolean(), aiEnabledAt: iso.nullable().optional(), require2fa: z.boolean(), supportAccessUntil: iso.nullable().optional(),
   legalVersion: z.string().nullable().optional(), legalCurrent: z.boolean().optional(),
+  closureScheduledFor: iso.nullable().optional(), archivedRetentionYears: z.number().int().nullable().optional(),
   directory: z.object({ listed: z.boolean(), county: z.string().nullable(), city: z.string().nullable(), description: z.string().nullable(), website: z.string().nullable(), email: z.string().nullable() }).strict().optional(),
 }).strict();
 same<z.infer<typeof organization>, Organization>(true);

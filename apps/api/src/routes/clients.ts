@@ -201,7 +201,7 @@ clientRoutes.post("/:id/archive", async (c) => {
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
   if (row.archivedAt) return c.json({ ok: true, archivedAt: row.archivedAt.toISOString() });
   const now = new Date();
-  await db.update(clients).set({ archivedAt: now, archivedBy: auth.userId, updatedAt: now })
+  await db.update(clients).set({ archivedAt: now, archivedBy: auth.userId, retentionWarnedAt: null, updatedAt: now })
     .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
   await db.delete(portalLinks).where(and(eq(portalLinks.clientId, row.id), eq(portalLinks.organizationId, auth.organizationId)));
   await audit(auth, "archive", "client", row.id, { name: row.name });
@@ -212,7 +212,7 @@ clientRoutes.post("/:id/unarchive", async (c) => {
   const auth = c.get("auth");
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
   if (row.archivedAt) await assertCanAdd(auth.organizationId, "client");
-  await db.update(clients).set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
+  await db.update(clients).set({ archivedAt: null, archivedBy: null, retentionWarnedAt: null, updatedAt: new Date() })
     .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
   await audit(auth, "unarchive", "client", row.id, { name: row.name });
   return c.json({ ok: true });

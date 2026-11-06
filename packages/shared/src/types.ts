@@ -41,6 +41,10 @@ export interface Organization {
   /** versiunea documentelor juridice acceptată și dacă e cea curentă */
   legalVersion?: string | null;
   legalCurrent?: boolean;
+  /** închiderea contului programată: datele se șterg definitiv la această dată */
+  closureScheduledFor?: string | null;
+  /** clienții arhivați se șterg după acest număr de ani (null = nelimitat) */
+  archivedRetentionYears?: number | null;
 }
 
 export interface DirectoryProfile {

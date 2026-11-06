@@ -5,6 +5,8 @@ import { addClient, signup } from "./helpers";
 /** încălcările grave (serious / critical) ale WCAG 2.1 AA, pe pagina curentă */
 async function audit(page: Page, name: string) {
   await page.waitForLoadState("networkidle");
+  // după navigarea client-side, titlul se actualizează puțin mai târziu
+  await page.waitForFunction(() => document.title.trim().length > 0);
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const bad = r.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   const report = bad.map((v) => `${name}: [${v.impact}] ${v.id} — ${v.help}\n  ${v.nodes.slice(0, 6).map((n) => `${n.target.join(" ")} :: ${n.html.slice(0, 140)} :: ${(n.any[0]?.message ?? "").slice(0, 120)}`).join("\n  ")}`);

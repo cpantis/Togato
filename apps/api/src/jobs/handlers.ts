@@ -12,6 +12,7 @@ import { PermanentJobError, enqueue, pruneFinished, type JobHandler } from "./qu
 import { pruneExpiredSessions } from "../services/sessions";
 import { storage } from "../services/storage";
 import { pruneRateLimits } from "../middleware/rateLimit";
+import { applyRetention, purgeClosedOrganizations } from "../services/closure";
 
 // ─── email ───────────────────────────────────────────────
 const emailSend: JobHandler = async (payload: EmailMessage) => {
@@ -217,6 +218,12 @@ const trialReminders: JobHandler = async () => {
   }
 };
 
+const closureAndRetention: JobHandler = async () => {
+  const closed = await purgeClosedOrganizations();
+  const deleted = await applyRetention();
+  if (closed || deleted) log.info("închideri și păstrare aplicate", { closed, deleted });
+};
+
 const maintenancePrune: JobHandler = async () => {
   await pruneFinished();
   await pruneExpiredSessions();
@@ -236,6 +243,7 @@ export const handlers: Record<string, JobHandler> = {
   "storage.delete": storageDelete,
   "breach.alert": breachAlert,
   "trial.reminders": trialReminders,
+  "closure.daily": closureAndRetention,
 };
 
 /** programările zilnice — idempotente prin dedupeKey; apelate periodic de worker */
@@ -246,6 +254,7 @@ export async function scheduleRecurring(now = new Date()) {
   await enqueue("reminders.daily", { date: day }, { dedupeKey: `reminders:${day}`, runAt: at, maxAttempts: 3 });
   await enqueue("maintenance.prune", {}, { dedupeKey: `prune:${day}`, runAt: at, maxAttempts: 2 });
   await enqueue("trial.reminders", {}, { dedupeKey: `trial:${day}`, runAt: at, maxAttempts: 3 });
+  await enqueue("closure.daily", {}, { dedupeKey: `closure:${day}`, runAt: at, maxAttempts: 3 });
 }
 
 /** la pornire: reîncadrează o singură dată per versiune a regulilor */

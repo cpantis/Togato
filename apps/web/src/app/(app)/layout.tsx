@@ -75,7 +75,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const billing = organization?.billingState;
   const trialDays = billing === "proba" && organization?.trialEndsAt ? daysUntil(organization.trialEndsAt.slice(0, 10)) : null;
-  const banner = billing === "expirat"
+  const banner = organization?.closureScheduledFor
+    ? { kind: "warning" as const, text: `Închiderea contului e programată: datele cabinetului se șterg definitiv la ${new Date(organization.closureScheduledFor).toLocaleDateString("ro-RO")}. Până atunci, datele pot fi doar consultate și exportate.` }
+    : billing === "expirat"
     ? { kind: "warning" as const, text: "Perioada de probă sau abonamentul a expirat. Datele rămân disponibile pentru consultare și export; pentru modificări alegeți un abonament." }
     : billing === "restant"
       ? { kind: "warning" as const, text: "Plata abonamentului nu a reușit. Actualizați cardul ca să evitați întreruperea accesului." }
@@ -147,7 +149,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="mb-5" role="status">
               <Alert kind={banner.kind}>
                 {banner.text}{" "}
-                <Link href="/settings#abonament" className="font-semibold underline">{user.role === "admin" ? "Alegeți abonamentul" : "Detalii"}</Link>
+                {organization?.closureScheduledFor
+                  ? <Link href="/settings#inchidere" className="font-semibold underline">Detalii</Link>
+                  : <Link href="/settings#abonament" className="font-semibold underline">{user.role === "admin" ? "Alegeți abonamentul" : "Detalii"}</Link>}
               </Alert>
             </div>
           )}

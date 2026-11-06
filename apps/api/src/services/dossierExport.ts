@@ -141,3 +141,43 @@ export async function buildDossierZip(organizationId: string, clientId: string, 
   const zip = zipSync(files, { level: 6, mtime: now });
   return { zip, filename: `Dosar_AI_Act_${slug(client.name)}_${now.toISOString().slice(0, 10)}.zip` };
 }
+
+/**
+ * Exportul complet al cabinetului (la închiderea contului sau pentru portabilitate):
+ * dosarul fiecărui client (inclusiv arhivați), echipa și jurnalul de activitate al cabinetului.
+ */
+export async function buildOrganizationZip(organizationId: string, preparedBy: string): Promise<{ zip: Uint8Array; filename: string } | null> {
+  const org = await db.query.organizations.findFirst({ where: (o, { eq: e }) => e(o.id, organizationId) });
+  if (!org) return null;
+  const now = new Date();
+  const files: Record<string, Uint8Array> = {};
+  const used = new Set<string>();
+  const list = await db.select().from(clients).where(eq(clients.organizationId, organizationId)).orderBy(asc(clients.name));
+  for (const c of list) {
+    const r = await buildDossierZip(organizationId, c.id, preparedBy);
+    if (r) files[uniqueName(used, "clienti", `${slug(c.name)}${c.archivedAt ? "_arhivat" : ""}.zip`)] = r.zip;
+  }
+  const team = await db.select().from(users).where(eq(users.organizationId, organizationId)).orderBy(asc(users.name));
+  files["echipa.csv"] = strToU8(toCsv(["Nume", "Email", "Rol", "Stare", "Creat la"], team.map((u) => [u.name, u.email, u.role, u.status, u.createdAt.toISOString()])));
+  const log = await db.select({ a: auditLog, name: users.name }).from(auditLog).leftJoin(users, eq(users.id, auditLog.userId))
+    .where(eq(auditLog.organizationId, organizationId)).orderBy(asc(auditLog.createdAt));
+  files["jurnal_cabinet.csv"] = strToU8(toCsv(["Data", "Utilizator", "Acțiune", "Entitate", "Id", "Detalii"],
+    log.map(({ a, name }) => [a.createdAt.toISOString(), name ?? "", a.action, a.entity, a.entityId ?? "", a.details ? JSON.stringify(a.details) : ""])));
+  files["cabinet.json"] = strToU8(JSON.stringify({
+    exportedAt: now.toISOString(), preparedBy, rulesetVersion: RULESET_VERSION,
+    organization: { name: org.name, plan: org.plan, createdAt: org.createdAt.toISOString(), legalVersion: org.legalVersion, archivedRetentionYears: org.archivedRetentionYears },
+    clients: list.map((c) => ({ id: c.id, name: c.name, cui: c.cui, archivedAt: c.archivedAt?.toISOString() ?? null })),
+  }, null, 2));
+  files["CITESTE-MA.txt"] = strToU8([
+    `Export complet — ${org.name}`,
+    `Exportat la ${now.toLocaleString("ro-RO", { timeZone: "Europe/Bucharest" })} de ${preparedBy}, din Togato.`,
+    "",
+    "clienti/            dosarul complet al fiecărui client (ZIP), inclusiv clienții arhivați",
+    "echipa.csv          membrii cabinetului",
+    "jurnal_cabinet.csv  jurnalul de activitate al întregului cabinet",
+    "cabinet.json        datele cabinetului și lista clienților",
+  ].join("\r\n"));
+  // dosarele sunt deja comprimate
+  const zip = zipSync(files, { level: 1, mtime: now });
+  return { zip, filename: `Togato_export_${slug(org.name)}_${now.toISOString().slice(0, 10)}.zip` };
+}

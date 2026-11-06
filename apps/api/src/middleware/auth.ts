@@ -37,6 +37,7 @@ const MFA_SETUP_ALLOWED = /^\/api\/account\//;
 /** rute permise indiferent de starea abonamentului: contul propriu și facturarea */
 const BILLING_ALWAYS = /^\/api\/(account|billing|platform)(\/|$)/;
 /** rute permise înainte de acceptarea termenilor actualizați */
+const CLOSING_ALLOWED = /^\/api\/(account|billing|organization\/closure)(\/|$)/;
 const LEGAL_ALWAYS = /^\/api\/(account|billing|platform|organization\/legal)(\/|$)/;
 
 /**
@@ -73,6 +74,11 @@ export const authMiddleware = async (c: Context, next: Next) => {
     if (state === "expirat" && !SAFE_METHODS.has(c.req.method)) {
       return c.json({ error: "Perioada de probă sau abonamentul a expirat. Datele rămân disponibile pentru consultare și export; pentru modificări, alegeți un abonament din Setări.", code: "subscription_required" }, 402);
     }
+  }
+
+  // închiderea contului programată: doar citire și export; se poate anula
+  if (s.org.closureScheduledFor && !SAFE_METHODS.has(c.req.method) && !CLOSING_ALLOWED.test(c.req.path)) {
+    return c.json({ error: "Închiderea contului cabinetului este programată. Datele pot fi doar consultate și exportate; un administrator poate anula închiderea din Setări.", code: "closing" }, 403);
   }
 
   // adresa de email trebuie confirmată (în producție); contul propriu rămâne accesibil pentru retrimitere

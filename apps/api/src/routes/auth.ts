@@ -65,7 +65,7 @@ function publicUser(u: typeof users.$inferSelect) {
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {
-  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa, billingState: stateOf(o), legalVersion: o.legalVersion, legalCurrent: o.legalVersion === LEGAL_VERSION };
+  return { id: o.id, name: o.name, plan: o.plan, status: o.status, trialEndsAt: o.trialEndsAt?.toISOString() ?? null, brandColor: o.brandColor, logoUrl: o.logoUrl, logoSrc: logoSrc(o), aiEnabled: o.aiEnabled, require2fa: o.require2fa, billingState: stateOf(o), legalVersion: o.legalVersion, legalCurrent: o.legalVersion === LEGAL_VERSION, closureScheduledFor: o.closureScheduledFor?.toISOString() ?? null };
 }
 
 const signupSchema = z.object({

@@ -101,6 +101,10 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `DELETE` | `/api/organization/support-access` | sesiune |
 | `PUT` | `/api/organization/directory` | sesiune |
 | `POST` | `/api/organization/legal/accept` | sesiune |
+| `GET` | `/api/organization/export` | sesiune |
+| `POST` | `/api/organization/closure` | sesiune |
+| `DELETE` | `/api/organization/closure` | sesiune |
+| `PUT` | `/api/organization/retention` | sesiune |
 
 ## Echipă
 

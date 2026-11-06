@@ -58,6 +58,36 @@ export const templates = {
     ], { label: "Alege abonamentul", url: p.url });
   },
 
+  closureScheduled(p: { to: string; name: string; orgName: string; date: Date; url: string }) {
+    const when = p.date.toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Bucharest" });
+    return build(p.to, "Închiderea contului Togato a fost programată", [
+      `Bună ziua, ${escapeHtml(p.name)}.`,
+      `Un administrator a cerut închiderea contului <strong>${escapeHtml(p.orgName)}</strong>. Toate datele cabinetului (clienți, avize, dovezi, documente, jurnal) vor fi șterse definitiv la ${escapeHtml(when)}.`,
+      "Până atunci, datele pot fi consultate și exportate (Setări → Închiderea contului). Închiderea poate fi anulată de orice administrator până la acea dată.",
+    ], { label: "Exportă datele", url: p.url });
+  },
+
+  closureCancelled(p: { to: string; name: string; orgName: string }) {
+    return build(p.to, "Închiderea contului Togato a fost anulată", [
+      `Bună ziua, ${escapeHtml(p.name)}. Închiderea contului <strong>${escapeHtml(p.orgName)}</strong> a fost anulată; datele rămân neschimbate.`,
+    ]);
+  },
+
+  closureCompleted(p: { to: string; name: string; orgName: string }) {
+    return build(p.to, "Contul Togato a fost închis", [
+      `Bună ziua, ${escapeHtml(p.name)}. Contul <strong>${escapeHtml(p.orgName)}</strong> a fost închis, iar datele cabinetului au fost șterse definitiv. Copiile de siguranță se rotesc și dispar în cel mult 35 de zile.`,
+    ]);
+  },
+
+  retentionWarning(p: { to: string; name: string; orgName: string; items: { name: string; deleteOn: Date }[]; url: string }) {
+    const fmt = (d: Date) => d.toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Bucharest" });
+    return build(p.to, "Dosare arhivate care vor fi șterse", [
+      `Bună ziua, ${escapeHtml(p.name)}. Conform politicii de păstrare a cabinetului <strong>${escapeHtml(p.orgName)}</strong>, următoarele dosare arhivate vor fi șterse definitiv:`,
+      p.items.map((i) => `• ${escapeHtml(i.name)} — ${escapeHtml(fmt(i.deleteOn))}`).join("<br>"),
+      "Pentru a păstra un dosar, exportați-l sau reactivați clientul. Politica se modifică din Setări.",
+    ], { label: "Deschide Setările", url: p.url });
+  },
+
   passwordReset(p: { to: string; name: string; url: string; expiresMinutes: number }) {
     return build(p.to, "Resetarea parolei Togato", [
       `Bună ziua, ${escapeHtml(p.name)}. Am primit o cerere de resetare a parolei pentru contul dumneavoastră.`,

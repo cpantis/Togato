@@ -9,12 +9,17 @@ import { requireAdmin } from "../middleware/requireAdmin";
 import { logoSrc } from "../lib/logo";
 import { badRequest } from "../lib/http";
 import { storage } from "../services/storage";
-import { MIME, detectKind } from "../services/storage/files";
+import { MIME, contentDisposition, detectKind } from "../services/storage/files";
 import { enqueue } from "../jobs/queue";
 import crypto from "crypto";
 import { JUDETE, LEGAL_VERSION } from "@togato/shared";
 import { legalAcceptances } from "../db/schema";
 import { clientIp } from "../lib/clientIp";
+import { CLOSURE_GRACE_DAYS, RETENTION_YEARS } from "../services/closure";
+import { buildOrganizationZip } from "../services/dossierExport";
+import { sendEmail, templates } from "../services/email";
+import { frontendBaseUrl } from "../config";
+import { and } from "drizzle-orm";
 
 export const organizationRoutes = new Hono<AppEnv>();
 
@@ -25,6 +30,7 @@ function serialize(o: typeof organizations.$inferSelect) {
     aiEnabled: o.aiEnabled, aiEnabledAt: o.aiEnabledAt?.toISOString() ?? null, require2fa: o.require2fa,
     directory: { listed: o.directoryListed, county: o.directoryCounty, city: o.directoryCity, description: o.directoryDescription, website: o.directoryWebsite, email: o.directoryEmail },
     legalVersion: o.legalVersion, legalCurrent: o.legalVersion === LEGAL_VERSION,
+    closureScheduledFor: o.closureScheduledFor?.toISOString() ?? null, archivedRetentionYears: o.archivedRetentionYears,
     supportAccessUntil: o.supportAccessUntil && o.supportAccessUntil > new Date() ? o.supportAccessUntil.toISOString() : null,
   };
 }
@@ -141,4 +147,59 @@ organizationRoutes.post("/legal/accept", requireAdmin, async (c) => {
   await db.insert(legalAcceptances).values({ organizationId: auth.organizationId, userId: auth.userId, version: LEGAL_VERSION, ip: clientIp(c), userAgent: (c.req.header("user-agent") || "").slice(0, 300) || null });
   await audit(auth, "legal_accept", "organization", auth.organizationId, { version: LEGAL_VERSION });
   return c.json(serialize(org));
+});
+
+const admins = (organizationId: string) =>
+  db.query.users.findMany({ where: and(eq(users.organizationId, organizationId), eq(users.role, "admin"), eq(users.status, "activ")) });
+
+/** GET /export — exportul complet al cabinetului (toți clienții, echipa, jurnalul) */
+organizationRoutes.get("/export", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const result = await buildOrganizationZip(auth.organizationId, auth.name);
+  if (!result) return c.json({ error: "Cabinetul nu a fost găsit" }, 404);
+  await audit(auth, "export", "organization", auth.organizationId, { size: result.zip.length });
+  return new Response(new Uint8Array(result.zip), {
+    headers: { "Content-Type": "application/zip", "Content-Disposition": contentDisposition(result.filename), "Cache-Control": "no-store" },
+  });
+});
+
+/** POST /closure { confirm } — programează ștergerea definitivă a cabinetului după perioada de grație */
+organizationRoutes.post("/closure", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const { confirm } = z.object({ confirm: z.string().trim() }).parse(await c.req.json());
+  const org = (await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId) }))!;
+  if (confirm !== org.name) badRequest("Confirmați închiderea scriind exact numele cabinetului.");
+  if (org.closureScheduledFor) return c.json(serialize(org));
+  const subActive = org.stripeSubscriptionId && ["active", "trialing", "past_due"].includes(org.subscriptionStatus ?? "") && !org.cancelAtPeriodEnd;
+  if (subActive) return c.json({ error: "Anulați mai întâi abonamentul din portalul de facturare (Setări → Abonament), apoi cereți închiderea contului.", code: "subscription_active" }, 409);
+  const now = new Date();
+  const when = new Date(now.getTime() + CLOSURE_GRACE_DAYS * 86400_000);
+  const [row] = await db.update(organizations).set({ closureRequestedAt: now, closureRequestedBy: auth.userId, closureScheduledFor: when, directoryListed: false })
+    .where(eq(organizations.id, auth.organizationId)).returning();
+  for (const a of await admins(auth.organizationId)) {
+    await sendEmail(templates.closureScheduled({ to: a.email, name: a.name, orgName: org.name, date: when, url: `${frontendBaseUrl()}/settings#inchidere` }), { organizationId: auth.organizationId });
+  }
+  await audit(auth, "closure_request", "organization", auth.organizationId, { scheduledFor: when.toISOString() });
+  return c.json(serialize(row));
+});
+
+/** DELETE /closure — anulează închiderea programată */
+organizationRoutes.delete("/closure", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const [row] = await db.update(organizations).set({ closureRequestedAt: null, closureRequestedBy: null, closureScheduledFor: null })
+    .where(eq(organizations.id, auth.organizationId)).returning();
+  for (const a of await admins(auth.organizationId)) {
+    await sendEmail(templates.closureCancelled({ to: a.email, name: a.name, orgName: row.name }), { organizationId: auth.organizationId });
+  }
+  await audit(auth, "closure_cancel", "organization", auth.organizationId);
+  return c.json(serialize(row));
+});
+
+/** PUT /retention { years } — clienții arhivați se șterg după `years` ani (null = păstrare nelimitată) */
+organizationRoutes.put("/retention", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const { years } = z.object({ years: z.union([z.null(), z.literal(RETENTION_YEARS as unknown as [number, ...number[]])]) }).parse(await c.req.json());
+  const [row] = await db.update(organizations).set({ archivedRetentionYears: years }).where(eq(organizations.id, auth.organizationId)).returning();
+  await audit(auth, "retention_policy", "organization", auth.organizationId, { years });
+  return c.json(serialize(row));
 });
