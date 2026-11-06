@@ -147,6 +147,8 @@ export const clients = pgTable("clients", {
   sourceData: jsonb("source_data"),
   /** avocatul / consultantul responsabil de client */
   responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+  /** clientul e exclus de la analiza AI, chiar dacă cabinetul a activat-o (ex. acord cu clientul) */
+  aiExcluded: boolean("ai_excluded").notNull().default(false),
   /** clientul arhivat nu mai apare în liste și termene; doar un client arhivat poate fi șters */
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by").references(() => users.id, { onDelete: "set null" }),
@@ -515,6 +517,9 @@ export const referrals = pgTable("referrals", {
   responseMessage: text("response_message"),
   clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
   respondedBy: uuid("responded_by").references(() => users.id, { onDelete: "set null" }),
+  /** avocatul a confirmat verificarea conflictului de interese înainte de acceptare */
+  conflictCheckedAt: timestamp("conflict_checked_at", { withTimezone: true }),
+  conflictNote: text("conflict_note"),
   respondedAt: timestamp("responded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

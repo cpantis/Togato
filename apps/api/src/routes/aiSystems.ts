@@ -61,7 +61,7 @@ async function systemResponse(organizationId: string, id: string) {
   obl.sort((a, b) => a.appliesFrom.localeCompare(b.appliesFrom) || a.article.localeCompare(b.article, "ro", { numeric: true }));
   return {
     ...serializeSystem(row),
-    client: { id: row.client.id, name: row.client.name, cui: row.client.cui },
+    client: { id: row.client.id, name: row.client.name, cui: row.client.cui, aiExcluded: row.client.aiExcluded },
     obligations: obl.map(serializeObligation),
   };
 }
@@ -181,6 +181,7 @@ aiSystemRoutes.post("/:id/memo", async (c) => {
   if (!org?.aiEnabled) return c.json({ error: "Analiza AI este dezactivată pentru cabinet. Un administrator o poate activa din Setări.", code: "ai_disabled" }, 403);
   if (!memoAvailable()) return c.json({ error: "Analiza AI nu e configurată (lipsește ANTHROPIC_API_KEY pe server)." }, 503);
   const s = await loadSystem(auth.organizationId, uuidParam(c.req.param("id")));
+  if (s.client.aiExcluded) return c.json({ error: "Clientul este exclus de la analiza AI. Modificarea se face din pagina clientului.", code: "ai_excluded_client" }, 403);
   // o singură cerere în lucru per sistem (după 15 minute se consideră abandonată)
   const inFlight = s.aiMemoStatus === "in_lucru" && s.aiMemoRequestedAt && Date.now() - s.aiMemoRequestedAt.getTime() < 15 * 60_000;
   if (!inFlight) {

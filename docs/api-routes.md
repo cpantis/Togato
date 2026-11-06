@@ -161,6 +161,7 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/clients/:id/unarchive` | sesiune |
 | `DELETE` | `/api/clients/:id` | sesiune |
 | `GET` | `/api/clients/:id/export` | sesiune |
+| `PATCH` | `/api/clients/:id/ai` | sesiune |
 | `PATCH` | `/api/clients/:id/responsible` | sesiune |
 
 ## Sisteme AI

@@ -190,6 +190,13 @@
       "when": 1793954276442,
       "tag": "0026_signup_verify_legal_data",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793954997426,
+      "tag": "0027_conflict_ai_exclusion",
+      "breakpoints": true
     }
   ]
 }

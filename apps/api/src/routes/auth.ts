@@ -18,7 +18,7 @@ import { logoSrc } from "../lib/logo";
 import { stateOf } from "../services/billing";
 import { LEGAL_VERSION } from "@togato/shared";
 import { legalAcceptances } from "../db/schema";
-import { requireEmailVerification } from "../config";
+import { requireAdmin2fa, requireEmailVerification } from "../config";
 import type { Tx } from "../db";
 import { isPlatformAdmin } from "../services/platform";
 
@@ -59,7 +59,9 @@ async function sessionResponse(c: Context, user: typeof users.$inferSelect, org:
 const DUMMY_HASH = bcrypt.hashSync("togato-dummy-password", 12);
 
 function publicUser(u: typeof users.$inferSelect) {
-  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled, platformAdmin: isPlatformAdmin(u.email), emailVerified: !!u.emailVerifiedAt };
+  return { id: u.id, email: u.email, name: u.name, role: u.role, organizationId: u.organizationId, totpEnabled: u.totpEnabled, platformAdmin: isPlatformAdmin(u.email), emailVerified: !!u.emailVerifiedAt,
+    // 2FA cerut acum: politica administratorilor (producție)
+    twoFactorRequired: requireAdmin2fa() && u.role === "admin" && !u.totpEnabled };
 }
 
 function publicOrg(o: typeof organizations.$inferSelect) {

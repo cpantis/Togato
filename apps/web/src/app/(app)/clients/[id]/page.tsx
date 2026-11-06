@@ -11,6 +11,7 @@ import { ObligationList } from "@/components/ObligationList";
 import { DocumentsCard } from "@/components/DocumentsCard";
 import { PortalCard } from "@/components/PortalCard";
 import { GdprClientCard } from "@/components/gdpr/GdprClientCard";
+import { Toggle } from "@/components/PoliciesCard";
 
 export default function ClientPage() {
   const { id } = useParams<{ id: string }>();
@@ -71,6 +72,16 @@ export default function ClientPage() {
       setActionError((e as Error).message);
     } finally {
       setArchiving(false);
+    }
+  }
+
+  async function setAiExcluded(excluded: boolean) {
+    setActionError(null);
+    try {
+      await apiPatch(`/api/clients/${id}/ai`, { excluded });
+      setClient((c) => c && { ...c, aiExcluded: excluded });
+    } catch (e) {
+      setActionError((e as Error).message);
     }
   }
 
@@ -164,6 +175,15 @@ export default function ClientPage() {
         <div className="space-y-5">
         <GdprClientCard clientId={client.id} />
         <PortalCard clientId={client.id} clientName={client.name} contactEmail={client.contactEmail} />
+        <Card className="h-fit p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[14px] font-semibold text-ink">Exclus de la analiza AI</h2>
+              <p className="mt-1 text-[12px] text-slate-500">Pentru clienții care nu au acceptat trimiterea datelor către furnizorul modelului. Încadrarea și documentele funcționează normal.</p>
+            </div>
+            <Toggle label="Exclus de la analiza AI" checked={client.aiExcluded} onChange={setAiExcluded} />
+          </div>
+        </Card>
         <Card className="h-fit p-5">
           <h2 className="text-[14px] font-semibold text-ink">Avocat responsabil</h2>
           <select

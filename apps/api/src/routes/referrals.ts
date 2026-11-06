@@ -30,7 +30,7 @@ function serialize(r: typeof referrals.$inferSelect) {
   const p = r.payload as Payload;
   return {
     id: r.id, status: r.status, createdAt: r.createdAt.toISOString(), respondedAt: r.respondedAt?.toISOString() ?? null,
-    message: r.message, responseMessage: r.responseMessage, clientId: r.clientId,
+    message: r.message, responseMessage: r.responseMessage, clientId: r.clientId, conflictCheckedAt: r.conflictCheckedAt?.toISOString() ?? null,
     company: p.company, contact: p.contact, needsLawyer: p.summary.needsLawyer,
     tools: p.tools.map((t) => ({ ...t, result: assessTool(t.answers) })),
   };
@@ -63,7 +63,12 @@ referralRoutes.post("/:id/accept", async (c) => {
   const auth = c.get("auth");
   const row = await loadReferral(auth.organizationId, uuidParam(c.req.param("id")));
   if (row.status !== "nou") return c.json({ error: "Solicitarea a primit deja un răspuns." }, 409);
-  const { message } = z.object({ message: z.string().trim().max(2000).nullish() }).parse(await c.req.json().catch(() => ({})));
+  const { message, conflictChecked, conflictNote } = z.object({
+    message: z.string().trim().max(2000).nullish(),
+    // obligația deontologică: verificarea conflictului de interese înainte de a accepta clientul
+    conflictChecked: z.literal(true, { message: "Confirmați că ați verificat conflictul de interese înainte de a accepta clientul." }),
+    conflictNote: z.string().trim().max(2000).nullish(),
+  }).parse(await c.req.json().catch(() => ({})));
   await assertCanAdd(auth.organizationId, "client");
   const p = row.payload as Payload;
   // același CUI există deja la cabinet → instrumentele se adaugă la clientul existent
@@ -89,10 +94,10 @@ referralRoutes.post("/:id/accept", async (c) => {
       await syncSystemObligations(tx, { organizationId: auth.organizationId, clientId: client.id, aiSystemId: sys.id, templates: classification.obligations });
     }
     await syncClientObligations(tx, auth.organizationId, client.id);
-    await tx.update(referrals).set({ status: "acceptat", clientId: client.id, responseMessage: message ?? null, respondedBy: auth.userId, respondedAt: new Date() })
+    await tx.update(referrals).set({ status: "acceptat", clientId: client.id, responseMessage: message ?? null, respondedBy: auth.userId, respondedAt: new Date(), conflictCheckedAt: new Date(), conflictNote: conflictNote ?? null })
       .where(and(eq(referrals.id, row.id), eq(referrals.organizationId, auth.organizationId)));
     await sendEmail(templates.referralAnswered({ to: p.contact.email, companyName: p.company.name, cabinetName: org.name, accepted: true, message, cabinetEmail: org.directoryEmail ?? auth.email }), { tx, organizationId: auth.organizationId });
-    await audit(auth, "referral_accept", "client", client.id, { referralId: row.id, tools: p.tools.length, existingClient: !!existing }, tx);
+    await audit(auth, "referral_accept", "client", client.id, { referralId: row.id, tools: p.tools.length, existingClient: !!existing, conflictChecked: true, conflictNote: conflictNote ?? null }, tx);
     return client.id;
   });
   return c.json({ ...serialize({ ...row, status: "acceptat", clientId, responseMessage: message ?? null, respondedAt: new Date() }), clientId });

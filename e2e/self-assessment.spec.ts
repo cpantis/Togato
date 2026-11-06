@@ -82,6 +82,8 @@ test("autoevaluare gratuită → alegerea cabinetului după județ și nume → 
   await page.getByRole("link", { name: /Transport Rapid SRL/ }).click();
   await expect(page.getByText("Avem nevoie de ajutor până în martie.")).toBeVisible();
   expect(await axe(page)).toEqual([]);
+  await expect(page.getByRole("button", { name: "Acceptă și creează clientul" })).toBeDisabled();
+  await page.getByLabel(/nu există un conflict de interese/).check();
   await page.getByRole("button", { name: "Acceptă și creează clientul" }).click();
   await page.waitForURL(/\/clients\/[0-9a-f-]{36}$/);
   await expect(page.getByText("din autoevaluare")).toBeVisible();

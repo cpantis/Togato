@@ -14,6 +14,8 @@ export interface AuthUser {
   platformAdmin: boolean;
   /** adresa de email a fost confirmată */
   emailVerified: boolean;
+  /** administrator fără 2FA, într-un mediu unde e obligatoriu: trebuie activat înainte de orice */
+  twoFactorRequired: boolean;
 }
 
 export interface Organization {
@@ -87,6 +89,7 @@ export interface Referral {
   message: string | null;
   responseMessage: string | null;
   clientId: string | null;
+  conflictCheckedAt: string | null;
   company: { name: string; cui: string | null; county: string | null };
   contact: { name: string; email: string };
   needsLawyer: boolean;
@@ -178,7 +181,7 @@ export interface AiSystem {
 
 /** detaliul unui sistem (GET /api/ai-systems/:id): sistemul + clientul + obligațiile lui */
 export interface SystemDetail extends AiSystem {
-  client: { id: string; name: string; cui: string | null };
+  client: { id: string; name: string; cui: string | null; aiExcluded: boolean };
   obligations: Obligation[];
 }
 
@@ -200,6 +203,7 @@ export interface ClientDetail {
   notes: string | null;
   createdAt: string;
   archivedAt: string | null;
+  aiExcluded: boolean;
   responsibleUserId: string | null;
   responsibleName: string | null;
   aiSystems: AiSystem[];

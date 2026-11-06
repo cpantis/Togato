@@ -13,6 +13,8 @@ export default function ReferralPage() {
   const [r, setR] = useState<Referral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const [conflictChecked, setConflictChecked] = useState(false);
+  const [conflictNote, setConflictNote] = useState("");
   const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
 
   useEffect(() => { apiGet<Referral>(`/api/referrals/${id}`).then(setR).catch((e) => setError(e.message)); }, [id]);
@@ -21,7 +23,7 @@ export default function ReferralPage() {
     if (kind === "decline" && !confirm("Refuzați solicitarea? Firma va fi anunțată și poate alege alt cabinet.")) return;
     setBusy(kind); setError(null);
     try {
-      const res = await apiPost<Referral & { clientId?: string }>(`/api/referrals/${id}/${kind}`, { message: reply || null });
+      const res = await apiPost<Referral & { clientId?: string }>(`/api/referrals/${id}/${kind}`, kind === "accept" ? { message: reply || null, conflictChecked, conflictNote: conflictNote || null } : { message: reply || null });
       if (kind === "accept" && res.clientId) router.push(`/clients/${res.clientId}`);
       else setR(res);
     } catch (e) {
@@ -74,9 +76,14 @@ export default function ReferralPage() {
                 <h2 className="text-[14px] font-semibold text-ink">Răspuns</h2>
                 <p className="mt-1 text-[12px] text-slate-500">Acceptarea creează clientul (sau completează clientul cu același CUI) și vă desemnează responsabil. Firma primește un email.</p>
                 <div className="mt-3"><Field label="Mesaj pentru firmă (opțional)"><textarea className={textareaClass} rows={3} maxLength={2000} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="ex. Vă contactăm mâine pentru o ofertă." /></Field></div>
+                <label className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-slate-700">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-brand" checked={conflictChecked} onChange={(e) => setConflictChecked(e.target.checked)} />
+                  <span>Am verificat că nu există un conflict de interese (firma sau părțile adverse în evidența cabinetului). Confirmarea se păstrează în jurnalul de activitate.</span>
+                </label>
+                {conflictChecked && <div className="mt-2"><Field label="Notă privind verificarea (opțional)"><textarea className={textareaClass} rows={2} maxLength={2000} value={conflictNote} onChange={(e) => setConflictNote(e.target.value)} placeholder="ex. Verificat în registrul de clienți, fără conflicte." /></Field></div>}
                 {error && <div className="mt-3"><Alert>{error}</Alert></div>}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button loading={busy === "accept"} disabled={!!busy} onClick={() => answer("accept")}>Acceptă și creează clientul</Button>
+                  <Button loading={busy === "accept"} disabled={!!busy || !conflictChecked} onClick={() => answer("accept")}>Acceptă și creează clientul</Button>
                   <Button variant="secondary" loading={busy === "decline"} disabled={!!busy} onClick={() => answer("decline")}>Refuză</Button>
                 </div>
               </>

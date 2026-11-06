@@ -29,6 +29,7 @@ const memoGenerate: JobHandler & { onFinalFailure?: JobHandler } = async (p: Mem
   if (!s) throw new PermanentJobError("Sistemul a fost șters");
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, p.organizationId), columns: { aiEnabled: true } });
   if (!org?.aiEnabled) throw new PermanentJobError("Analiza AI a fost dezactivată pentru cabinet.");
+  if (s.client.aiExcluded) throw new PermanentJobError("Analiza AI: clientul a fost exclus de la analiza AI.");
   if (!memoAvailable()) throw new PermanentJobError("Analiza AI nu e configurată pe server.");
   const answers = normalizeAnswers(s.answers);
   let memo;
@@ -191,6 +192,31 @@ const storageDelete: JobHandler = async (p: { keys: string[] }) => {
   if (p.keys?.length) await storage().delete(p.keys);
 };
 
+// ─── perioada de probă: emailuri cu 7 zile, 1 zi înainte și la expirare ─
+export function trialReminderKind(trialEndsAt: Date, now = new Date()): "7" | "1" | "expirat" | null {
+  const days = Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400_000);
+  if (days <= 0) return days > -3 ? "expirat" : null; // doar în primele zile după expirare
+  if (days === 1) return "1";
+  if (days <= 7) return "7";
+  return null;
+}
+
+const trialReminders: JobHandler = async () => {
+  const now = new Date();
+  const orgs = await db.select().from(organizations)
+    .where(and(eq(organizations.status, "trial"), isNull(organizations.subscriptionStatus), isNotNull(organizations.trialEndsAt), lte(organizations.trialEndsAt, new Date(now.getTime() + 8 * 86400_000))));
+  for (const o of orgs) {
+    const kind = trialReminderKind(o.trialEndsAt!, now);
+    if (!kind) continue;
+    const admins = await db.query.users.findMany({ where: and(eq(users.organizationId, o.id), eq(users.role, "admin"), eq(users.status, "activ")) });
+    for (const a of admins) {
+      const daysLeft = Math.max(0, Math.ceil((o.trialEndsAt!.getTime() - now.getTime()) / 86400_000));
+      await sendEmail(templates.trialEnding({ to: a.email, name: a.name, orgName: o.name, daysLeft, endsAt: o.trialEndsAt!, url: `${frontendBaseUrl()}/settings#abonament` }),
+        { organizationId: o.id, dedupeKey: `trial:${o.id}:${o.trialEndsAt!.toISOString().slice(0, 10)}:${kind}:${a.id}` });
+    }
+  }
+};
+
 const maintenancePrune: JobHandler = async () => {
   await pruneFinished();
   await pruneExpiredSessions();
@@ -209,6 +235,7 @@ export const handlers: Record<string, JobHandler> = {
   "maintenance.prune": maintenancePrune,
   "storage.delete": storageDelete,
   "breach.alert": breachAlert,
+  "trial.reminders": trialReminders,
 };
 
 /** programările zilnice — idempotente prin dedupeKey; apelate periodic de worker */
@@ -218,6 +245,7 @@ export async function scheduleRecurring(now = new Date()) {
   const at = new Date(`${day}T05:00:00Z`);
   await enqueue("reminders.daily", { date: day }, { dedupeKey: `reminders:${day}`, runAt: at, maxAttempts: 3 });
   await enqueue("maintenance.prune", {}, { dedupeKey: `prune:${day}`, runAt: at, maxAttempts: 2 });
+  await enqueue("trial.reminders", {}, { dedupeKey: `trial:${day}`, runAt: at, maxAttempts: 3 });
 }
 
 /** la pornire: reîncadrează o singură dată per versiune a regulilor */

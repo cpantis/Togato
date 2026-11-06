@@ -171,4 +171,19 @@ describe("memoriul AI asincron", () => {
     expect(r.body.aiMemoStatus).toBe("esuat");
     expect(r.body.aiMemoError).toContain("Analiza AI nu a putut");
   });
+
+  it("clientul exclus de la analiza AI nu poate fi trimis la model", async () => {
+    const A = await seedCabinet("Memo Exclus");
+    const [org] = await db.select({ id: aiSystems.organizationId }).from(aiSystems).where(eq(aiSystems.id, A.systemId));
+    await db.update(organizations).set({ aiEnabled: true }).where(eq(organizations.id, org.id));
+    const ex = await call("PATCH", `/api/clients/${A.clientId}/ai`, { token: A.token, body: { excluded: true } });
+    expect(ex.status).toBe(200);
+    const sys = await call("GET", `/api/ai-systems/${A.systemId}`, { token: A.token });
+    expect(sys.body.client.aiExcluded).toBe(true);
+    const r = await call("POST", `/api/ai-systems/${A.systemId}/memo`, { token: A.token });
+    expect(r.status).toBe(403);
+    expect(r.body.code).toBe("ai_excluded_client");
+    await call("PATCH", `/api/clients/${A.clientId}/ai`, { token: A.token, body: { excluded: false } });
+    expect((await call("POST", `/api/ai-systems/${A.systemId}/memo`, { token: A.token })).status).toBe(202);
+  });
 });

@@ -121,9 +121,11 @@ describe("solicitarea către cabinet", () => {
     await call("POST", `/api/self-assessments/${t}/requests`, { body: { organizationId: A.organizationId, consent: true } });
     const ref = (await call("GET", "/api/referrals", { token: A.token })).body.data.find((r: any) => r.contact.email === email);
     _clearOutbox();
-    const acc = await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: { message: "Vă sunăm mâine." } });
+    // fără confirmarea verificării conflictului de interese → refuz
+    expect((await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: { message: "x" } })).status).toBe(400);
+    const acc = await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: { message: "Vă sunăm mâine.", conflictChecked: true, conflictNote: "Fără conflicte în evidența cabinetului." } });
     expect(acc.status).toBe(200);
-    expect((await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: {} })).status).toBe(409);
+    expect((await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: { conflictChecked: true } })).status).toBe(409);
 
     const client = await call("GET", `/api/clients/${acc.body.clientId}`, { token: A.token });
     check(C.clientDetail, client.body);
@@ -161,7 +163,7 @@ describe("solicitarea către cabinet", () => {
     await call("POST", `/api/self-assessments/${body.token}/tools`, { body: { name: "Chatbot", answers: { talksToPeople: true } } });
     await call("POST", `/api/self-assessments/${body.token}/requests`, { body: { organizationId: A.organizationId, consent: true } });
     const ref = (await call("GET", "/api/referrals", { token: A.token })).body.data.find((r: any) => r.contact.email === email);
-    const r = await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: {} });
+    const r = await call("POST", `/api/referrals/${ref.id}/accept`, { token: A.token, body: { conflictChecked: true } });
     expect(r.status).toBe(402);
     expect((await rootDb.select().from(aiSystems).where(eq(aiSystems.source, "autoevaluare"))).every((s) => s.organizationId !== A.organizationId)).toBe(true);
 

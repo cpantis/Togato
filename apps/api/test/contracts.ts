@@ -22,7 +22,7 @@ const riskCounts = z.partialRecord(risk, z.number().int());
 const billingState = z.enum(["proba", "activ", "restant", "expirat", "suspendat"]);
 
 export const authUser = z.object({
-  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(), emailVerified: z.boolean(),
+  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(), emailVerified: z.boolean(), twoFactorRequired: z.boolean(),
 }).strict();
 same<z.infer<typeof authUser>, AuthUser>(true);
 
@@ -75,7 +75,7 @@ export const aiSystem = z.object({
 same<z.infer<typeof aiSystem>, AiSystem>(true);
 
 export const systemDetail = aiSystem.extend({
-  client: z.object({ id: uuid, name: z.string(), cui: z.string().nullable() }).strict(),
+  client: z.object({ id: uuid, name: z.string(), cui: z.string().nullable(), aiExcluded: z.boolean() }).strict(),
   obligations: z.array(obligation),
 }).strict();
 same<z.infer<typeof systemDetail>, SystemDetail>(true);
@@ -84,7 +84,7 @@ export const clientDetail = z.object({
   id: uuid, cui: z.string().nullable(), name: z.string(), regCom: z.string().nullable(), address: z.string().nullable(), city: z.string().nullable(),
   county: z.string().nullable(), caen: z.string().nullable(), caenDescription: z.string().nullable(), employees: z.number().int().nullable(),
   turnover: z.number().nullable(), vatPayer: z.boolean().nullable(), contactName: z.string().nullable(), contactEmail: z.string().nullable(),
-  notes: z.string().nullable(), createdAt: iso, archivedAt: iso.nullable(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(),
+  notes: z.string().nullable(), createdAt: iso, archivedAt: iso.nullable(), aiExcluded: z.boolean(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(),
   aiSystems: z.array(aiSystem), clientObligations: z.array(obligation),
 }).strict();
 same<z.infer<typeof clientDetail>, ClientDetail>(true);
@@ -152,7 +152,7 @@ same<z.infer<typeof directoryCabinet>, DirectoryCabinet>(true);
 export const directoryPage = z.object({ data: z.array(directoryCabinet), total: z.number().int(), limit: z.number().int(), offset: z.number().int() }).strict();
 
 export const referral = z.object({
-  id: uuid, status: referralStatus, createdAt: iso, respondedAt: iso.nullable(), message: z.string().nullable(), responseMessage: z.string().nullable(), clientId: uuid.nullable(),
+  id: uuid, status: referralStatus, createdAt: iso, respondedAt: iso.nullable(), message: z.string().nullable(), responseMessage: z.string().nullable(), clientId: uuid.nullable(), conflictCheckedAt: iso.nullable(),
   company: z.object({ name: z.string(), cui: z.string().nullable(), county: z.string().nullable() }).strict(),
   contact: z.object({ name: z.string(), email: z.string() }).strict(),
   needsLawyer: z.boolean(),

@@ -79,3 +79,42 @@ describe("confirmarea emailului (activată ca în producție)", () => {
     expect((await call("GET", "/api/dashboard", { token: acc.body.token })).status).toBe(200);
   });
 });
+
+describe("perioada de probă și 2FA pentru administratori", () => {
+  it("emailuri cu 7 zile și 1 zi înainte și la expirare, o singură dată fiecare", async () => {
+    const { trialReminderKind } = await import("../src/jobs/handlers");
+    const now = new Date("2026-11-10T10:00:00Z");
+    const at = (days: number) => new Date(now.getTime() + days * 86400_000);
+    expect(trialReminderKind(at(10), now)).toBeNull();
+    expect(trialReminderKind(at(6.5), now)).toBe("7");
+    expect(trialReminderKind(at(0.5), now)).toBe("1");
+    expect(trialReminderKind(at(-1), now)).toBe("expirat");
+    expect(trialReminderKind(at(-5), now)).toBeNull();
+
+    const A = await seedCabinet("Probă");
+    await rootDb.update(organizations).set({ trialEndsAt: new Date(Date.now() + 5 * 86400_000) }).where(eq(organizations.id, A.organizationId));
+    await handlers["trial.reminders"]({}, { id: "x", attempts: 1, type: "trial.reminders" });
+    await handlers["trial.reminders"]({}, { id: "x", attempts: 1, type: "trial.reminders" });
+    await runJobs();
+    const mails = sentEmails().filter((m) => m.to === A.email && m.subject.includes("probă"));
+    expect(mails).toHaveLength(1);
+    expect(mails[0].subject).toBe("Perioada de probă Togato se încheie în 5 zile");
+  });
+
+  it("cu politica activă, administratorul fără 2FA trebuie să o activeze", async () => {
+    const A = await seedCabinet("Admin 2FA");
+    process.env.REQUIRE_ADMIN_2FA = "on"; _resetConfig();
+    try {
+      const me = await call("GET", "/api/auth/me", { token: A.token });
+      expect(me.body.user.twoFactorRequired).toBe(true);
+      const r = await call("GET", "/api/dashboard", { token: A.token });
+      expect(r.status).toBe(403);
+      expect(r.body.code).toBe("2fa_required");
+      expect((await call("GET", "/api/account/security", { token: A.token })).status).toBe(200);
+      await rootDb.update(users).set({ totpEnabled: true }).where(eq(users.id, A.userId));
+      expect((await call("GET", "/api/dashboard", { token: A.token })).status).toBe(200);
+    } finally {
+      delete process.env.REQUIRE_ADMIN_2FA; _resetConfig();
+    }
+  });
+});

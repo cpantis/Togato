@@ -47,6 +47,17 @@ export const templates = {
     ], { label: "Confirmă adresa", url: p.url });
   },
 
+  trialEnding(p: { to: string; name: string; orgName: string; daysLeft: number; endsAt: Date; url: string }) {
+    const when = p.endsAt.toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Bucharest" });
+    const subject = p.daysLeft <= 0 ? "Perioada de probă Togato s-a încheiat" : p.daysLeft === 1 ? "Perioada de probă Togato se încheie mâine" : `Perioada de probă Togato se încheie în ${p.daysLeft} zile`;
+    return build(p.to, subject, [
+      `Bună ziua, ${escapeHtml(p.name)}.`,
+      p.daysLeft <= 0
+        ? `Perioada de probă pentru <strong>${escapeHtml(p.orgName)}</strong> s-a încheiat la ${escapeHtml(when)}. Datele rămân disponibile pentru consultare și export; pentru a continua lucrul, alegeți un abonament.`
+        : `Perioada de probă pentru <strong>${escapeHtml(p.orgName)}</strong> se încheie la ${escapeHtml(when)}. După aceea, datele rămân disponibile doar pentru consultare și export, până la alegerea unui abonament.`,
+    ], { label: "Alege abonamentul", url: p.url });
+  },
+
   passwordReset(p: { to: string; name: string; url: string; expiresMinutes: number }) {
     return build(p.to, "Resetarea parolei Togato", [
       `Bună ziua, ${escapeHtml(p.name)}. Am primit o cerere de resetare a parolei pentru contul dumneavoastră.`,

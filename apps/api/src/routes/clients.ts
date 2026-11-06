@@ -159,6 +159,7 @@ clientRoutes.get("/:id", async (c) => {
     caen: row.caen, caenDescription: row.caenDescription, employees: row.employees, turnover: row.turnover, vatPayer: row.vatPayer,
     contactName: row.contactName, contactEmail: row.contactEmail, notes: row.notes, createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
+    aiExcluded: row.aiExcluded,
     responsibleUserId: row.responsibleUserId,
     responsibleName: row.responsibleUserId ? (await db.query.users.findFirst({ where: eq(users.id, row.responsibleUserId), columns: { name: true } }))?.name ?? null : null,
     aiSystems: systems.map((s) => {
@@ -244,6 +245,16 @@ clientRoutes.get("/:id/export", async (c) => {
   return new Response(new Uint8Array(result.zip), {
     headers: { "Content-Type": "application/zip", "Content-Disposition": contentDisposition(result.filename), "Cache-Control": "no-store" },
   });
+});
+
+/** PATCH /:id/ai { excluded } — exclude clientul de la analiza AI (ex. la cererea lui sau prin contract) */
+clientRoutes.patch("/:id/ai", async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  const { excluded } = z.object({ excluded: z.boolean() }).parse(await c.req.json());
+  await db.update(clients).set({ aiExcluded: excluded, updatedAt: new Date() }).where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await audit(auth, excluded ? "ai_exclude" : "ai_include", "client", row.id);
+  return c.json({ ok: true, aiExcluded: excluded });
 });
 
 /** PATCH /:id/responsible { userId } — schimbă doar avocatul responsabil */

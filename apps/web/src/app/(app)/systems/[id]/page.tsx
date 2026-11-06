@@ -144,8 +144,11 @@ function MemoPanel({ system, onChange }: { system: SystemDetail; onChange: (s: S
     <Card className="p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-[14px] font-semibold text-ink">Analiză AI</h2>
-        <Button size="sm" variant="secondary" onClick={generate} loading={busy} disabled={!organization?.aiEnabled}>{system.aiMemo ? "Regenerează" : "Generează"}</Button>
+        <Button size="sm" variant="secondary" onClick={generate} loading={busy} disabled={!organization?.aiEnabled || system.client.aiExcluded}>{system.aiMemo ? "Regenerează" : "Generează"}</Button>
       </div>
+      {organization?.aiEnabled && system.client.aiExcluded && (
+        <p className="mt-2 text-[12px] text-slate-500">Clientul <Link href={`/clients/${system.client.id}`} className="font-semibold text-brand hover:underline">{system.client.name}</Link> e exclus de la analiza AI. Datele lui nu se trimit către furnizorul modelului.</p>
+      )}
       {!organization?.aiEnabled && (
         <p className="mt-2 text-[12px] text-slate-500">
           Analiza AI e dezactivată pentru cabinet, deoarece trimite date despre client către furnizorul modelului.{" "}
