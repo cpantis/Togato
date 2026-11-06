@@ -22,7 +22,7 @@ const riskCounts = z.partialRecord(risk, z.number().int());
 const billingState = z.enum(["proba", "activ", "restant", "expirat", "suspendat"]);
 
 export const authUser = z.object({
-  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(), emailVerified: z.boolean(), twoFactorRequired: z.boolean(),
+  id: uuid, email: z.string().email(), name: z.string(), role: z.enum(["admin", "membru", "colaborator"]), organizationId: uuid, totpEnabled: z.boolean(), platformAdmin: z.boolean(), emailVerified: z.boolean(), twoFactorRequired: z.boolean(),
 }).strict();
 same<z.infer<typeof authUser>, AuthUser>(true);
 
@@ -85,7 +85,7 @@ export const clientDetail = z.object({
   id: uuid, cui: z.string().nullable(), name: z.string(), regCom: z.string().nullable(), address: z.string().nullable(), city: z.string().nullable(),
   county: z.string().nullable(), caen: z.string().nullable(), caenDescription: z.string().nullable(), employees: z.number().int().nullable(),
   turnover: z.number().nullable(), vatPayer: z.boolean().nullable(), contactName: z.string().nullable(), contactEmail: z.string().nullable(),
-  notes: z.string().nullable(), createdAt: iso, archivedAt: iso.nullable(), aiExcluded: z.boolean(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(),
+  notes: z.string().nullable(), createdAt: iso, archivedAt: iso.nullable(), aiExcluded: z.boolean(), restricted: z.boolean(), responsibleUserId: uuid.nullable(), responsibleName: z.string().nullable(),
   aiSystems: z.array(aiSystem), clientObligations: z.array(obligation),
 }).strict();
 same<z.infer<typeof clientDetail>, ClientDetail>(true);
@@ -101,10 +101,10 @@ same<z.infer<typeof dashboard>, DashboardData>(true);
 
 export const team = z.object({
   members: z.array(z.object({
-    id: uuid, name: z.string(), email: z.string().email(), role: z.enum(["admin", "membru"]), status: z.enum(["activ", "dezactivat"]),
+    id: uuid, name: z.string(), email: z.string().email(), role: z.enum(["admin", "membru", "colaborator"]), status: z.enum(["activ", "dezactivat"]),
     totpEnabled: z.boolean(), lastActiveAt: iso.nullable(), createdAt: iso, clientsCount: z.number().int(),
   }).strict()),
-  invitations: z.array(z.object({ id: uuid, email: z.string().email(), name: z.string().nullable(), role: z.enum(["admin", "membru"]), expiresAt: iso, createdAt: iso }).strict()),
+  invitations: z.array(z.object({ id: uuid, email: z.string().email(), name: z.string().nullable(), role: z.enum(["admin", "membru", "colaborator"]), expiresAt: iso, createdAt: iso }).strict()),
 }).strict();
 same<z.infer<typeof team>, TeamData>(true);
 

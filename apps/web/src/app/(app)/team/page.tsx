@@ -6,7 +6,7 @@ import { formatDate, initials } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, Card, Field, LoadingBlock, Modal, PageHeader, cn, inputClass } from "@/components/ui";
 
-const ROLE_LABELS: Record<UserRole, string> = { admin: "Administrator", membru: "Membru" };
+const ROLE_LABELS: Record<UserRole, string> = { admin: "Administrator", membru: "Membru", colaborator: "Colaborator (doar citire)" };
 
 function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const [email, setEmail] = useState("");
@@ -63,10 +63,11 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
           {error && <Alert>{error}</Alert>}
           <Field label="Email"><input className={inputClass} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           <Field label="Nume (opțional)"><input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label="Rol" hint="Administratorii pot invita colegi și pot schimba rolurile.">
+          <Field label="Rol" hint="Administratorii pot invita colegi și pot schimba rolurile. Colaboratorii (ex. experți externi) văd doar clienții la care primesc acces, fără să poată modifica.">
             <select className={inputClass} value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
               <option value="membru">Membru</option>
               <option value="admin">Administrator</option>
+              <option value="colaborator">Colaborator (doar citire)</option>
             </select>
           </Field>
           <div className="flex justify-end gap-2">
@@ -113,6 +114,7 @@ function MemberRow({ m, isAdmin, isSelf, onChanged, onError }: { m: TeamMember; 
             <select className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[12px]" value={m.role} disabled={busy || disabled} onChange={(e) => patch({ role: e.target.value as UserRole })} aria-label={`Rolul lui ${m.name}`}>
               <option value="membru">Membru</option>
               <option value="admin">Administrator</option>
+              <option value="colaborator">Colaborator (doar citire)</option>
             </select>
             {m.totpEnabled && (
               <Button size="sm" variant="ghost" disabled={busy} onClick={async () => {

@@ -76,6 +76,11 @@ export const authMiddleware = async (c: Context, next: Next) => {
     }
   }
 
+  // colaboratorii au acces doar în citire (contul propriu rămâne editabil)
+  if (user.role === "colaborator" && !SAFE_METHODS.has(c.req.method) && !MFA_SETUP_ALLOWED.test(c.req.path)) {
+    return c.json({ error: "Contul de colaborator are acces doar în citire.", code: "read_only" }, 403);
+  }
+
   // închiderea contului programată: doar citire și export; se poate anula
   if (s.org.closureScheduledFor && !SAFE_METHODS.has(c.req.method) && !CLOSING_ALLOWED.test(c.req.path)) {
     return c.json({ error: "Închiderea contului cabinetului este programată. Datele pot fi doar consultate și exportate; un administrator poate anula închiderea din Setări.", code: "closing" }, 403);
@@ -127,7 +132,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     await withTenant(user.organizationId, async () => {
       await next();
       if (c.error) throw new RollbackSignal();
-    });
+    }, { userId: user.id, role: user.role });
   } catch (e) {
     if (!(e instanceof RollbackSignal)) throw e;
   }

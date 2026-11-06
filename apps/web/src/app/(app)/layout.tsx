@@ -145,6 +145,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-8 sm:py-8">
           <LegalGate />
+          {user.role === "colaborator" && <div className="mb-5"><Alert kind="info">Cont de colaborator: vedeți doar clienții la care ați primit acces, fără să puteți face modificări.</Alert></div>}
           {banner && (
             <div className="mb-5" role="status">
               <Alert kind={banner.kind}>

@@ -165,6 +165,8 @@ Erori: JSON `{ error, code? }`; 401 sesiune, 402 abonament / limită, 403 rol / 
 | `POST` | `/api/clients/:id/unarchive` | sesiune |
 | `DELETE` | `/api/clients/:id` | sesiune |
 | `GET` | `/api/clients/:id/export` | sesiune |
+| `GET` | `/api/clients/:id/access` | sesiune |
+| `PUT` | `/api/clients/:id/access` | sesiune |
 | `PATCH` | `/api/clients/:id/ai` | sesiune |
 | `PATCH` | `/api/clients/:id/responsible` | sesiune |
 

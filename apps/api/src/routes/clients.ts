@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { ClientSummary } from "@togato/shared";
 import { db } from "../db";
-import { aiSystems, clients, evidence, obligations, portalLinks, users } from "../db/schema";
+import { aiSystems, clientAccess, clients, evidence, obligations, portalLinks, users } from "../db/schema";
 import { enqueue } from "../jobs/queue";
 import { assertCanAdd } from "../services/billing";
 import { buildDossierZip } from "../services/dossierExport";
@@ -43,6 +43,7 @@ async function checkResponsible(organizationId: string, userId: string | null | 
   if (!userId) return;
   const u = await db.query.users.findFirst({ where: and(eq(users.id, userId), eq(users.organizationId, organizationId), eq(users.status, "activ")) });
   if (!u) badRequest("Avocatul responsabil nu e un membru activ al cabinetului.");
+  if (u.role === "colaborator") badRequest("Un colaborator (acces doar în citire) nu poate fi avocat responsabil.");
 }
 
 /** POST /lookup { cui } — datele firmei de la ANAF (și ListaFirme, dacă e configurat) */
@@ -160,6 +161,7 @@ clientRoutes.get("/:id", async (c) => {
     contactName: row.contactName, contactEmail: row.contactEmail, notes: row.notes, createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
     aiExcluded: row.aiExcluded,
+    restricted: row.restricted,
     responsibleUserId: row.responsibleUserId,
     responsibleName: row.responsibleUserId ? (await db.query.users.findFirst({ where: eq(users.id, row.responsibleUserId), columns: { name: true } }))?.name ?? null : null,
     aiSystems: systems.map((s) => {
@@ -247,6 +249,39 @@ clientRoutes.get("/:id/export", async (c) => {
   });
 });
 
+/** GET /:id/access — cine vede clientul (doar administratori) */
+clientRoutes.get("/:id/access", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  const members = await db.select({ id: users.id, name: users.name, email: users.email, role: users.role, status: users.status }).from(users)
+    .where(eq(users.organizationId, auth.organizationId)).orderBy(asc(users.name));
+  const granted = new Set((await db.select({ userId: clientAccess.userId }).from(clientAccess)
+    .where(and(eq(clientAccess.clientId, row.id), eq(clientAccess.organizationId, auth.organizationId)))).map((g) => g.userId));
+  return c.json({
+    restricted: row.restricted,
+    members: members.filter((m) => m.status === "activ").map((m) => ({
+      userId: m.id, name: m.name, email: m.email, role: m.role, granted: granted.has(m.id),
+      // ce vede efectiv, după regulile din politicile client_visibility
+      sees: m.role === "admin" || granted.has(m.id) || (m.role === "membru" && (!row.restricted || row.responsibleUserId === m.id)),
+    })),
+  });
+});
+
+/** PUT /:id/access { restricted, userIds } — restricționează clientul și stabilește accesul explicit */
+clientRoutes.put("/:id/access", requireAdmin, async (c) => {
+  const auth = c.get("auth");
+  const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
+  const body = z.object({ restricted: z.boolean(), userIds: z.array(z.string().uuid()).max(500) }).parse(await c.req.json());
+  const ids = [...new Set(body.userIds)];
+  const valid = ids.length ? await db.select({ id: users.id }).from(users).where(and(eq(users.organizationId, auth.organizationId), inArray(users.id, ids))) : [];
+  if (valid.length !== ids.length) badRequest("Unul dintre membri nu face parte din cabinet.");
+  await db.update(clients).set({ restricted: body.restricted, updatedAt: new Date() }).where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));
+  await db.delete(clientAccess).where(and(eq(clientAccess.clientId, row.id), eq(clientAccess.organizationId, auth.organizationId)));
+  if (ids.length) await db.insert(clientAccess).values(ids.map((userId) => ({ organizationId: auth.organizationId, clientId: row.id, userId, grantedBy: auth.userId })));
+  await audit(auth, "access", "client", row.id, { restricted: body.restricted, users: ids.length });
+  return c.json({ ok: true, restricted: body.restricted });
+});
+
 /** PATCH /:id/ai { excluded } — exclude clientul de la analiza AI (ex. la cererea lui sau prin contract) */
 clientRoutes.patch("/:id/ai", async (c) => {
   const auth = c.get("auth");
@@ -262,6 +297,7 @@ clientRoutes.patch("/:id/responsible", async (c) => {
   const auth = c.get("auth");
   const row = await loadClient(auth.organizationId, uuidParam(c.req.param("id")));
   const { userId } = z.object({ userId: z.string().uuid().nullable() }).parse(await c.req.json());
+  if (row.restricted && auth.role !== "admin") return c.json({ error: "La un client cu acces restricționat, responsabilul se schimbă doar de un administrator.", code: "restricted" }, 403);
   await checkResponsible(auth.organizationId, userId);
   await db.update(clients).set({ responsibleUserId: userId, updatedAt: new Date() })
     .where(and(eq(clients.id, row.id), eq(clients.organizationId, auth.organizationId)));

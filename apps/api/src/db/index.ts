@@ -49,10 +49,11 @@ export class RollbackSignal extends Error {}
  * Postgres însuși refuză rândurile altor cabinete, chiar dacă o interogare uită filtrul.
  * Dacă `fn` aruncă (sau semnalează eroare prin `RollbackSignal`), modificările se anulează.
  */
-export async function withTenant<T>(organizationId: string, fn: () => Promise<T>): Promise<T> {
+export async function withTenant<T>(organizationId: string, fn: () => Promise<T>, user?: { userId: string; role: string }): Promise<T> {
   return rootDb.transaction(async (tx) => {
     // un singur drum la server: set_config('role', …, true) = SET LOCAL ROLE
-    await tx.execute(sql`select set_config('app.org_id', ${organizationId}, true), set_config('role', ${TENANT_ROLE}, true)`);
+    // app.user_id / app.role: accesul pe client (clienți restricționați, colaboratori) — politicile client_visibility
+    await tx.execute(sql`select set_config('app.org_id', ${organizationId}, true), set_config('app.user_id', ${user?.userId ?? ""}, true), set_config('app.role', ${user?.role ?? ""}, true), set_config('role', ${TENANT_ROLE}, true)`);
     return tenantStore.run({ tx, organizationId }, fn);
   });
 }

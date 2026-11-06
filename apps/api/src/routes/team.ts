@@ -50,7 +50,7 @@ teamRoutes.get("/", async (c) => {
 const inviteSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email invalid"),
   name: z.string().trim().max(120).nullish().transform((v) => (v ? v : null)),
-  role: z.enum(["admin", "membru"]).default("membru"),
+  role: z.enum(["admin", "membru", "colaborator"]).default("membru"),
   /** trimite linkul și pe email (implicit da); linkul se întoarce oricum, pentru copiere */
   sendEmail: z.boolean().default(true),
 });
@@ -99,7 +99,7 @@ teamRoutes.delete("/invitations/:id", requireAdmin, async (c) => {
 });
 
 const memberSchema = z.object({
-  role: z.enum(["admin", "membru"]).optional(),
+  role: z.enum(["admin", "membru", "colaborator"]).optional(),
   status: z.enum(["activ", "dezactivat"]).optional(),
 });
 
@@ -111,7 +111,7 @@ teamRoutes.patch("/members/:id", requireAdmin, async (c) => {
   const member = await db.query.users.findFirst({ where: and(eq(users.id, id), eq(users.organizationId, auth.organizationId)) });
   if (!member) notFound("Membrul nu a fost găsit");
 
-  const losesAdmin = member.role === "admin" && member.status === "activ" && (body.role === "membru" || body.status === "dezactivat");
+  const losesAdmin = member.role === "admin" && member.status === "activ" && ((body.role && body.role !== "admin") || body.status === "dezactivat");
   if (losesAdmin) {
     if (id === auth.userId) badRequest("Nu îți poți retrage singur drepturile de administrator. Cere altui administrator.");
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(users)

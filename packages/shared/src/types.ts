@@ -1,7 +1,7 @@
 import type { AiSystemAnswers, ClassificationResult, ObligationStatus, ReviewStatus, RiskLevel } from "./aiAct";
 import type { PortalAnswers } from "./portal";
 
-export type UserRole = "admin" | "membru";
+export type UserRole = "admin" | "membru" | "colaborator";
 
 export interface AuthUser {
   id: string;
@@ -208,6 +208,8 @@ export interface ClientDetail {
   createdAt: string;
   archivedAt: string | null;
   aiExcluded: boolean;
+  /** acces restricționat (doar administratorii, responsabilul și membrii cu acces explicit) */
+  restricted: boolean;
   responsibleUserId: string | null;
   responsibleName: string | null;
   aiSystems: AiSystem[];

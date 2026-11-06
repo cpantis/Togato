@@ -12,6 +12,7 @@ import { DocumentsCard } from "@/components/DocumentsCard";
 import { PortalCard } from "@/components/PortalCard";
 import { GdprClientCard } from "@/components/gdpr/GdprClientCard";
 import { Toggle } from "@/components/PoliciesCard";
+import { ClientAccessCard } from "@/components/ClientAccessCard";
 
 export default function ClientPage() {
   const { id } = useParams<{ id: string }>();
@@ -127,6 +128,7 @@ export default function ClientPage() {
         </>}
       />
       {client.archivedAt && <div className="mb-4"><Alert kind="warning">Client arhivat la {formatDate(client.archivedAt)}. Nu apare în liste și termene, iar portalul e dezactivat. Datele, avizele și dovezile se păstrează.</Alert></div>}
+      {client.restricted && <div className="mb-4"><Alert kind="info">Client cu acces restricționat: îl văd doar administratorii, avocatul responsabil și colegii cu acces explicit.</Alert></div>}
       {actionError && <div className="mb-4"><Alert>{actionError}</Alert></div>}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -175,6 +177,7 @@ export default function ClientPage() {
         <div className="space-y-5">
         <GdprClientCard clientId={client.id} />
         <PortalCard clientId={client.id} clientName={client.name} contactEmail={client.contactEmail} />
+        {user?.role === "admin" && <ClientAccessCard clientId={client.id} onChange={(restricted) => setClient((c) => c && { ...c, restricted })} />}
         <Card className="h-fit p-5">
           <div className="flex items-start justify-between gap-3">
             <div>

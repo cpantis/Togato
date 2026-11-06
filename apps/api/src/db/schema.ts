@@ -3,7 +3,8 @@ import { relations, sql } from "drizzle-orm";
 import type { AiSystemAnswers, ClassificationResult } from "@togato/shared";
 
 export const orgStatusEnum = pgEnum("org_status", ["trial", "activ", "suspendat"]);
-export const userRoleEnum = pgEnum("user_role", ["admin", "membru"]);
+/** colaborator = doar citire, doar clienții la care i s-a dat acces */
+export const userRoleEnum = pgEnum("user_role", ["admin", "membru", "colaborator"]);
 export const userStatusEnum = pgEnum("user_status", ["activ", "dezactivat"]);
 export const riskLevelEnum = pgEnum("risk_level", ["neclasificat", "minim", "transparenta", "risc_ridicat", "interzis", "neaplicabil"]);
 export const reviewStatusEnum = pgEnum("review_status", ["propus", "aprobat", "respins"]);
@@ -153,6 +154,8 @@ export const clients = pgTable("clients", {
   sourceData: jsonb("source_data"),
   /** avocatul / consultantul responsabil de client */
   responsibleUserId: uuid("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+  /** acces restricționat: doar administratorii, responsabilul și membrii din `client_access` văd clientul */
+  restricted: boolean("restricted").notNull().default(false),
   /** clientul e exclus de la analiza AI, chiar dacă cabinetul a activat-o (ex. acord cu clientul) */
   aiExcluded: boolean("ai_excluded").notNull().default(false),
   /** administratorii au fost anunțați că dosarul arhivat urmează să fie șters (politica de păstrare) */
@@ -599,3 +602,19 @@ export const obligationsRelations = relations(obligations, ({ one }) => ({
   client: one(clients, { fields: [obligations.clientId], references: [clients.id] }),
   aiSystem: one(aiSystems, { fields: [obligations.aiSystemId], references: [aiSystems.id] }),
 }));
+
+/**
+ * Accesul explicit al unui membru la un client: necesar pentru clienții restricționați și pentru colaboratori.
+ * Aplicat în Postgres (politicile `client_visibility`, funcția `togato_client_visible`).
+ */
+export const clientAccess = pgTable("client_access", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  grantedBy: uuid("granted_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("client_access_unique").on(t.clientId, t.userId),
+  index("client_access_user_idx").on(t.userId),
+]);
