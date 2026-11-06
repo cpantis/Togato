@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, Button, Card, LoadingBlock, Modal, PageHeader, RiskBadge, cn, inputClass } from "@/components/ui";
+import { SystemStatusCard } from "@/components/SystemStatusCard";
 
 type OrgRow = {
   id: string; name: string; plan: string; status: string; billingState: BillingState; trialEndsAt: string | null; subscriptionStatus: string | null;
@@ -74,6 +75,7 @@ export default function PlatformPage() {
     <div className="fade-up">
       <PageHeader title="Platformă" subtitle="Cabinetele Togato. Datele unui cabinet se pot consulta doar cât timp cabinetul a acordat acces de suport; fiecare acțiune apare și în jurnalul cabinetului."
         actions={<Button variant="secondary" onClick={() => apiGet<{ data: AuditRow[] }>("/api/platform/audit").then((r) => setAudit(r.data)).catch((e) => setError(e.message))}>Jurnalul echipei</Button>} />
+      <SystemStatusCard />
       <input className={`${inputClass} mb-4 sm:max-w-sm`} placeholder="Caută cabinet..." value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Caută cabinet" />
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       {!rows ? <LoadingBlock /> : (

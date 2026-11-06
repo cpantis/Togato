@@ -10,13 +10,18 @@
 
 Avizele înghețate au amprentă SHA-256: după o restaurare, `GET /api/snapshots/:id/pdf` verifică integritatea fiecăruia (`X-Togato-Integrity: ok`).
 
-## Dump zilnic propriu
+## Dump zilnic propriu (serviciul `backup`)
+
+Serviciul Railway `backup` (`deploy/railway/backup.json`, imaginea `deploy/backup/Dockerfile`) rulează zilnic la 02:30 UTC scriptul `deploy/backup/backup.sh`:
+`pg_dump` (format custom, cu drepturile rolului `togato_app`) → criptare `age` cu **cheia publică** → bucket S3/R2 separat (alt cont decât fișierele aplicației), cu amprentă `.sha256`; șterge copiile mai vechi de `BACKUP_RETENTION_DAYS` (35). Rezultatul (reușit / eșuat) se scrie în `ops_events`; monitorizarea alertează dacă lipsește un backup reușit în ultimele 26 de ore.
+
+Configurare o singură dată:
 
 ```bash
-pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" > togato-$(date +%F).dump
-# criptat înainte de a părăsi mașina, apoi încărcat într-un bucket separat cu politică de păstrare 35 de zile
-age -r "$BACKUP_PUBLIC_KEY" togato-$(date +%F).dump > togato-$(date +%F).dump.age
+age-keygen -o togato-backup.key   # afișează cheia publică age1…; fișierul cu cheia privată se păstrează OFFLINE (manager de parole, 2 persoane)
 ```
+
+Variabile pe serviciu: `DATABASE_URL` (conexiunea de serviciu), `BACKUP_AGE_RECIPIENT` (cheia publică), `BACKUP_DESTINATION=s3://togato-backups/prod`, `S3_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (doar scriere + listare + ștergere pe acel bucket), `AWS_DEFAULT_REGION=auto`, opțional `BACKUP_HEARTBEAT_URL`. Pe bucket: versionare / Object Lock dacă e disponibil, ca un atacator cu cheile serverului să nu poată șterge backup-urile.
 
 Rolul `togato_app` (Row-Level Security) e global în cluster: la restaurarea într-un cluster nou, migrația `0010_row_level_security.sql` îl recreează dacă lipsește (`npm run db:migrate`).
 
@@ -28,8 +33,8 @@ Rolul `togato_app` (Row-Level Security) e global în cluster: la restaurarea în
 ## Restaurare (exercițiu trimestrial obligatoriu)
 
 1. Creați un mediu Railway temporar cu Postgres gol.
-2. `pg_restore --no-owner --no-acl -d "$DATABASE_URL" togato-AAAA-LL-ZZ.dump`
-3. `npm run db:migrate -w @togato/api` (aplică eventualele migrații mai noi decât dump-ul; creează rolul RLS).
+2. `TARGET_DATABASE_URL=… BACKUP_AGE_IDENTITY=togato-backup.key deploy/backup/restore.sh s3://togato-backups/prod/togato-….dump.age` — verifică amprenta, decriptează, creează rolul `togato_app` dacă lipsește, restaurează și afișează numărul de cabinete / clienți / avize / dovezi. Refuză o bază țintă care nu e goală.
+3. `npm run db:migrate -w @togato/api` (aplică eventualele migrații mai noi decât dump-ul).
 4. Porniți `api` cu **aceeași** `ENCRYPTION_KEY` ca producția (altfel 2FA nu mai funcționează pentru nimeni).
 5. Verificați: autentificare cu 2FA, deschiderea unui client, descărcarea unui aviz (integritate „ok”), a unei dovezi.
 6. Notați data, durata și problemele în `docs/operations/restore-log.md`.

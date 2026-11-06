@@ -88,6 +88,13 @@ export const templates = {
     ], { label: "Deschide Setările", url: p.url });
   },
 
+  opsAlert(p: { to: string; problems: string[]; url: string }) {
+    return build(p.to, `Togato: ${p.problems.length === 1 ? "o problemă operațională" : `${p.problems.length} probleme operaționale`}`, [
+      "Monitorizarea Togato a găsit:",
+      p.problems.map((x) => `• ${escapeHtml(x)}`).join("<br>"),
+    ], { label: "Starea sistemului", url: p.url });
+  },
+
   passwordReset(p: { to: string; name: string; url: string; expiresMinutes: number }) {
     return build(p.to, "Resetarea parolei Togato", [
       `Bună ziua, ${escapeHtml(p.name)}. Am primit o cerere de resetare a parolei pentru contul dumneavoastră.`,

@@ -629,3 +629,12 @@ export const emailSuppressions = pgTable("email_suppressions", {
   detail: text("detail"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Evenimente operaționale (ex. backup-ul zilnic scrie aici rezultatul) — doar pe conexiunea de serviciu. */
+export const opsEvents = pgTable("ops_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").notNull(),
+  status: text("status").notNull(),
+  detail: jsonb("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("ops_events_kind_idx").on(t.kind, t.createdAt)]);

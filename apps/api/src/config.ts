@@ -58,6 +58,8 @@ const schema = z.object({
   TURNSTILE_SECRET_KEY: z.string().optional(),
   /** semnătura webhook-ului Resend (whsec_…): adresele care resping emailurile sau le marchează ca spam */
   RESEND_WEBHOOK_SECRET: z.string().optional(),
+  /** monitorizarea cere un backup reușit în ultimele 26 de ore (implicit doar în producție) */
+  MONITOR_BACKUPS: z.enum(["on", "off", "true", "false", "1", "0"]).optional(),
   REQUIRE_ADMIN_2FA: z.enum(["on", "off", "true", "false", "1", "0"]).optional(),
 }).superRefine((c, ctx) => {
   if (c.NODE_ENV === "production") {
@@ -103,4 +105,5 @@ export function frontendBaseUrl(): string {
 const flag = (v: string | undefined, fallback: boolean) => (v === undefined ? fallback : v === "on" || v === "true" || v === "1");
 /** comutatoarele cu valoare implicită diferită în producție */
 export const requireEmailVerification = () => flag(config().REQUIRE_EMAIL_VERIFICATION, config().NODE_ENV === "production");
+export const monitorBackups = () => flag(config().MONITOR_BACKUPS, config().NODE_ENV === "production");
 export const requireAdmin2fa = () => flag(config().REQUIRE_ADMIN_2FA, config().NODE_ENV === "production");

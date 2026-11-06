@@ -13,6 +13,9 @@ import { pruneExpiredSessions } from "../services/sessions";
 import { storage } from "../services/storage";
 import { pruneRateLimits } from "../middleware/rateLimit";
 import { applyRetention, purgeClosedOrganizations } from "../services/closure";
+import { pruneOpsEvents, systemStatus } from "../services/monitoring";
+import { platformAdminEmails } from "../services/platform";
+import { reportError } from "../lib/errorReporting";
 
 // ─── email ───────────────────────────────────────────────
 const emailSend: JobHandler = async (payload: EmailMessage) => {
@@ -224,10 +227,22 @@ const closureAndRetention: JobHandler = async () => {
   if (closed || deleted) log.info("închideri și păstrare aplicate", { closed, deleted });
 };
 
+// ─── monitorizare: alertă orară către administratorii platformei ─
+const monitoringCheck: JobHandler = async (p: { hour?: string }) => {
+  const status = await systemStatus();
+  if (!status.problems.length) return;
+  log.error("probleme operaționale", { problems: status.problems });
+  reportError(new Error(`Togato: ${status.problems[0]}`), { problems: status.problems });
+  for (const to of platformAdminEmails()) {
+    await sendEmail(templates.opsAlert({ to, problems: status.problems, url: `${frontendBaseUrl()}/platform#stare` }), { dedupeKey: `ops-alert:${p.hour ?? status.checkedAt.slice(0, 13)}:${to}` });
+  }
+};
+
 const maintenancePrune: JobHandler = async () => {
   await pruneFinished();
   await pruneExpiredSessions();
   await pruneRateLimits();
+  await pruneOpsEvents();
   await db.execute(sql`delete from password_resets where expires_at < now() - interval '1 day'`);
   // autoevaluările nefolosite de 12 luni (solicitările deja trimise rămân la cabinete)
   await db.execute(sql`delete from self_assessments where updated_at < now() - interval '12 months'`);
@@ -244,6 +259,7 @@ export const handlers: Record<string, JobHandler> = {
   "breach.alert": breachAlert,
   "trial.reminders": trialReminders,
   "closure.daily": closureAndRetention,
+  "monitoring.check": monitoringCheck,
 };
 
 /** programările zilnice — idempotente prin dedupeKey; apelate periodic de worker */
@@ -255,6 +271,8 @@ export async function scheduleRecurring(now = new Date()) {
   await enqueue("maintenance.prune", {}, { dedupeKey: `prune:${day}`, runAt: at, maxAttempts: 2 });
   await enqueue("trial.reminders", {}, { dedupeKey: `trial:${day}`, runAt: at, maxAttempts: 3 });
   await enqueue("closure.daily", {}, { dedupeKey: `closure:${day}`, runAt: at, maxAttempts: 3 });
+  const hour = now.toISOString().slice(0, 13);
+  await enqueue("monitoring.check", { hour }, { dedupeKey: `monitor:${hour}`, maxAttempts: 1 });
 }
 
 /** la pornire: reîncadrează o singură dată per versiune a regulilor */

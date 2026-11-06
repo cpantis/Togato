@@ -232,6 +232,20 @@
       "when": 1793956607275,
       "tag": "0032_email_suppressions_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793957006894,
+      "tag": "0033_ops_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793957007612,
+      "tag": "0034_ops_events_grants",
+      "breakpoints": true
     }
   ]
 }

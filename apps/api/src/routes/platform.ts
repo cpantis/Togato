@@ -13,6 +13,7 @@ import type { AppEnv } from "../types/hono";
 import { notFound, uuidParam } from "../lib/http";
 import { isPlatformAdmin, platformAudit } from "../services/platform";
 import { stateOf } from "../services/billing";
+import { systemStatus } from "../services/monitoring";
 
 export const platformRoutes = new Hono<AppEnv>();
 
@@ -150,3 +151,6 @@ platformRoutes.get("/audit", async (c) => {
   return c.json({ data: rows.map((r) => ({ ...r.log, createdAt: r.log.createdAt.toISOString(), organizationName: r.orgName })) });
 });
 
+
+/** GET /status — starea operațională (coada, joburile zilnice, backup-ul, adresele blocate) */
+platformRoutes.get("/status", async (c) => c.json(await systemStatus()));
