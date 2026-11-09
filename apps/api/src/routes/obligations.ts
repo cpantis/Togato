@@ -7,13 +7,14 @@ import type { AppEnv } from "../types/hono";
 import { audit } from "../lib/audit";
 import { notFound, uuidParam } from "../lib/http";
 import { serializeObligation } from "./serializers";
+import { isoDay } from "../lib/validation";
 
 export const obligationRoutes = new Hono<AppEnv>();
 
 const updateSchema = z.object({
   status: z.enum(["de_facut", "in_lucru", "indeplinit", "nu_se_aplica"]).optional(),
   note: z.string().trim().max(5000).nullish(),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data trebuie să fie în formatul AAAA-LL-ZZ").nullish(),
+  dueDate: isoDay().nullish(),
 });
 
 obligationRoutes.patch("/:id", async (c) => {

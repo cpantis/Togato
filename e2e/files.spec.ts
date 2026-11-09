@@ -19,6 +19,12 @@ test("dovezi la obligații, export dosar, arhivare și ștergere definitivă", a
   const [ev] = await Promise.all([page.waitForEvent("download"), first.getByRole("button", { name: "Proces-verbal instruire.pdf", exact: true }).click()]);
   expect(ev.suggestedFilename()).toBe("Proces-verbal instruire.pdf");
 
+  // un fișier mare (12 MB, sub limita de 15) trece prin proxy-ul Next.js, care are middleware (CSP)
+  const big = Buffer.alloc(12 * 1024 * 1024, 65);
+  big.write("%PDF-1.4\n", 0);
+  await first.locator("input[aria-label='Atașează dovezi']").setInputFiles({ name: "Raport mare.pdf", mimeType: "application/pdf", buffer: big });
+  await expect(first.getByRole("button", { name: "Raport mare.pdf", exact: true })).toBeVisible({ timeout: 30_000 });
+
   // un fișier deghizat e refuzat
   await first.locator("input[aria-label='Atașează dovezi']").setInputFiles({ name: "factura.pdf", mimeType: "application/pdf", buffer: Buffer.from("<script>alert(1)</script>") });
   await expect(first.getByRole("alert")).toContainText("Tip de fișier nepermis");

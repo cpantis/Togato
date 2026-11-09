@@ -54,8 +54,18 @@ export class PlanLimitError extends Error {
   constructor(message: string, public code: "plan_limit" | "subscription_required" = "plan_limit") { super(message); }
 }
 
+/**
+ * Blochează rândul cabinetului până la sfârșitul tranzacției cererii: operațiile care verifică o limită
+ * și apoi inserează (clienți, invitații, clientul demonstrativ) se serializează per cabinet.
+ */
+export async function lockOrganization(organizationId: string) {
+  await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).for("update");
+}
+
 /** verifică dacă se mai poate adăuga un client / un utilizator; aruncă PlanLimitError altfel */
 export async function assertCanAdd(organizationId: string, what: "client" | "user") {
+  // fără blocare, cereri paralele ar vedea toate același număr și ar depăși limita
+  await lockOrganization(organizationId);
   const org = (await db.query.organizations.findFirst({ where: eq(organizations.id, organizationId) }))!;
   const state = stateOf(org);
   const limits = effectiveLimits(state, org.plan);

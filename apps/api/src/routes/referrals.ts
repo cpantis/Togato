@@ -62,7 +62,9 @@ referralRoutes.get("/:id", async (c) => {
 referralRoutes.post("/:id/accept", async (c) => {
   const auth = c.get("auth");
   const row = await loadReferral(auth.organizationId, uuidParam(c.req.param("id")));
-  if (row.status !== "nou") return c.json({ error: "Solicitarea a primit deja un răspuns." }, 409);
+  // blocarea rândului: două răspunsuri simultane la aceeași solicitare nu pot trece amândouă
+  const [locked] = await db.select({ status: referrals.status }).from(referrals).where(and(eq(referrals.id, row.id), eq(referrals.organizationId, auth.organizationId))).for("update");
+  if (locked?.status !== "nou") return c.json({ error: "Solicitarea a primit deja un răspuns." }, 409);
   const { message, conflictChecked, conflictNote } = z.object({
     message: z.string().trim().max(2000).nullish(),
     // obligația deontologică: verificarea conflictului de interese înainte de a accepta clientul
@@ -107,7 +109,9 @@ referralRoutes.post("/:id/accept", async (c) => {
 referralRoutes.post("/:id/decline", async (c) => {
   const auth = c.get("auth");
   const row = await loadReferral(auth.organizationId, uuidParam(c.req.param("id")));
-  if (row.status !== "nou") return c.json({ error: "Solicitarea a primit deja un răspuns." }, 409);
+  // blocarea rândului: două răspunsuri simultane la aceeași solicitare nu pot trece amândouă
+  const [locked] = await db.select({ status: referrals.status }).from(referrals).where(and(eq(referrals.id, row.id), eq(referrals.organizationId, auth.organizationId))).for("update");
+  if (locked?.status !== "nou") return c.json({ error: "Solicitarea a primit deja un răspuns." }, 409);
   const { message } = z.object({ message: z.string().trim().max(2000).nullish() }).parse(await c.req.json().catch(() => ({})));
   const p = row.payload as Payload;
   const org = (await db.query.organizations.findFirst({ where: eq(organizations.id, auth.organizationId) }))!;

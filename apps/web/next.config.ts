@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@togato/shared"],
   poweredByHeader: false,
+  experimental: {
+    // cu middleware (CSP cu nonce), Next.js trunchiază corpul cererilor la 10 MB — și pe cele trimise prin
+    // proxy către API. Dovezile pot avea 15 MB: lăsăm 20 MB (fișier + formular), iar API-ul răspunde 413 peste limita lui.
+    middlewareClientMaxBodySize: "20mb",
+  },
   async headers() {
     // Content-Security-Policy (cu nonce per cerere) e setată în src/middleware.ts
     const common = [

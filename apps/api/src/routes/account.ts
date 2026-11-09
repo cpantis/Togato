@@ -98,7 +98,7 @@ accountRoutes.get("/notifications", async (c) => {
 accountRoutes.put("/notifications", async (c) => {
   const auth = c.get("auth");
   const body = z.object({ notifyDeadlines: z.boolean().optional(), notifyPortal: z.boolean().optional() }).parse(await c.req.json());
-  await db.update(users).set(body).where(and(eq(users.id, auth.userId), eq(users.organizationId, auth.organizationId)));
+  if (body.notifyDeadlines !== undefined || body.notifyPortal !== undefined) await db.update(users).set(body).where(and(eq(users.id, auth.userId), eq(users.organizationId, auth.organizationId)));
   const u = await me(auth.userId);
   return c.json({ notifyDeadlines: u.notifyDeadlines, notifyPortal: u.notifyPortal });
 });

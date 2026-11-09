@@ -60,7 +60,8 @@ evidenceRoutes.post("/obligations/:id/evidence", async (c) => {
   const kind = detectKind(buf, fileName);
   if (!kind) badRequest("Tip de fișier nepermis. Acceptăm PDF, imagini (PNG, JPG, WebP), Word, Excel, PowerPoint, ODT, TXT și CSV.");
   await assertClean(buf, { organizationId: auth.organizationId, obligationId: obl.id });
-  const note = typeof form.note === "string" ? form.note.trim().slice(0, 1000) || null : null;
+  // caracterele de control (inclusiv NUL, pe care Postgres nu-l acceptă) se elimină din notă
+  const note = typeof form.note === "string" ? form.note.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim().slice(0, 1000) || null : null;
 
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(evidence).where(and(eq(evidence.obligationId, obl.id), eq(evidence.organizationId, auth.organizationId)));
   if (n >= MAX_PER_OBLIGATION) badRequest(`Maximum ${MAX_PER_OBLIGATION} fișiere per obligație.`);

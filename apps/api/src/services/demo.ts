@@ -8,6 +8,7 @@ import { EMPTY_ANSWERS, RULESET_VERSION, classifyAiSystem, normalizeAnswers, typ
 import { db } from "../db";
 import { aiSystems, clients } from "../db/schema";
 import { syncClientObligations, syncSystemObligations } from "./obligationsSync";
+import { lockOrganization } from "./billing";
 
 export const DEMO_CLIENT_NAME = "Exemplu Logistic SRL (demonstrativ)";
 
@@ -34,6 +35,8 @@ const SYSTEMS: { name: string; vendor: string; purpose: string; department: stri
 
 /** creează clientul demonstrativ (sau îl întoarce pe cel existent) */
 export async function createDemoClient(organizationId: string, userId: string): Promise<{ id: string; created: boolean }> {
+  // cereri paralele: a doua așteaptă și găsește clientul creat de prima
+  await lockOrganization(organizationId);
   const existing = await db.query.clients.findFirst({ where: and(eq(clients.organizationId, organizationId), eq(clients.isDemo, true)) });
   if (existing) return { id: existing.id, created: false };
   return db.transaction(async (tx) => {

@@ -20,12 +20,13 @@ import { breachNotificationBlocks, dpiaBlocks, dsarLetterBlocks, renderGdprDocum
 import crypto from "crypto";
 import { contentDisposition } from "../services/storage/files";
 import { enqueue } from "../jobs/queue";
+import { isoDay } from "../lib/validation";
 
 export const gdprRoutes = new Hono<AppEnv>();
 
 const text = (max: number) => z.string().trim().max(max).nullish().transform((v) => (v ? v : null));
 const codes = (list: { code: string }[]) => z.array(z.enum(list.map((o) => o.code) as [string, ...string[]])).max(30).default([]);
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data trebuie să fie în formatul AAAA-LL-ZZ");
+const day = isoDay();
 const today = () => new Date().toISOString().slice(0, 10);
 
 async function loadClient(organizationId: string, id: string) {

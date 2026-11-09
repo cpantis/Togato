@@ -35,6 +35,7 @@ import { requestContext } from "./middleware/requestContext";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { RULESET_VERSION } from "@togato/shared";
+import { hasNul } from "./lib/validation";
 
 
 export function createApp() {
@@ -79,6 +80,12 @@ const tooLarge = (c: Context) => c.json({ error: "Cererea e prea mare" }, 413);
 const jsonLimit = bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge });
 const uploadLimit = bodyLimit({ maxSize: MAX_EVIDENCE_BYTES + 512 * 1024, onError: (c) => c.json({ error: "Fișierul depășește 15 MB." }, 413) });
 app.use("/api/*", (c, next) => (UPLOAD_PATHS.test(c.req.path) ? uploadLimit(c, next) : jsonLimit(c, next)));
+// caracterul NUL (în URL sau în JSON) nu poate fi stocat în Postgres: 400 în loc de 500
+app.use("/api/*", async (c, next) => {
+  const bad = c.req.url.includes("%00") || (/json/i.test(c.req.header("content-type") ?? "") && hasNul(await c.req.text()));
+  if (bad) return c.json({ error: "Textul conține caractere nepermise.", code: "invalid_characters" }, 400);
+  await next();
+});
 
 app.use("/api/auth/signup", rateLimit({ windowMs: 60_000, max: 5, key: "signup" }));
 app.use("/api/auth/login", rateLimit({ windowMs: 60_000, max: 10, key: "login" }));
