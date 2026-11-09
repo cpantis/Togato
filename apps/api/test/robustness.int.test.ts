@@ -80,3 +80,15 @@ describe("date invalide", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("sesiunea curentă (/api/auth/me)", () => {
+  it("vizitatorul fără sesiune primește 200 cu user null; un token invalid primește 401", async () => {
+    const anon = await call("GET", "/api/auth/me");
+    expect(anon.status).toBe(200);
+    expect(anon.body).toEqual({ user: null, organization: null });
+    expect((await call("GET", "/api/auth/me", { token: "token-inexistent" })).status).toBe(401);
+    const stale = await app.request("/api/auth/me", { headers: { cookie: "togato_session=expirat" } });
+    expect(stale.status).toBe(401);
+    expect(stale.headers.get("set-cookie") ?? "").toMatch(/togato_session=;|togato_session=.*Max-Age=0/);
+  });
+});

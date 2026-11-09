@@ -9,7 +9,7 @@ import { invitations, organizations, passwordResets, users } from "../db/schema"
 import { hashToken, newToken } from "../lib/tokens";
 import { csrfOk, sessionFromRequest, signMfaToken, userFromMfaToken } from "../middleware/auth";
 import { checkSecondFactor } from "../services/mfa";
-import { clearSessionCookies, createSession, revokeSession, revokeUserSessions } from "../services/sessions";
+import { clearSessionCookies, createSession, revokeSession, revokeUserSessions, sessionTokenFrom } from "../services/sessions";
 import { sendEmail, templates } from "../services/email";
 import { frontendBaseUrl } from "../config";
 import { clientIp } from "../lib/clientIp";
@@ -173,8 +173,14 @@ authRoutes.post("/login/mfa", async (c) => {
 });
 
 authRoutes.get("/me", async (c) => {
+  // vizitator fără sesiune (pagini publice): nu e o eroare — fără 401 în consola browserului
+  if (!sessionTokenFrom(c)) return c.json({ user: null, organization: null });
   const s = await sessionFromRequest(c);
-  if (!s) return c.json({ error: "Neautentificat" }, 401);
+  if (!s) {
+    // sesiune expirată / revocată: ștergem cookie-urile, ca următoarele pagini să fie de vizitator
+    clearSessionCookies(c);
+    return c.json({ error: "Neautentificat" }, 401);
+  }
   const user = s.user;
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.organizationId) });
   return c.json({ user: publicUser(user), organization: org ? publicOrg(org) : null });

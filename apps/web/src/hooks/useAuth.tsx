@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     clearLegacyToken();
     try {
-      const data = await api<{ user: AuthUser; organization: Organization }>("/api/auth/me");
+      const data = await api<{ user: AuthUser | null; organization: Organization | null }>("/api/auth/me");
       setState({ user: data.user, organization: data.organization, loading: false, error: null });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {

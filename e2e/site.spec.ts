@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 import { signup } from "./helpers";
 
 test("site public: prezentare, prețuri, ajutor; contul nou explorează clientul demonstrativ", async ({ page }) => {
+  // vizitatorul nu trebuie să vadă erori în consolă pe paginile publice (ex. 401 la verificarea sesiunii)
+  const consoleErrors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(`${page.url()}: ${m.text()}`); });
+  for (const path of ["/preturi", "/ajutor", "/login", "/signup", "/termeni", "/autoevaluare"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+  }
+  expect(consoleErrors).toEqual([]);
+
   const cspErrors: string[] = [];
   page.on("console", (m) => { if (/Content Security Policy|Refused to (execute|load)/i.test(m.text())) cspErrors.push(m.text()); });
   const res = await page.goto("/");
