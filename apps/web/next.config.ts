@@ -32,7 +32,11 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
+      // verificarea de disponibilitate (web → API → bază de date), pentru monitorizarea externă
+      { source: "/health/ready", destination: `${API_URL}/health/ready` },
+    ];
   },
 };
 

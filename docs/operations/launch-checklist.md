@@ -29,7 +29,7 @@ Legendă: **[Juridic]** avocat / DPO · **[Business]** decizie de produs · **[O
 - [ ] **[Ops]** ClamAV: serviciu Railway din imaginea `clamav/clamav` în rețeaua privată → `CLAMAV_HOST`.
 - [ ] **[Ops]** Cloudflare Turnstile: `TURNSTILE_SECRET_KEY` (API) și `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (web, la build).
 - [ ] **[Ops]** Sentry: `SENTRY_DSN`. Opțional Plausible: `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`. `NEXT_PUBLIC_SITE_URL` pentru sitemap.
-- [ ] **[Ops]** Monitorizare externă: un serviciu de tip uptime pe `https://api…/health/ready` și pe pagina principală; opțional `BACKUP_HEARTBEAT_URL` (ex. healthchecks.io).
+- [ ] **[Ops]** Monitorizare externă: un serviciu de tip uptime pe `https://<domeniul web>/health/ready` (verifică web → API → baza de date); opțional `BACKUP_HEARTBEAT_URL` (ex. healthchecks.io).
 
 ## 4. Verificări pe staging (înainte de producție)
 - [ ] **[Verificare]** `npm run check:integrations -w @togato/api -- --email-to=<adresa voastră>` pe staging și pe producție: toate integrările configurate trebuie să fie ✓ (Postgres, Anthropic, Resend + domeniu, Stripe + prețuri + webhook, stocare, ANAF, ClamAV cu EICAR, Turnstile, configurare de producție).

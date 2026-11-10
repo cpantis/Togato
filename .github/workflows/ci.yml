@@ -108,6 +108,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -f apps/api/Dockerfile -t togato-api .
       - run: docker build -f apps/web/Dockerfile --build-arg API_INTERNAL_URL=http://127.0.0.1:8080 -t togato-web .
+      - run: docker build -f deploy/backup/Dockerfile -t togato-backup .
       - name: Test de fum (utilizator non-root, migrații, /health/ready, web + proxy /api)
         run: |
           ENV="-e NODE_ENV=production -e DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/togato_smoke -e JWT_SECRET=ci-smoke-secret-0123456789abcdef0123 -e ENCRYPTION_KEY=$(openssl rand -hex 32) -e EMAIL_PROVIDER=resend -e RESEND_API_KEY=re_ci -e FRONTEND_URL=http://127.0.0.1:3000"
@@ -119,6 +120,13 @@ jobs:
           curl -sf http://127.0.0.1:8080/health/ready
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:3000/login && break; sleep 1; done
           curl -sf -o /dev/null http://127.0.0.1:3000/login
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me)" = "401"
+          # proxy-ul web → API: vizitatorul primește user null; un token invalid primește 401
+          test "$(curl -s http://127.0.0.1:3000/api/auth/me)" = '{"user":null,"organization":null}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer invalid' http://127.0.0.1:3000/api/auth/me)" = "401"
+          curl -sf http://127.0.0.1:3000/health/ready | grep -q '"db":"ok"'
+          # serviciul de backup: un dump criptat real, înregistrat în ops_events
+          PUB=$(docker run --rm --entrypoint age-keygen togato-backup 2>&1 >/dev/null | grep -o 'age1[0-9a-z]*')
+          docker run --rm --network host -e DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/togato_smoke -e BACKUP_AGE_RECIPIENT=$PUB -e BACKUP_DESTINATION=file:///tmp/out togato-backup
+          docker run --rm --network host -e PGPASSWORD=postgres postgres:16 psql -h 127.0.0.1 -U postgres -d togato_smoke -tAc "select count(*) from ops_events where kind='backup' and status='ok'" | grep -qx 1
       - if: failure()
         run: docker logs api; docker logs web

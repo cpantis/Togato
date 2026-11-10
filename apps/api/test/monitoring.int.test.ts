@@ -59,7 +59,8 @@ describe("starea sistemului și alerta", () => {
     _clearOutbox();
     await handlers["monitoring.check"]({ hour: "test-1" }, { id: "test", attempts: 1, type: "monitoring.check" });
     await rootDb.execute(sql`update jobs set run_at = now() where status = 'pending'`);
-    await drain(handlers);
+    // testele de dinainte pot lăsa sute de joburi în coadă; drain() procesează câte 100
+    while ((await drain(handlers)) > 0);
     expect(sentEmails().filter((m) => m.to === OP.email && m.subject.startsWith("Togato:"))).toHaveLength(1);
 
     // un backup reușit înregistrat de serviciul de backup
