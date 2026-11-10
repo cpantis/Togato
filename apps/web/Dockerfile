@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #   docker build -f apps/web/Dockerfile --build-arg API_INTERNAL_URL=http://api:8080 -t togato-web .
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 # variabilele NEXT_PUBLIC_* sunt incluse în cod la build: Railway le transmite doar dacă sunt declarate aici
 ARG API_INTERNAL_URL
@@ -20,7 +20,7 @@ COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN npm run build -w @togato/shared && npm run build -w @togato/web
 
-FROM node:22-slim AS runtime
+FROM node:26-slim AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 WORKDIR /app
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
